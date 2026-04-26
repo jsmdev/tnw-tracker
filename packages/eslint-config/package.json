@@ -1,0 +1,20 @@
+{
+  "name": "@tnw/eslint-config",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./next": "./next.js"
+  },
+  "peerDependencies": {
+    "eslint": ">=9.0.0"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.17.0",
+    "typescript-eslint": "^8.19.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.17.0"
+  }
+}

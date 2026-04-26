@@ -1,0 +1,17 @@
+{
+  "name": "@tnw/shared-types",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src"
+  },
+  "devDependencies": {
+    "@tnw/eslint-config": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}

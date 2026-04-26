@@ -1,0 +1,17 @@
+--swiftversion 6.0
+--indent 4
+--maxwidth 120
+--wrapcollections before-first
+--importgrouping testable-last
+--wraparguments before-first
+--wrapparameters before-first
+--xcodeindentation enabled
+--stripunusedargs closure-only
+--disable andOperator
+--enable blankLinesBetweenScopes
+--enable consecutiveBlankLines
+--enable redundantSelf
+--enable unusedArguments
+--enable void
+--trimwhitespace always
+--header ignore

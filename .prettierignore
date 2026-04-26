@@ -1,0 +1,14 @@
+node_modules
+.next
+dist
+.turbo
+
+# Supabase generated
+supabase/.branches
+supabase/.temp
+
+# Auto-generated type files
+*.gen.ts
+
+# Package lock files
+pnpm-lock.yaml

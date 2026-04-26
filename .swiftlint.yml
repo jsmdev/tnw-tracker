@@ -1,0 +1,37 @@
+included:
+  - apps/ios
+
+excluded:
+  - apps/ios/TnwTracker.xcodeproj
+  - apps/ios/Packages/.build
+  - apps/ios/.build
+
+opt_in_rules:
+  - array_init
+  - closure_spacing
+  - empty_count
+  - explicit_init
+  - first_where
+  - force_unwrapping
+  - implicit_return
+  - sorted_imports
+  - vertical_whitespace_closing_braces
+
+disabled_rules:
+  - trailing_whitespace
+
+line_length:
+  warning: 120
+  error: 150
+  ignores_comments: true
+  ignores_urls: true
+
+type_name:
+  min_length: 3
+  max_length: 50
+
+identifier_name:
+  min_length: 2
+  max_length: 50
+
+reporter: github-actions-logging
