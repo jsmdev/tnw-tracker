@@ -11,10 +11,33 @@ struct TnwTrackerApp: App {
         }
     }()
 
+    @State private var appEnv: AppEnvironment?
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .modelContainer(container)
+            Group {
+                if let env = appEnv {
+                    if env.isAuthenticated {
+                        ContentView()
+                            .environment(env)
+                    } else {
+                        LoginView { email, password in
+                            _ = try await env.authRepository.signIn(email: email, password: password)
+                        }
+                    }
+                } else {
+                    ProgressView()
+                }
+            }
+            .modelContainer(container)
+            .task {
+                appEnv = AppEnvironment.bootstrap(modelContext: container.mainContext)
+                appEnv?.startAuthListener()
+                // Verificar sesión existente
+                if let _ = await appEnv?.authRepository.currentSession() {
+                    appEnv?.isAuthenticated = true
+                }
+            }
         }
     }
 }
