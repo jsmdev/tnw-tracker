@@ -29,6 +29,7 @@ public enum SchemaV1: VersionedSchema {
             Exercise.self, ExerciseVideo.self, Workout.self,
             WorkoutExercise.self, ExerciseSet.self, RestTimer.self,
             PersonalRecord.self, User.self,
+            SyncOperationRecord.self,
         ]
     }
 }
