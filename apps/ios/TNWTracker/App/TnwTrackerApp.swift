@@ -34,7 +34,7 @@ struct TnwTrackerApp: App {
                 appEnv = AppEnvironment.bootstrap(modelContext: container.mainContext)
                 appEnv?.startAuthListener()
                 // Verificar sesión existente
-                if let _ = await appEnv?.authRepository.currentSession() {
+                if await appEnv?.authRepository.currentSession() != nil {
                     appEnv?.isAuthenticated = true
                 }
             }

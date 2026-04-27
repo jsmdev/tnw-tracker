@@ -53,16 +53,16 @@ public struct WorkoutDTO: Codable, Sendable {
 
 public extension WorkoutDTO {
     func toModel() -> Workout {
-        let w = Workout(userId: userId, name: name)
-        w.id = id
-        w.sessionId = sessionId
-        w.statusRaw = status
-        w.startedAt = startedAt
-        w.completedAt = completedAt
-        w.durationSeconds = durationSeconds
-        w.notes = notes
-        w.remoteUpdatedAt = updatedAt
-        return w
+        let wkt = Workout(userId: userId, name: name)
+        wkt.id = id
+        wkt.sessionId = sessionId
+        wkt.statusRaw = status
+        wkt.startedAt = startedAt
+        wkt.completedAt = completedAt
+        wkt.durationSeconds = durationSeconds
+        wkt.notes = notes
+        wkt.remoteUpdatedAt = updatedAt
+        return wkt
     }
 }
 

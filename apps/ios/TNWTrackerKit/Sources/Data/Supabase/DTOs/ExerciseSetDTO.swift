@@ -60,18 +60,18 @@ public struct ExerciseSetDTO: Codable, Sendable {
 
 public extension ExerciseSetDTO {
     func toModel() -> ExerciseSet {
-        let s = ExerciseSet(workoutExerciseId: workoutExerciseId, setNumber: setNumber)
-        s.id = id
-        s.reps = reps
-        s.weight = weight
-        s.weightUnitRaw = weightUnit
-        s.rpe = rpe
-        s.notes = notes
-        s.isWarmup = isWarmup
-        s.completedAt = completedAt
-        s.isPersonalRecord = isPersonalRecord
-        s.remoteUpdatedAt = updatedAt
-        return s
+        let exerciseSet = ExerciseSet(workoutExerciseId: workoutExerciseId, setNumber: setNumber)
+        exerciseSet.id = id
+        exerciseSet.reps = reps
+        exerciseSet.weight = weight
+        exerciseSet.weightUnitRaw = weightUnit
+        exerciseSet.rpe = rpe
+        exerciseSet.notes = notes
+        exerciseSet.isWarmup = isWarmup
+        exerciseSet.completedAt = completedAt
+        exerciseSet.isPersonalRecord = isPersonalRecord
+        exerciseSet.remoteUpdatedAt = updatedAt
+        return exerciseSet
     }
 }
 

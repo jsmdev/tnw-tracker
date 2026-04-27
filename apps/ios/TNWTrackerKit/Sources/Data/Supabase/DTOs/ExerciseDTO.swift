@@ -49,15 +49,15 @@ public struct ExerciseDTO: Codable, Sendable {
 
 public extension ExerciseDTO {
     func toModel() -> Exercise {
-        let e = Exercise(name: name, category: category)
-        e.id = id
-        e.userId = userId
-        e.exerciseDescription = description
-        e.muscleGroups = muscleGroups
-        e.isPublic = isPublic
-        e.isActive = isActive
-        e.remoteUpdatedAt = updatedAt
-        return e
+        let exercise = Exercise(name: name, category: category)
+        exercise.id = id
+        exercise.userId = userId
+        exercise.exerciseDescription = description
+        exercise.muscleGroups = muscleGroups
+        exercise.isPublic = isPublic
+        exercise.isActive = isActive
+        exercise.remoteUpdatedAt = updatedAt
+        return exercise
     }
 }
 

@@ -7,8 +7,9 @@ public enum ModelContainerFactory {
         let url: URL = if inMemory {
             URL(fileURLWithPath: "/dev/null")
         } else {
-            FileManager.default
-                .containerURL(forSecurityApplicationGroupIdentifier: "group.com.tnwtracker.shared")!
+            (FileManager.default
+                .containerURL(forSecurityApplicationGroupIdentifier: "group.com.tnwtracker.shared")
+                ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0])
                 .appendingPathComponent("tnwtracker.sqlite")
         }
         let config = ModelConfiguration(

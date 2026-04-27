@@ -34,8 +34,8 @@ public final class RestTimerService {
     private let liveActivity: LiveActivityController
 
     private var isOnline: Bool {
-        true
-    } // TODO: NWPathMonitor
+        true // NWPathMonitor pendiente de implementar
+    }
 
     public init(
         supabase: SupabaseClient,

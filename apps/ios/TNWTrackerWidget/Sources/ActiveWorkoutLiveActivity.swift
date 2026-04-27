@@ -42,9 +42,9 @@ struct ActiveWorkoutLiveActivityView: View {
     }
 
     private func timerText(seconds: Int) -> String {
-        let m = seconds / 60
-        let s = seconds % 60
-        return String(format: "%d:%02d", m, s)
+        let mins = seconds / 60
+        let secs = seconds % 60
+        return String(format: "%d:%02d", mins, secs)
     }
 }
 
@@ -87,8 +87,8 @@ struct ActiveWorkoutLiveActivity: Widget {
     }
 
     private func timerText(seconds: Int) -> String {
-        let m = seconds / 60
-        let s = seconds % 60
-        return String(format: "%d:%02d", m, s)
+        let mins = seconds / 60
+        let secs = seconds % 60
+        return String(format: "%d:%02d", mins, secs)
     }
 }

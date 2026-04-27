@@ -26,6 +26,7 @@ public final class ActiveWorkoutCoordinator {
     public private(set) var currentExerciseIndex: Int = 0
     public private(set) var phase: Phase = .idle
     public private(set) var elapsedSeconds: Int = 0
+    public var timerTriggerMode: TimerTriggerMode = .auto
 
     // targetSets mapeados desde la Session template
     private var targetSetsMap: [UUID: Int] = [:]
@@ -73,27 +74,27 @@ public final class ActiveWorkoutCoordinator {
         let existing = try await workoutRepository.fetchActive()
         guard existing == nil else { return }
 
-        let w = Workout(userId: userId, name: session.name)
-        w.sessionId = session.id
-        modelContext.insert(w)
+        let wkt = Workout(userId: userId, name: session.name)
+        wkt.sessionId = session.id
+        modelContext.insert(wkt)
 
         let sorted = session.sessionExercises.sorted { $0.orderIndex < $1.orderIndex }
         for (idx, se) in sorted.enumerated() {
-            let we = WorkoutExercise(workoutId: w.id, exerciseId: se.exerciseId, orderIndex: idx)
+            let we = WorkoutExercise(workoutId: wkt.id, exerciseId: se.exerciseId, orderIndex: idx)
             modelContext.insert(we)
-            w.workoutExercises.append(we)
+            wkt.workoutExercises.append(we)
             if let ts = se.targetSets { targetSetsMap[we.id] = ts }
             if let rs = se.restBetweenSetsSeconds { restSecondsMap[we.id] = rs }
         }
 
         try modelContext.save()
-        try await workoutRepository.create(w)
+        try await workoutRepository.create(wkt)
 
-        workout = w
-        workoutExercises = w.workoutExercises.sorted { $0.orderIndex < $1.orderIndex }
+        workout = wkt
+        workoutExercises = wkt.workoutExercises.sorted { $0.orderIndex < $1.orderIndex }
         currentExerciseIndex = 0
         phase = .active
-        liveActivity.start(workoutId: w.id, workoutName: w.name)
+        liveActivity.start(workoutId: wkt.id, workoutName: wkt.name)
         startElapsedTimer()
     }
 
@@ -103,16 +104,16 @@ public final class ActiveWorkoutCoordinator {
         let existing = try await workoutRepository.fetchActive()
         guard existing == nil else { return }
 
-        let w = Workout(userId: userId, name: name)
-        modelContext.insert(w)
+        let wkt = Workout(userId: userId, name: name)
+        modelContext.insert(wkt)
         try modelContext.save()
-        try await workoutRepository.create(w)
+        try await workoutRepository.create(wkt)
 
-        workout = w
+        workout = wkt
         workoutExercises = []
         currentExerciseIndex = 0
         phase = .active
-        liveActivity.start(workoutId: w.id, workoutName: w.name)
+        liveActivity.start(workoutId: wkt.id, workoutName: wkt.name)
         startElapsedTimer()
     }
 
@@ -124,10 +125,9 @@ public final class ActiveWorkoutCoordinator {
         weight: Double?,
         weightUnit: WeightUnit,
         rpe: Int?,
-        isWarmup: Bool,
-        timerTriggerMode: TimerTriggerMode
+        isWarmup: Bool
     ) async throws {
-        guard let w = workout, let we = currentExercise else { return }
+        guard let wkt = workout, let we = currentExercise else { return }
 
         let setNumber = we.exerciseSets.count + 1
         let set = ExerciseSet(workoutExerciseId: we.id, setNumber: setNumber)
@@ -167,10 +167,10 @@ public final class ActiveWorkoutCoordinator {
             phase = .finishing
         } else if isLastSet {
             phase = .restingBetweenExercises
-            await timerService.start(workoutId: w.id, type: .betweenExercises, durationSeconds: restSeconds)
+            await timerService.start(workoutId: wkt.id, type: .betweenExercises, durationSeconds: restSeconds)
         } else {
             phase = .restingBetweenSets
-            await timerService.start(workoutId: w.id, type: .betweenSets, durationSeconds: restSeconds)
+            await timerService.start(workoutId: wkt.id, type: .betweenSets, durationSeconds: restSeconds)
         }
     }
 
@@ -214,19 +214,19 @@ public final class ActiveWorkoutCoordinator {
     // MARK: - Pause / Resume
 
     public func pause() async throws {
-        guard let w = workout, phase == .active else { return }
-        w.statusRaw = WorkoutStatus.paused.rawValue
+        guard let wkt = workout, phase == .active else { return }
+        wkt.statusRaw = WorkoutStatus.paused.rawValue
         try modelContext.save()
-        try await workoutRepository.update(w)
+        try await workoutRepository.update(wkt)
         elapsedTask?.cancel()
         phase = .paused
     }
 
     public func resume() async throws {
-        guard let w = workout, phase == .paused else { return }
-        w.statusRaw = WorkoutStatus.active.rawValue
+        guard let wkt = workout, phase == .paused else { return }
+        wkt.statusRaw = WorkoutStatus.active.rawValue
         try modelContext.save()
-        try await workoutRepository.update(w)
+        try await workoutRepository.update(wkt)
         phase = .active
         startElapsedTimer()
     }
@@ -234,18 +234,18 @@ public final class ActiveWorkoutCoordinator {
     // MARK: - Finish
 
     public func finish() async throws {
-        guard let w = workout else { return }
+        guard let wkt = workout else { return }
         elapsedTask?.cancel()
         await timerService.skip()
 
-        w.durationSeconds = elapsedSeconds
-        try await workoutRepository.complete(w)
+        wkt.durationSeconds = elapsedSeconds
+        try await workoutRepository.complete(wkt)
         try await syncEngine.pushPendingChanges()
 
         // Invocar Edge Function para calcular PRs
         try? await supabase.functions.invoke(
             "calc_personal_records",
-            options: .init(body: ["workout_id": w.id.uuidString])
+            options: .init(body: ["workout_id": wkt.id.uuidString])
         )
 
         await liveActivity.end()

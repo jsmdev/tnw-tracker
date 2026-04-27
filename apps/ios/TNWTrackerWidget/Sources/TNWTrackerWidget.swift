@@ -23,7 +23,8 @@ struct NextSessionProvider: TimelineProvider {
 
     func getTimeline(in _: Context, completion: @escaping (Timeline<NextSessionEntry>) -> Void) {
         let entry = NextSessionEntry(date: Date(), sessionName: queryNextSession())
-        let nextRefresh = Calendar.current.date(byAdding: .hour, value: 1, to: Date())!
+        let nextRefresh = Calendar.current
+            .date(byAdding: .hour, value: 1, to: Date()) ?? Date(timeIntervalSinceNow: 3600)
         completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
     }
 
