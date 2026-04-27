@@ -101,7 +101,7 @@ public final class SyncEngineImpl: SyncEngine {
     public func fullSync() async throws {
         let tables = [
             "workouts", "workout_exercises", "exercise_sets",
-            "exercises", "plans", "routines", "sessions",
+            "exercises", "plans", "routines", "sessions"
         ]
         for table in tables {
             try await pullRemoteChanges(for: table)
