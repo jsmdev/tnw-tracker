@@ -115,12 +115,16 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           max_timeout: 300
       - uses: pnpm/action-setup@v4
+        if: steps.vercel.outputs.url != ''
       - uses: actions/setup-node@v4
+        if: steps.vercel.outputs.url != ''
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium
+        if: steps.vercel.outputs.url != ''
+      - run: pnpm --filter admin exec playwright install --with-deps chromium
+        if: steps.vercel.outputs.url != ''
       - run: pnpm --filter admin test:e2e
         if: steps.vercel.outputs.url != ''
         env:
