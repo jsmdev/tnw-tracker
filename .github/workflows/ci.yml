@@ -91,7 +91,13 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
+      - name: Check for Swift files
+        id: swift-check
+        run: |
+          count=$(find apps/ios -name "*.swift" 2>/dev/null | wc -l)
+          echo "count=$count" >> $GITHUB_OUTPUT
       - uses: norio-nomura/action-swiftlint@3.2.1
+        if: steps.swift-check.outputs.count != '0'
         with:
           args: --strict apps/ios
 
