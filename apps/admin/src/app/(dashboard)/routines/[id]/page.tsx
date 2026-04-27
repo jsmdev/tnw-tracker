@@ -4,6 +4,7 @@ import Link from "next/link";
 import { RoutineForm } from "@/components/routine/RoutineForm";
 import { RoutineSessionsDnd } from "@/components/routine/RoutineSessionsDnd";
 import { SessionCombobox } from "@/components/routine/SessionCombobox";
+import { CloneButton } from "@/components/CloneButton";
 
 export default async function RoutinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -40,6 +41,7 @@ export default async function RoutinePage({ params }: { params: Promise<{ id: st
         </Link>
         <span className="text-gray-300">/</span>
         <h1 className="text-2xl font-bold text-gray-900">{routine.name}</h1>
+        <CloneButton cloneUrl={`/dashboard/routines/${id}/clone`} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">

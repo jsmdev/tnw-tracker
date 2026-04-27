@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SessionForm } from "@/components/session/SessionForm";
 import { SessionExercisesDnd } from "@/components/session/SessionExercisesDnd";
 import { ExerciseCombobox } from "@/components/session/ExerciseCombobox";
+import { CloneButton } from "@/components/CloneButton";
 
 export default async function SessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -47,6 +48,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
         </Link>
         <span className="text-gray-300">/</span>
         <h1 className="text-2xl font-bold text-gray-900">{session.name}</h1>
+        <CloneButton cloneUrl={`/dashboard/sessions/${id}/clone`} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">

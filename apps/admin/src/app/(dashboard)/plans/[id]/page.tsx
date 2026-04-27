@@ -4,6 +4,7 @@ import Link from "next/link";
 import { PlanForm } from "@/components/plan/PlanForm";
 import { PlanRoutinesDnd } from "@/components/plan/PlanRoutinesDnd";
 import { RoutineCombobox } from "@/components/plan/RoutineCombobox";
+import { CloneButton } from "@/components/CloneButton";
 
 export default async function PlanPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -40,6 +41,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         </Link>
         <span className="text-gray-300">/</span>
         <h1 className="text-2xl font-bold text-gray-900">{plan.name}</h1>
+        <CloneButton cloneUrl={`/dashboard/plans/${id}/clone`} />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
