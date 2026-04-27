@@ -1,0 +1,50 @@
+name: TnwTracker
+options:
+  deploymentTarget:
+    iOS: "26.0"
+  xcodeVersion: "26.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+packages:
+  supabase-swift:
+    url: https://github.com/supabase/supabase-swift.git
+    from: 2.0.0
+targets:
+  TNWTracker:
+    type: application
+    platform: iOS
+    sources: TNWTracker/
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tnwtracker.app
+    dependencies:
+      - target: TNWTrackerKit
+    entitlements:
+      path: TNWTracker/TNWTracker.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.tnwtracker.shared]
+  TNWTrackerWidget:
+    type: app-extension
+    platform: iOS
+    sources: TNWTrackerWidget/Sources/
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tnwtracker.widget
+    dependencies:
+      - target: TNWTrackerKit
+    entitlements:
+      path: TNWTrackerWidget/TNWTrackerWidget.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.tnwtracker.shared]
+  TNWTrackerKit:
+    type: framework
+    platform: iOS
+    sources: TNWTrackerKit/Sources/
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.tnwtracker.kit
+    dependencies:
+      - package: supabase-swift
+        product: Supabase
