@@ -6,10 +6,10 @@ This document explains how to manage deployments for tnw-tracker.
 
 ## Environments
 
-| Environment | Branch | Supabase project | Vercel |
-|-------------|--------|------------------|--------|
-| Development | `develop` | `tnw-tracker-dev` | Auto-deploy via Vercel |
-| Production  | `main`   | `tnw-tracker-prod` | Auto-deploy via Vercel |
+| Environment | Branch    | Supabase project   | Vercel                 |
+| ----------- | --------- | ------------------ | ---------------------- |
+| Development | `develop` | `tnw-tracker-dev`  | Auto-deploy via Vercel |
+| Production  | `main`    | `tnw-tracker-prod` | Auto-deploy via Vercel |
 
 ---
 
@@ -105,12 +105,12 @@ pnpm --filter admin dev
 
 ## Secrets reference
 
-| Secret name | Environment | Description |
-|-------------|-------------|-------------|
-| `SUPABASE_ACCESS_TOKEN` | dev + prod | Supabase personal access token |
-| `SUPABASE_PROJECT_REF` | dev + prod | Project reference ID (e.g. `abcdefghijklmno`) |
-| `SUPABASE_DB_PASSWORD` | dev + prod | Database password |
-| `GH_PAT_TYPEGEN` | dev only | GitHub PAT with `repo` scope — used to push generated types |
+| Secret name             | Environment | Description                                                 |
+| ----------------------- | ----------- | ----------------------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN` | dev + prod  | Supabase personal access token                              |
+| `SUPABASE_PROJECT_REF`  | dev + prod  | Project reference ID (e.g. `abcdefghijklmno`)               |
+| `SUPABASE_DB_PASSWORD`  | dev + prod  | Database password                                           |
+| `GH_PAT_TYPEGEN`        | dev only    | GitHub PAT with `repo` scope — used to push generated types |
 
 ---
 
@@ -120,3 +120,5 @@ pnpm --filter admin dev
 - **Vercel logs**: Dashboard → Deployments → Functions tab
 - **GitHub Actions**: Actions tab → filter by workflow name
 - **CodeQL alerts**: Security → Code scanning alerts
+
+# CI Test
