@@ -5,14 +5,32 @@ SELECT plan(7);
 
 -- ---------------------------------------------------------------
 -- Helpers: seed data
+-- Insert into auth.users first — the trigger on_auth_user_created
+-- will create the corresponding public.users rows automatically.
 -- ---------------------------------------------------------------
--- We use fixed UUIDs so tests are deterministic and isolated.
-
--- Insert a bare-minimum user bypassing auth.users FK (test schema).
-INSERT INTO public.users (id, email)
+INSERT INTO auth.users (
+    id, instance_id, email, encrypted_password,
+    email_confirmed_at, created_at, updated_at,
+    raw_app_meta_data, raw_user_meta_data,
+    is_super_admin, role
+)
 VALUES
-  ('00000000-0000-0000-0000-000000000001', 'user1@test.com'),
-  ('00000000-0000-0000-0000-000000000002', 'user2@test.com');
+  (
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000000',
+    'user1@test.com', '',
+    now(), now(), now(),
+    '{}', '{}',
+    false, 'authenticated'
+  ),
+  (
+    '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000000',
+    'user2@test.com', '',
+    now(), now(), now(),
+    '{}', '{}',
+    false, 'authenticated'
+  );
 
 -- Insert an exercise
 INSERT INTO public.exercises (id, user_id, name, category)

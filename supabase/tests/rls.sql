@@ -5,11 +5,32 @@ SELECT plan(2);
 
 -- ---------------------------------------------------------------
 -- Helpers: seed two users and one workout each
+-- Insert into auth.users first — the trigger on_auth_user_created
+-- will create the corresponding public.users rows automatically.
 -- ---------------------------------------------------------------
-INSERT INTO public.users (id, email)
+INSERT INTO auth.users (
+    id, instance_id, email, encrypted_password,
+    email_confirmed_at, created_at, updated_at,
+    raw_app_meta_data, raw_user_meta_data,
+    is_super_admin, role
+)
 VALUES
-  ('00000000-0000-0000-0000-000000000001', 'user1@test.com'),
-  ('00000000-0000-0000-0000-000000000002', 'user2@test.com');
+  (
+    '00000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000000',
+    'user1@test.com', '',
+    now(), now(), now(),
+    '{}', '{}',
+    false, 'authenticated'
+  ),
+  (
+    '00000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000000',
+    'user2@test.com', '',
+    now(), now(), now(),
+    '{}', '{}',
+    false, 'authenticated'
+  );
 
 INSERT INTO public.workouts (id, user_id, name, status)
 VALUES
