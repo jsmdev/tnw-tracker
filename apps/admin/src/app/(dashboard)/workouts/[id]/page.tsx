@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { WorkoutSetList } from "@/components/workout/WorkoutSetList";
+import { RestTimerList } from "@/components/workout/RestTimerList";
 
 function formatDuration(seconds: number | null) {
   if (seconds == null) return "—";
@@ -36,6 +37,9 @@ export default async function WorkoutDetailPage({ params }: { params: Promise<{ 
            id, set_number, reps, weight, weight_unit, rpe,
            is_warmup, is_personal_record, completed_at
          )
+       ),
+       rest_timers (
+         id, timer_type, duration_seconds, started_at, ends_at, is_active
        )`
     )
     .eq("id", id)
@@ -92,6 +96,17 @@ export default async function WorkoutDetailPage({ params }: { params: Promise<{ 
           Series ({workoutExercises.length} ejercicios)
         </h2>
         <WorkoutSetList workoutExercises={workoutExercises} />
+      </div>
+
+      <div className="bg-white rounded-xl shadow p-6 mt-6">
+        <h2 className="text-base font-semibold text-gray-900 mb-4">
+          Timers de descanso ({(workout.rest_timers ?? []).length})
+        </h2>
+        <RestTimerList
+          timers={(workout.rest_timers ?? []).sort(
+            (a, b) => new Date(a.started_at).getTime() - new Date(b.started_at).getTime()
+          )}
+        />
       </div>
     </div>
   );
