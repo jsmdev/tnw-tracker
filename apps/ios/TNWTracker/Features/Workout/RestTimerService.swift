@@ -84,7 +84,7 @@ public final class RestTimerService {
                 "duration_seconds": .number(Double(durationSeconds)),
                 "started_at": .string(ISO8601DateFormatter().string(from: startedAt)),
                 "ends_at": .string(ISO8601DateFormatter().string(from: endsAt)),
-                "is_active": .bool(true),
+                "is_active": .bool(true)
             ]
             try? await supabase.from("rest_timers").insert(row).execute()
         }

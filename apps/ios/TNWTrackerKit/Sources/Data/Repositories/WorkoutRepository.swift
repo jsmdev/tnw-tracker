@@ -24,8 +24,8 @@ public final class WorkoutRepository: WorkoutRepositoryProtocol {
         let activeRaw = WorkoutStatus.active.rawValue
         let pausedRaw = WorkoutStatus.paused.rawValue
         let descriptor = FetchDescriptor<Workout>(
-            predicate: #Predicate { w in
-                w.statusRaw == activeRaw || w.statusRaw == pausedRaw
+            predicate: #Predicate { workout in
+                workout.statusRaw == activeRaw || workout.statusRaw == pausedRaw
             }
         )
         return try modelContext.fetch(descriptor).first
@@ -35,8 +35,8 @@ public final class WorkoutRepository: WorkoutRepositoryProtocol {
         let completedRaw = WorkoutStatus.completed.rawValue
         let cancelledRaw = WorkoutStatus.cancelled.rawValue
         var descriptor = FetchDescriptor<Workout>(
-            predicate: #Predicate { w in
-                w.statusRaw == completedRaw || w.statusRaw == cancelledRaw
+            predicate: #Predicate { workout in
+                workout.statusRaw == completedRaw || workout.statusRaw == cancelledRaw
             },
             sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
         )
