@@ -52,3 +52,7 @@ npm-debug.log*
 pnpm-debug.log*
 
 .vercel
+
+# TypeScript build
+*.tsbuildinfo
+apps/admin/next-env.d.ts
