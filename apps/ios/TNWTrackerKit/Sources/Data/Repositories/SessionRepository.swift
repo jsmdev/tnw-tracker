@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 
+@MainActor
 public protocol SessionRepositoryProtocol: AnyObject, Sendable {
     func fetchAll() async throws -> [Session]
     func fetch(id: UUID) async throws -> Session?

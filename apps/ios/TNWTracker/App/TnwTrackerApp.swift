@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import TNWTrackerKit
 
 @main
 struct TnwTrackerApp: App {

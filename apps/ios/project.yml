@@ -18,6 +18,7 @@ targets:
     sources: TNWTracker/
     settings:
       base:
+        INFOPLIST_FILE: TNWTracker/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.tnwtracker.app
     dependencies:
       - target: TNWTrackerKit
@@ -31,6 +32,7 @@ targets:
     sources: TNWTrackerWidget/Sources/
     settings:
       base:
+        INFOPLIST_FILE: TNWTrackerWidget/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.tnwtracker.widget
     dependencies:
       - target: TNWTrackerKit
@@ -44,6 +46,7 @@ targets:
     sources: TNWTrackerKit/Sources/
     settings:
       base:
+        INFOPLIST_FILE: TNWTrackerKit/Info.plist
         PRODUCT_BUNDLE_IDENTIFIER: com.tnwtracker.kit
     dependencies:
       - package: supabase-swift

@@ -2,6 +2,7 @@ import Foundation
 import Supabase
 import SwiftData
 
+@MainActor
 public protocol SyncEngine: AnyObject, Sendable {
     func enqueueLocalChange(tableName: String, recordId: UUID, operationType: String, payload: Data?) async throws
     func pushPendingChanges() async throws
@@ -71,7 +72,7 @@ public final class SyncEngineImpl: SyncEngine {
         switch op.operationTypeRaw {
         case "insert", "update":
             // upsert genérico — en producción usar typed endpoints
-            let json = try JSONSerialization.jsonObject(with: payload) as? [String: Any] ?? [:]
+            let json = try JSONDecoder().decode(AnyJSON.self, from: payload)
             try await supabase.from(op.tableName).upsert(json).execute()
         case "delete":
             try await supabase.from(op.tableName).delete().eq("id", value: op.recordId.uuidString).execute()

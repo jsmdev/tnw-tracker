@@ -37,7 +37,7 @@ public final class ActiveWorkoutCoordinator {
     private let workoutRepository: WorkoutRepository
     private let syncEngine: SyncEngineImpl
     private let timerService: RestTimerService
-    private let liveActivity: LiveActivityController
+    private nonisolated(unsafe) let liveActivity: LiveActivityController
     private let supabase: SupabaseClient
     private let modelContext: ModelContext
     private let userId: UUID
@@ -69,7 +69,7 @@ public final class ActiveWorkoutCoordinator {
     // MARK: - Lifecycle
 
     /// Inicia el workout desde una Session template.
-    public func start(from session: Session) async throws {
+    public func start(from session: TNWTrackerKit.Session) async throws {
         guard phase == .idle else { return }
         let existing = try await workoutRepository.fetchActive()
         guard existing == nil else { return }

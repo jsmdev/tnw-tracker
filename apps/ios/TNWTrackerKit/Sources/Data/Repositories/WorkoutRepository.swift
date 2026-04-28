@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 
+@MainActor
 public protocol WorkoutRepositoryProtocol: AnyObject, Sendable {
     func fetchActive() async throws -> Workout?
     func fetchHistory(limit: Int) async throws -> [Workout]

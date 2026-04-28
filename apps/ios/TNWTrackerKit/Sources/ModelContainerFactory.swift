@@ -13,16 +13,18 @@ public enum ModelContainerFactory {
                 .appendingPathComponent("tnwtracker.sqlite")
         }
         let config = ModelConfiguration(
+            nil,
             schema: schema,
             url: url,
-            isStoredInMemoryOnly: inMemory
+            allowsSave: true,
+            cloudKitDatabase: .none
         )
         return try ModelContainer(for: schema, configurations: [config])
     }
 }
 
 public enum SchemaV1: VersionedSchema {
-    public static var versionIdentifier = Schema.Version(1, 0, 0)
+    public static let versionIdentifier = Schema.Version(1, 0, 0)
     public static var models: [any PersistentModel.Type] {
         [
             Plan.self, Routine.self, Session.self,

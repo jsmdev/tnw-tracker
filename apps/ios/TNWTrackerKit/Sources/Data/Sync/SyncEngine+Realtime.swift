@@ -1,6 +1,5 @@
 import Foundation
 import SwiftData
-import TNWTrackerKit
 
 /// Extensión de SyncEngineImpl que gestiona la suscripción Realtime
 /// a la tabla rest_timers durante un workout activo.

@@ -1,7 +1,6 @@
 import ActivityKit
 import Foundation
 
-@MainActor
 public final class LiveActivityController {
     private var currentActivity: Activity<ActiveWorkoutAttributes>?
 
@@ -35,18 +34,20 @@ public final class LiveActivityController {
         completedSets: Int,
         totalSets: Int
     ) async {
+        let activity = currentActivity
         let state = ActiveWorkoutAttributes.ContentState(
-            workoutName: currentActivity?.attributes.workoutId.uuidString ?? "",
+            workoutName: activity?.attributes.workoutId.uuidString ?? "",
             currentExerciseName: exerciseName,
             restSecondsRemaining: restSecondsRemaining,
             completedSets: completedSets,
             totalSets: totalSets
         )
-        await currentActivity?.update(.init(state: state, staleDate: nil))
+        await activity?.update(.init(state: state, staleDate: nil))
     }
 
     public func end() async {
-        await currentActivity?.end(nil, dismissalPolicy: .immediate)
+        let activity = currentActivity
+        await activity?.end(nil, dismissalPolicy: .immediate)
         currentActivity = nil
     }
 }

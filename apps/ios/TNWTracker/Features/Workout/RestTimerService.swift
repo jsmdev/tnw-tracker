@@ -31,7 +31,7 @@ public final class RestTimerService {
     private var tickTask: Task<Void, Never>?
     private let supabase: SupabaseClient
     private let modelContext: ModelContext
-    private let liveActivity: LiveActivityController
+    private nonisolated(unsafe) let liveActivity: LiveActivityController
 
     private var isOnline: Bool {
         true // NWPathMonitor pendiente de implementar
@@ -81,7 +81,7 @@ public final class RestTimerService {
                 "id": .string(timerId.uuidString),
                 "workout_id": .string(workoutId.uuidString),
                 "timer_type": .string(type.rawValue),
-                "duration_seconds": .number(Double(durationSeconds)),
+                "duration_seconds": .integer(durationSeconds),
                 "started_at": .string(ISO8601DateFormatter().string(from: startedAt)),
                 "ends_at": .string(ISO8601DateFormatter().string(from: endsAt)),
                 "is_active": .bool(true)
@@ -97,8 +97,9 @@ public final class RestTimerService {
         await cancelTick()
 
         // Marcar inactivo localmente
+        let currentId = current.id
         let descriptor = FetchDescriptor<RestTimer>(
-            predicate: #Predicate { $0.id == current.id }
+            predicate: #Predicate { $0.id == currentId }
         )
         if let timer = try? modelContext.fetch(descriptor).first {
             timer.isActive = false
@@ -123,8 +124,9 @@ public final class RestTimerService {
         current.endsAt = current.endsAt.addingTimeInterval(TimeInterval(seconds))
         state = current
 
+        let currentId = current.id
         let descriptor = FetchDescriptor<RestTimer>(
-            predicate: #Predicate { $0.id == current.id }
+            predicate: #Predicate { $0.id == currentId }
         )
         if let timer = try? modelContext.fetch(descriptor).first {
             timer.endsAt = current.endsAt
@@ -172,8 +174,9 @@ public final class RestTimerService {
     private func handleExpiry() async {
         guard let current = state else { return }
 
+        let currentId = current.id
         let descriptor = FetchDescriptor<RestTimer>(
-            predicate: #Predicate { $0.id == current.id }
+            predicate: #Predicate { $0.id == currentId }
         )
         if let timer = try? modelContext.fetch(descriptor).first {
             timer.isActive = false

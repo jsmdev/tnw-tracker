@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 
+@MainActor
 public protocol ExerciseRepositoryProtocol: AnyObject, Sendable {
     func fetchAll() async throws -> [Exercise]
     func fetch(id: UUID) async throws -> Exercise?

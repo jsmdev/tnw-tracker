@@ -1,10 +1,11 @@
 import Foundation
 import Supabase
 
+@MainActor
 public protocol AuthRepositoryProtocol: AnyObject, Sendable {
-    func signIn(email: String, password: String) async throws -> Session
+    func signIn(email: String, password: String) async throws -> Auth.Session
     func signOut() async throws
-    func currentSession() async -> Session?
+    func currentSession() async -> Auth.Session?
     func authStateChanges() -> AsyncStream<AuthChangeEvent>
 }
 
@@ -16,7 +17,7 @@ public final class AuthRepository: AuthRepositoryProtocol {
         self.supabase = supabase
     }
 
-    public func signIn(email: String, password: String) async throws -> Session {
+    public func signIn(email: String, password: String) async throws -> Auth.Session {
         try await supabase.auth.signIn(email: email, password: password)
     }
 
@@ -24,7 +25,7 @@ public final class AuthRepository: AuthRepositoryProtocol {
         try await supabase.auth.signOut()
     }
 
-    public func currentSession() async -> Session? {
+    public func currentSession() async -> Auth.Session? {
         try? await supabase.auth.session
     }
 

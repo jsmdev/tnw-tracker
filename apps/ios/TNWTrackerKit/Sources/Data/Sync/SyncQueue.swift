@@ -1,7 +1,8 @@
 import Foundation
 import SwiftData
 
-public actor SyncQueue {
+@MainActor
+public final class SyncQueue {
     private let modelContext: ModelContext
 
     public init(modelContext: ModelContext) {

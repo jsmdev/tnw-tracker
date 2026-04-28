@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import Supabase
 import SwiftData
+import TNWTrackerKit
 
 @Observable
 @MainActor

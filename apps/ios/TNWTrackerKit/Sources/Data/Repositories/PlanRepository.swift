@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 
+@MainActor
 public protocol PlanRepositoryProtocol: AnyObject, Sendable {
     func fetchAll() async throws -> [Plan]
     func fetch(id: UUID) async throws -> Plan?

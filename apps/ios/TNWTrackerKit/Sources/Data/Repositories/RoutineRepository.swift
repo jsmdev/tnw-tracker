@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 
+@MainActor
 public protocol RoutineRepositoryProtocol: AnyObject, Sendable {
     func fetchAll() async throws -> [Routine]
     func fetch(id: UUID) async throws -> Routine?
