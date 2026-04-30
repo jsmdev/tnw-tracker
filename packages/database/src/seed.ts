@@ -103,12 +103,17 @@ async function createUsers() {
   console.log("→ Creating users…");
 
   // ── Helper: create or fetch existing user ───────────────────────────────
-  async function upsertUser(email: string, password: string): Promise<string> {
+  async function upsertUser(
+    email: string,
+    password: string,
+    appMetadata?: Record<string, unknown>
+  ): Promise<string> {
     const { data, error } = await supabase.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
       user_metadata: {},
+      app_metadata: appMetadata ?? {},
     });
     if (error) {
       if (error.message.includes("already been registered")) {
@@ -123,7 +128,7 @@ async function createUsers() {
     return data.user?.id ?? "";
   }
 
-  DEV_USER_ID = await upsertUser("dev@tnw-tracker.local", "Dev1234!");
+  DEV_USER_ID = await upsertUser("dev@tnw-tracker.local", "Dev1234!", { role: "owner" });
   if (DEV_USER_ID) console.log(`  ✅ dev@tnw-tracker.local (Dev1234!) — ${DEV_USER_ID}`);
 
   SECONDARY_USER_ID = await upsertUser("user2@tnw-tracker.local", "Dev1234!");
