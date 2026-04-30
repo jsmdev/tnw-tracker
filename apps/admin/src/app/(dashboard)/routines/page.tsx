@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { deleteRoutineAction } from "@/app/actions/routine";
+import { DeleteButton } from "@/components/DeleteButton";
 
 export default async function RoutinesPage() {
   const supabase = await createClient();
@@ -45,17 +46,10 @@ export default async function RoutinesPage() {
                   >
                     Editar
                   </Link>
-                  <form action={deleteRoutineAction.bind(null, r.id)} className="inline">
-                    <button
-                      type="submit"
-                      className="text-red-500 hover:text-red-700 font-medium"
-                      onClick={(ev) => {
-                        if (!confirm(`¿Eliminar "${r.name}"?`)) ev.preventDefault();
-                      }}
-                    >
-                      Eliminar
-                    </button>
-                  </form>
+                  <DeleteButton
+                    action={deleteRoutineAction.bind(null, r.id)}
+                    confirmMessage={`¿Eliminar "${r.name}"?`}
+                  />
                 </td>
               </tr>
             ))}

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { deletePlanAction } from "@/app/actions/plan";
+import { DeleteButton } from "@/components/DeleteButton";
 
 export default async function PlansPage() {
   const supabase = await createClient();
@@ -53,17 +54,10 @@ export default async function PlansPage() {
                   >
                     Editar
                   </Link>
-                  <form action={deletePlanAction.bind(null, p.id)} className="inline">
-                    <button
-                      type="submit"
-                      className="text-red-500 hover:text-red-700 font-medium"
-                      onClick={(ev) => {
-                        if (!confirm(`¿Eliminar "${p.name}"?`)) ev.preventDefault();
-                      }}
-                    >
-                      Eliminar
-                    </button>
-                  </form>
+                  <DeleteButton
+                    action={deletePlanAction.bind(null, p.id)}
+                    confirmMessage={`¿Eliminar "${p.name}"?`}
+                  />
                 </td>
               </tr>
             ))}

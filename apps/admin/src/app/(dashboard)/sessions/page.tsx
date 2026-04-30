@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { deleteSessionAction } from "@/app/actions/session";
+import { DeleteButton } from "@/components/DeleteButton";
 
 export default async function SessionsPage() {
   const supabase = await createClient();
@@ -46,17 +47,10 @@ export default async function SessionsPage() {
                   >
                     Editar
                   </Link>
-                  <form action={deleteSessionAction.bind(null, s.id)} className="inline">
-                    <button
-                      type="submit"
-                      className="text-red-500 hover:text-red-700 font-medium"
-                      onClick={(ev) => {
-                        if (!confirm(`¿Eliminar "${s.name}"?`)) ev.preventDefault();
-                      }}
-                    >
-                      Eliminar
-                    </button>
-                  </form>
+                  <DeleteButton
+                    action={deleteSessionAction.bind(null, s.id)}
+                    confirmMessage={`¿Eliminar "${s.name}"?`}
+                  />
                 </td>
               </tr>
             ))}
