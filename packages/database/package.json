@@ -7,9 +7,14 @@
     ".": "./types.gen.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "seed": "npx tsx src/seed.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.0"
   },
   "devDependencies": {
+    "@types/node": "^22.15.3",
     "typescript": "^5.7.2"
   }
 }
