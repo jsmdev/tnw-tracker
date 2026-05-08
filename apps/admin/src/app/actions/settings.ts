@@ -1,13 +1,8 @@
 "use server";
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireUser } from "@/lib/auth";
-
-const settingsSchema = z.object({
-  weight_unit: z.enum(["kg", "lb"]),
-  timer_trigger_mode: z.enum(["auto", "manual"]),
-});
+import { userSettingsSchema } from "@tnw/zod-schemas";
 
 export type SettingsFormState = {
   error?: Record<string, string[]>;
@@ -22,7 +17,7 @@ export async function updateSettingsAction(
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
-  const parsed = settingsSchema.safeParse({
+  const parsed = userSettingsSchema.safeParse({
     weight_unit: formData.get("weight_unit"),
     timer_trigger_mode: formData.get("timer_trigger_mode"),
   });

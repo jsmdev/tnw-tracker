@@ -17,6 +17,7 @@ export const createPlanSchema = z.object({
   user_id: z.string().uuid(),
   name: z.string().min(1),
   description: z.string().nullable().optional(),
+  duration_weeks: z.number().int().positive().optional(),
   is_active: z.boolean().optional(),
 });
 export type CreatePlan = z.infer<typeof createPlanSchema>;

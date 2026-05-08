@@ -1,14 +1,12 @@
 "use server";
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { requireUser, requireOwnership, OwnershipError } from "@/lib/auth";
+import { z, createSessionSchema, reorderSchema } from "@tnw/zod-schemas";
 
-const sessionFormSchema = z.object({
+const sessionFormSchema = createSessionSchema.omit({ user_id: true }).extend({
   name: z.string().min(1, "El nombre es obligatorio"),
-  description: z.string().optional(),
-  rest_between_exercises_seconds: z.number().int().min(0).default(60),
 });
 
 export type SessionFormState = {
@@ -91,18 +89,11 @@ export async function deleteSessionAction(id: string): Promise<void> {
   redirect("/dashboard/sessions");
 }
 
-const reorderItemsSchema = z.array(
-  z.object({
-    id: z.string().uuid(),
-    orderIndex: z.number().int().min(0),
-  })
-);
-
 export async function reorderSessionExercisesAction(
   sessionId: string,
   items: { id: string; orderIndex: number }[]
 ): Promise<{ error?: string }> {
-  const parsed = reorderItemsSchema.safeParse(items);
+  const parsed = reorderSchema.safeParse(items);
   if (!parsed.success) return { error: "Datos inválidos" };
 
   const supabase = await createClient();

@@ -26,7 +26,7 @@ export const exerciseSchema = z.object({
   name: z.string().min(1),
   category: exerciseCategorySchema,
   muscle_groups: z.array(z.string()),
-  description: z.string().nullable(),
+  instructions: z.string().nullable(),
   created_at: z.string().datetime().optional(),
   updated_at: z.string().datetime().optional(),
 });
@@ -38,7 +38,7 @@ export const createExerciseSchema = z.object({
   name: z.string().min(1),
   category: exerciseCategorySchema,
   muscle_groups: z.array(z.string()).default([]),
-  description: z.string().nullable().optional(),
+  instructions: z.string().nullable().optional(),
 });
 export type CreateExercise = z.infer<typeof createExerciseSchema>;
 

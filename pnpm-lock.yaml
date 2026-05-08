@@ -47,6 +47,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.2.4
         version: 4.2.4
+      '@tnw/zod-schemas':
+        specifier: workspace:*
+        version: link:../../packages/zod-schemas
       next:
         specifier: ^15.3.1
         version: 15.5.15(@playwright/test@1.59.1)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)

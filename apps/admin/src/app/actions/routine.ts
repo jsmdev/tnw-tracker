@@ -1,13 +1,12 @@
 "use server";
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { requireUser, requireOwnership, OwnershipError } from "@/lib/auth";
+import { z, createRoutineSchema, reorderSchema } from "@tnw/zod-schemas";
 
-const routineFormSchema = z.object({
+const routineFormSchema = createRoutineSchema.omit({ user_id: true }).extend({
   name: z.string().min(1, "El nombre es obligatorio"),
-  description: z.string().optional(),
 });
 
 export type RoutineFormState = {
@@ -86,18 +85,11 @@ export async function deleteRoutineAction(id: string): Promise<void> {
   redirect("/dashboard/routines");
 }
 
-const reorderItemsSchema = z.array(
-  z.object({
-    id: z.string().uuid(),
-    orderIndex: z.number().int().min(0),
-  })
-);
-
 export async function reorderRoutineSessionsAction(
   routineId: string,
   items: { id: string; orderIndex: number }[]
 ): Promise<{ error?: string }> {
-  const parsed = reorderItemsSchema.safeParse(items);
+  const parsed = reorderSchema.safeParse(items);
   if (!parsed.success) return { error: "Datos inválidos" };
 
   const supabase = await createClient();

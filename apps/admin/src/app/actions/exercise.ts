@@ -1,17 +1,13 @@
 "use server";
-import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { requireUser, requireOwnership, OwnershipError } from "@/lib/auth";
+import { z, createExerciseSchema } from "@tnw/zod-schemas";
 
-const CATEGORIES = ["Push", "Pull", "Legs", "Core", "Cardio", "Other"] as const;
-
-const exerciseFormSchema = z.object({
+const exerciseFormSchema = createExerciseSchema.omit({ user_id: true }).extend({
   name: z.string().min(1, "El nombre es obligatorio"),
-  category: z.enum(CATEGORIES),
   muscle_groups: z.array(z.string()).min(1, "Selecciona al menos un grupo muscular"),
-  instructions: z.string().optional(),
 });
 
 export type ExerciseFormState = {

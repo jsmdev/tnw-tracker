@@ -16,6 +16,7 @@ export const createSessionSchema = z.object({
   user_id: z.string().uuid(),
   name: z.string().min(1),
   description: z.string().nullable().optional(),
+  rest_between_exercises_seconds: z.number().int().min(0).default(60),
 });
 export type CreateSession = z.infer<typeof createSessionSchema>;
 
