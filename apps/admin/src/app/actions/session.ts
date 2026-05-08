@@ -106,19 +106,19 @@ export async function reorderSessionExercisesAction(
     throw e;
   }
 
-  // Fase 1: valores negativos únicos para evitar conflictos con UNIQUE (session_id, order_index)
-  for (let i = 0; i < parsed.data.length; i++) {
-    await supabase
-      .from("session_exercises")
-      .update({ order_index: -(i + 1) })
-      .eq("id", parsed.data[i].id);
-  }
-  // Fase 2: valores finales
-  for (const item of parsed.data) {
-    await supabase
-      .from("session_exercises")
-      .update({ order_index: item.orderIndex })
-      .eq("id", item.id);
+  const { error } = await supabase.rpc("reorder_items", {
+    p_table: "session_exercises",
+    p_parent_col: "session_id",
+    p_parent_id: sessionId,
+    p_items: parsed.data.map(({ id, orderIndex }) => ({ id, order_index: orderIndex })),
+  });
+
+  if (error) {
+    if (error.message === "unauthorized") return { error: "No autorizado" };
+    if (error.message === "invalid_table" || error.message === "invalid_payload") {
+      return { error: "Datos inválidos" };
+    }
+    return { error: error.message };
   }
 
   revalidatePath(`/dashboard/sessions/${sessionId}`);
@@ -175,31 +175,7 @@ export async function removeExerciseFromSessionAction(
     throw e;
   }
 
-  const { data: toRemove } = await supabase
-    .from("session_exercises")
-    .select("order_index")
-    .eq("id", sessionExerciseId)
-    .single();
-
   await supabase.from("session_exercises").delete().eq("id", sessionExerciseId);
-
-  if (toRemove) {
-    const { data: remaining } = await supabase
-      .from("session_exercises")
-      .select("id, order_index")
-      .eq("session_id", sessionId)
-      .gt("order_index", toRemove.order_index)
-      .order("order_index");
-
-    if (remaining) {
-      for (const item of remaining) {
-        await supabase
-          .from("session_exercises")
-          .update({ order_index: item.order_index - 1 })
-          .eq("id", item.id);
-      }
-    }
-  }
 
   revalidatePath(`/dashboard/sessions/${sessionId}`);
 }

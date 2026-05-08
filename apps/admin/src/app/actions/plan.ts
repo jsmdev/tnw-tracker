@@ -108,16 +108,19 @@ export async function reorderPlanRoutinesAction(
     throw e;
   }
 
-  // Fase 1: valores negativos únicos para evitar conflictos con UNIQUE (plan_id, order_index)
-  for (let i = 0; i < parsed.data.length; i++) {
-    await supabase
-      .from("plan_routines")
-      .update({ order_index: -(i + 1) })
-      .eq("id", parsed.data[i].id);
-  }
-  // Fase 2: valores finales
-  for (const item of parsed.data) {
-    await supabase.from("plan_routines").update({ order_index: item.orderIndex }).eq("id", item.id);
+  const { error } = await supabase.rpc("reorder_items", {
+    p_table: "plan_routines",
+    p_parent_col: "plan_id",
+    p_parent_id: planId,
+    p_items: parsed.data.map(({ id, orderIndex }) => ({ id, order_index: orderIndex })),
+  });
+
+  if (error) {
+    if (error.message === "unauthorized") return { error: "No autorizado" };
+    if (error.message === "invalid_table" || error.message === "invalid_payload") {
+      return { error: "Datos inválidos" };
+    }
+    return { error: error.message };
   }
 
   revalidatePath(`/dashboard/plans/${planId}`);
@@ -174,31 +177,7 @@ export async function removeRoutineFromPlanAction(
     throw e;
   }
 
-  const { data: toRemove } = await supabase
-    .from("plan_routines")
-    .select("order_index")
-    .eq("id", planRoutineId)
-    .single();
-
   await supabase.from("plan_routines").delete().eq("id", planRoutineId);
-
-  if (toRemove) {
-    const { data: remaining } = await supabase
-      .from("plan_routines")
-      .select("id, order_index")
-      .eq("plan_id", planId)
-      .gt("order_index", toRemove.order_index)
-      .order("order_index");
-
-    if (remaining) {
-      for (const item of remaining) {
-        await supabase
-          .from("plan_routines")
-          .update({ order_index: item.order_index - 1 })
-          .eq("id", item.id);
-      }
-    }
-  }
 
   revalidatePath(`/dashboard/plans/${planId}`);
 }

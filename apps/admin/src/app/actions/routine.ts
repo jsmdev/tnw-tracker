@@ -102,19 +102,19 @@ export async function reorderRoutineSessionsAction(
     throw e;
   }
 
-  // Fase 1: valores negativos únicos para evitar conflictos con UNIQUE (routine_id, order_index)
-  for (let i = 0; i < parsed.data.length; i++) {
-    await supabase
-      .from("routine_sessions")
-      .update({ order_index: -(i + 1) })
-      .eq("id", parsed.data[i].id);
-  }
-  // Fase 2: valores finales
-  for (const item of parsed.data) {
-    await supabase
-      .from("routine_sessions")
-      .update({ order_index: item.orderIndex })
-      .eq("id", item.id);
+  const { error } = await supabase.rpc("reorder_items", {
+    p_table: "routine_sessions",
+    p_parent_col: "routine_id",
+    p_parent_id: routineId,
+    p_items: parsed.data.map(({ id, orderIndex }) => ({ id, order_index: orderIndex })),
+  });
+
+  if (error) {
+    if (error.message === "unauthorized") return { error: "No autorizado" };
+    if (error.message === "invalid_table" || error.message === "invalid_payload") {
+      return { error: "Datos inválidos" };
+    }
+    return { error: error.message };
   }
 
   revalidatePath(`/dashboard/routines/${routineId}`);
@@ -171,31 +171,7 @@ export async function removeSessionFromRoutineAction(
     throw e;
   }
 
-  const { data: toRemove } = await supabase
-    .from("routine_sessions")
-    .select("order_index")
-    .eq("id", routineSessionId)
-    .single();
-
   await supabase.from("routine_sessions").delete().eq("id", routineSessionId);
-
-  if (toRemove) {
-    const { data: remaining } = await supabase
-      .from("routine_sessions")
-      .select("id, order_index")
-      .eq("routine_id", routineId)
-      .gt("order_index", toRemove.order_index)
-      .order("order_index");
-
-    if (remaining) {
-      for (const item of remaining) {
-        await supabase
-          .from("routine_sessions")
-          .update({ order_index: item.order_index - 1 })
-          .eq("id", item.id);
-      }
-    }
-  }
 
   revalidatePath(`/dashboard/routines/${routineId}`);
 }
