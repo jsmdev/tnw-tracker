@@ -3,6 +3,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { requireUser, requireOwnership, OwnershipError } from "@/lib/auth";
 
 const CATEGORIES = ["Push", "Pull", "Legs", "Core", "Cardio", "Other"] as const;
 
@@ -23,10 +24,7 @@ export async function createExerciseAction(
   formData: FormData
 ): Promise<ExerciseFormState> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser(supabase);
 
   const parsed = exerciseFormSchema.safeParse({
     name: formData.get("name"),
@@ -61,10 +59,7 @@ export async function updateExerciseAction(
   formData: FormData
 ): Promise<ExerciseFormState> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser(supabase);
 
   const parsed = exerciseFormSchema.safeParse({
     name: formData.get("name"),
@@ -95,10 +90,7 @@ export async function updateExerciseAction(
 
 export async function deleteExerciseAction(id: string): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser(supabase);
 
   await supabase.from("exercises").update({ is_active: false }).eq("id", id).eq("user_id", user.id);
 
@@ -112,10 +104,14 @@ export async function createExerciseVideoAction(
   source: "storage" | "youtube"
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
+  const user = await requireUser(supabase);
+
+  try {
+    await requireOwnership(supabase, "exercises", exerciseId, user.id);
+  } catch (e) {
+    if (e instanceof OwnershipError) return { error: "No autorizado" };
+    throw e;
+  }
 
   const { error } = await supabase.from("exercise_videos").insert({
     exercise_id: exerciseId,
@@ -134,10 +130,14 @@ export async function deleteExerciseVideoAction(
   exerciseId: string
 ): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser(supabase);
+
+  try {
+    await requireOwnership(supabase, "exercises", exerciseId, user.id);
+  } catch (e) {
+    if (e instanceof OwnershipError) return;
+    throw e;
+  }
 
   await supabase.from("exercise_videos").delete().eq("id", videoId);
 

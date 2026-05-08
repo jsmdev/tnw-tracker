@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/auth";
 
 const settingsSchema = z.object({
   weight_unit: z.enum(["kg", "lb"]),
@@ -20,10 +20,7 @@ export async function updateSettingsAction(
   formData: FormData
 ): Promise<SettingsFormState> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser(supabase);
 
   const parsed = settingsSchema.safeParse({
     weight_unit: formData.get("weight_unit"),

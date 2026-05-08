@@ -3,6 +3,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { requireUser, requireOwnership, OwnershipError } from "@/lib/auth";
 
 const sessionFormSchema = z.object({
   name: z.string().min(1, "El nombre es obligatorio"),
@@ -20,10 +21,7 @@ export async function createSessionAction(
   formData: FormData
 ): Promise<SessionFormState> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser(supabase);
 
   const parsed = sessionFormSchema.safeParse({
     name: formData.get("name"),
@@ -56,10 +54,7 @@ export async function updateSessionAction(
   formData: FormData
 ): Promise<SessionFormState> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser(supabase);
 
   const parsed = sessionFormSchema.safeParse({
     name: formData.get("name"),
@@ -88,10 +83,7 @@ export async function updateSessionAction(
 
 export async function deleteSessionAction(id: string): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser(supabase);
 
   await supabase.from("sessions").delete().eq("id", id).eq("user_id", user.id);
 
@@ -114,10 +106,14 @@ export async function reorderSessionExercisesAction(
   if (!parsed.success) return { error: "Datos inválidos" };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
+  const user = await requireUser(supabase);
+
+  try {
+    await requireOwnership(supabase, "sessions", sessionId, user.id);
+  } catch (e) {
+    if (e instanceof OwnershipError) return { error: "No autorizado" };
+    throw e;
+  }
 
   // Fase 1: valores negativos únicos para evitar conflictos con UNIQUE (session_id, order_index)
   for (let i = 0; i < parsed.data.length; i++) {
@@ -143,10 +139,14 @@ export async function addExerciseToSessionAction(
   exerciseId: string
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "No autenticado" };
+  const user = await requireUser(supabase);
+
+  try {
+    await requireOwnership(supabase, "sessions", sessionId, user.id);
+  } catch (e) {
+    if (e instanceof OwnershipError) return { error: "No autorizado" };
+    throw e;
+  }
 
   const { data: last } = await supabase
     .from("session_exercises")
@@ -175,10 +175,14 @@ export async function removeExerciseFromSessionAction(
   sessionId: string
 ): Promise<void> {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+  const user = await requireUser(supabase);
+
+  try {
+    await requireOwnership(supabase, "sessions", sessionId, user.id);
+  } catch (e) {
+    if (e instanceof OwnershipError) return;
+    throw e;
+  }
 
   const { data: toRemove } = await supabase
     .from("session_exercises")
