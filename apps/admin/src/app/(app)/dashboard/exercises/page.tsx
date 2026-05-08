@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { deleteExerciseAction } from "@/app/actions/exercise";
-import { DeleteButton } from "@/components/DeleteButton";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 export default async function ExercisesPage() {
   const supabase = await createClient();
@@ -52,9 +52,13 @@ export default async function ExercisesPage() {
                   >
                     Editar
                   </Link>
-                  <DeleteButton
+                  <ConfirmDialog
+                    triggerLabel="Eliminar"
+                    triggerClassName="text-red-500 hover:text-red-700 font-medium"
+                    title="Eliminar ejercicio"
+                    message={`¿Seguro que deseas eliminar "${e.name}"?`}
                     action={deleteExerciseAction.bind(null, e.id)}
-                    confirmMessage={`¿Eliminar "${e.name}"?`}
+                    confirmLabel="Eliminar"
                   />
                 </td>
               </tr>

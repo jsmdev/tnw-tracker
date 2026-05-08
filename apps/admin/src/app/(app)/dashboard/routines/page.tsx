@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { deleteRoutineAction } from "@/app/actions/routine";
-import { DeleteButton } from "@/components/DeleteButton";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 export default async function RoutinesPage() {
   const supabase = await createClient();
@@ -46,9 +46,13 @@ export default async function RoutinesPage() {
                   >
                     Editar
                   </Link>
-                  <DeleteButton
+                  <ConfirmDialog
+                    triggerLabel="Eliminar"
+                    triggerClassName="text-red-500 hover:text-red-700 font-medium"
+                    title="Eliminar rutina"
+                    message={`¿Seguro que deseas eliminar "${r.name}"?`}
                     action={deleteRoutineAction.bind(null, r.id)}
-                    confirmMessage={`¿Eliminar "${r.name}"?`}
+                    confirmLabel="Eliminar"
                   />
                 </td>
               </tr>

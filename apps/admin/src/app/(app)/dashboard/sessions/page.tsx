@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import { deleteSessionAction } from "@/app/actions/session";
-import { DeleteButton } from "@/components/DeleteButton";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 export default async function SessionsPage() {
   const supabase = await createClient();
@@ -47,9 +47,13 @@ export default async function SessionsPage() {
                   >
                     Editar
                   </Link>
-                  <DeleteButton
+                  <ConfirmDialog
+                    triggerLabel="Eliminar"
+                    triggerClassName="text-red-500 hover:text-red-700 font-medium"
+                    title="Eliminar sesión"
+                    message={`¿Seguro que deseas eliminar "${s.name}"?`}
                     action={deleteSessionAction.bind(null, s.id)}
-                    confirmMessage={`¿Eliminar "${s.name}"?`}
+                    confirmLabel="Eliminar"
                   />
                 </td>
               </tr>
