@@ -56,3 +56,5 @@ pnpm-debug.log*
 # TypeScript build
 *.tsbuildinfo
 apps/admin/next-env.d.ts
+
+.atl/
