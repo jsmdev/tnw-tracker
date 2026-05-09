@@ -1,6 +1,191 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    " kg" : {
+
+    },
+    "%lld / %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld / %2$lld"
+          }
+        }
+      }
+    },
+    "0" : {
+
+    },
+    "0.0" : {
+
+    },
+    "active-workout.controls.end" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End workout"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finalizar workout"
+          }
+        }
+      }
+    },
+    "active-workout.controls.pause" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausar"
+          }
+        }
+      }
+    },
+    "active-workout.controls.resume" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resume"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reanudar"
+          }
+        }
+      }
+    },
+    "active-workout.elapsed-label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elapsed"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tiempo"
+          }
+        }
+      }
+    },
+    "active-workout.exercise-header" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current Exercise"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ejercicio actual"
+          }
+        }
+      }
+    },
+    "active-workout.exercise-progress-label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exercise"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ejercicio"
+          }
+        }
+      }
+    },
+    "active-workout.finishing-banner" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Workout complete!"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¡Entrenamiento completado!"
+          }
+        }
+      }
+    },
+    "active-workout.paused-banner" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Workout paused"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrenamiento pausado"
+          }
+        }
+      }
+    },
+    "active-workout.set.log-button" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Log set"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registrar serie"
+          }
+        }
+      }
+    },
+    "active-workout.set.undo-button" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Undo last set"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deshacer última serie"
+          }
+        }
+      }
+    },
+    "Contraseña" : {
+
+    },
+    "Email" : {
+
+    },
     "home.next-session.empty-message" : {
       "localizations" : {
         "en" : {
@@ -34,6 +219,7 @@
       }
     },
     "home.next-session.exercises-count" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -72,6 +258,9 @@
           }
         }
       }
+    },
+    "home.next-session.exercises-count %lld" : {
+
     },
     "home.next-session.loading" : {
       "localizations" : {
@@ -185,6 +374,9 @@
         }
       }
     },
+    "Iniciar sesión" : {
+
+    },
     "loading.default" : {
       "localizations" : {
         "en" : {
@@ -202,6 +394,7 @@
       }
     },
     "loading.sessions" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -216,6 +409,41 @@
           }
         }
       }
+    },
+    "rest-timer.label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rest"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descanso"
+          }
+        }
+      }
+    },
+    "rest-timer.skip-button" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip rest"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omitir descanso"
+          }
+        }
+      }
+    },
+    "rpe.value %lld" : {
+
     },
     "session-detail.exercises-section" : {
       "localizations" : {
@@ -298,6 +526,7 @@
       }
     },
     "session-detail.rest-between-exercises" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -337,7 +566,11 @@
         }
       }
     },
+    "session-detail.rest-between-exercises %lld" : {
+
+    },
     "session-detail.sets-reps" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -349,6 +582,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld series × %lld repeticiones"
+          }
+        }
+      }
+    },
+    "session-detail.sets-reps %lld %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "session-detail.sets-reps %1$lld %2$lld"
           }
         }
       }
@@ -466,6 +709,7 @@
       }
     },
     "session-list.row.exercises-count" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -505,6 +749,9 @@
         }
       }
     },
+    "session-list.row.exercises-count %lld" : {
+
+    },
     "session-list.search-placeholder" : {
       "localizations" : {
         "en" : {
@@ -537,214 +784,6 @@
         }
       }
     },
-    "settings.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Settings"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajustes"
-          }
-        }
-      }
-    },
-    "active-workout.elapsed-label" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Elapsed"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tiempo"
-          }
-        }
-      }
-    },
-    "active-workout.exercise-header" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Current Exercise"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ejercicio actual"
-          }
-        }
-      }
-    },
-    "active-workout.exercise-progress-label" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exercise"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ejercicio"
-          }
-        }
-      }
-    },
-    "active-workout.finishing-banner" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Workout complete!"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "¡Entrenamiento completado!"
-          }
-        }
-      }
-    },
-    "active-workout.paused-banner" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Workout paused"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entrenamiento pausado"
-          }
-        }
-      }
-    },
-    "active-workout.set.log-button" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Log set"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Registrar serie"
-          }
-        }
-      }
-    },
-    "active-workout.set.undo-button" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Undo last set"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Deshacer última serie"
-          }
-        }
-      }
-    },
-    "active-workout.controls.pause" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pause"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pausar"
-          }
-        }
-      }
-    },
-    "active-workout.controls.resume" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Resume"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reanudar"
-          }
-        }
-      }
-    },
-    "active-workout.controls.end" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "End workout"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Finalizar workout"
-          }
-        }
-      }
-    },
-    "rest-timer.label" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rest"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Descanso"
-          }
-        }
-      }
-    },
-    "rest-timer.skip-button" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Skip rest"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Omitir descanso"
-          }
-        }
-      }
-    },
     "set-log.cancel-button" : {
       "localizations" : {
         "en" : {
@@ -757,6 +796,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cancelar"
+          }
+        }
+      }
+    },
+    "set-log.reps-label" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reps"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repeticiones"
           }
         }
       }
@@ -793,22 +848,6 @@
         }
       }
     },
-    "set-log.reps-label" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reps"
-          }
-        },
-        "es-ES" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Repeticiones"
-          }
-        }
-      }
-    },
     "set-log.save-button" : {
       "localizations" : {
         "en" : {
@@ -826,6 +865,7 @@
       }
     },
     "set-log.set-section-header" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -840,6 +880,9 @@
           }
         }
       }
+    },
+    "set-log.set-section-header %lld" : {
+
     },
     "set-log.title" : {
       "localizations" : {
@@ -901,6 +944,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "kg"
+          }
+        }
+      }
+    },
+    "set.reps %lld" : {
+
+    },
+    "set.rpe" : {
+
+    },
+    "settings.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes"
           }
         }
       }
@@ -1050,6 +1115,7 @@
       }
     },
     "summary.sets-count" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1088,6 +1154,9 @@
           }
         }
       }
+    },
+    "summary.sets-count %lld" : {
+
     },
     "summary.title" : {
       "localizations" : {
@@ -1136,6 +1205,9 @@
           }
         }
       }
+    },
+    "TNW Tracker" : {
+
     }
   },
   "version" : "1.0"

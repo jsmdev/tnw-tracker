@@ -62,9 +62,10 @@ struct ActiveWorkoutView: View {
     @ViewBuilder
     private var mainContent: some View {
         if coordinator.phase == .idle {
-            // Workout not yet started or already finished — dismiss
-            Color.clear
-                .onAppear { dismiss() }
+            // Workout aún no arrancó (start está pendiente) — mostrar loading.
+            // El arranque real se dispara desde ActiveWorkoutCover.task.
+            ProgressView()
+                .controlSize(.large)
         } else {
             workoutContent
         }
