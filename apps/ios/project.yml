@@ -3,10 +3,15 @@ options:
   deploymentTarget:
     iOS: "26.0"
   xcodeVersion: "26.0"
+  developmentLanguage: en
+  knownRegions:
+    - en
+    - es-ES
 settings:
   base:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_EMIT_LOC_STRINGS: YES
 packages:
   supabase-swift:
     url: https://github.com/supabase/supabase-swift.git
@@ -29,7 +34,9 @@ targets:
   TNWTrackerWidget:
     type: app-extension
     platform: iOS
-    sources: TNWTrackerWidget/Sources/
+    sources:
+      - TNWTrackerWidget/Sources/
+      - TNWTrackerWidget/Resources/
     settings:
       base:
         INFOPLIST_FILE: TNWTrackerWidget/Info.plist
