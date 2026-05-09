@@ -29,11 +29,11 @@ struct RootView: View {
     private func destination(for route: Route) -> some View {
         switch route {
         case let .sessionDetail(sessionID):
-            Text("Session \(sessionID.uuidString)")
+            SessionDetailView(sessionID: sessionID)
         case let .exerciseDetail(exerciseID):
-            Text("Exercise \(exerciseID.uuidString)")
+            Text(verbatim: exerciseID.uuidString)
         case .sessionHistory:
-            Text("Session History")
+            SessionListView(container: modelContext.container)
         case .settings:
             SettingsView()
         }
