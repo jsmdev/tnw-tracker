@@ -1,8 +1,11 @@
 import Foundation
 import Observation
+import os.log
 import Supabase
 import SwiftData
 import TNWTrackerKit
+
+private let logger = Logger(subsystem: "com.tnwtracker", category: "auth")
 
 @Observable
 @MainActor

@@ -1,8 +1,11 @@
 import Foundation
 import Observation
+import os.log
 import Supabase
 import SwiftData
 import TNWTrackerKit
+
+private let logger = Logger(subsystem: "com.tnwtracker", category: "coordinator")
 
 /// FSM del workout activo. Coordina sets, timer y Live Activity.
 @MainActor

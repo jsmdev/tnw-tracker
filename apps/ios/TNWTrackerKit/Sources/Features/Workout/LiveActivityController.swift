@@ -1,5 +1,8 @@
 import ActivityKit
 import Foundation
+import os.log
+
+private let logger = Logger(subsystem: "com.tnwtracker", category: "liveactivity")
 
 public final class LiveActivityController {
     private var currentActivity: Activity<ActiveWorkoutAttributes>?

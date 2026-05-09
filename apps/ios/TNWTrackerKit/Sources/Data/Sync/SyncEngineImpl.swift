@@ -1,6 +1,9 @@
 import Foundation
+import os.log
 import Supabase
 import SwiftData
+
+private let logger = Logger(subsystem: "com.tnwtracker", category: "sync")
 
 @MainActor
 public protocol SyncEngine: AnyObject, Sendable {

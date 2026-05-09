@@ -1,5 +1,8 @@
 import Foundation
+import os.log
 import Supabase
+
+private let logger = Logger(subsystem: "com.tnwtracker", category: "auth")
 
 @MainActor
 public protocol AuthRepositoryProtocol: AnyObject, Sendable {

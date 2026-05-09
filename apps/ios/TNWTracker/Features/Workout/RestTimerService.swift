@@ -1,8 +1,11 @@
 import Foundation
 import Observation
+import os.log
 import Supabase
 import SwiftData
 import TNWTrackerKit
+
+private let logger = Logger(subsystem: "com.tnwtracker", category: "coordinator")
 
 /// Estado observable del timer de descanso activo.
 public struct RestTimerState: Sendable, Equatable {
