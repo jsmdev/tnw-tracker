@@ -142,7 +142,9 @@ SELECT lives_ok(
   'Test 4: items from another session are silently ignored (no error, no cross-session mutation)'
 );
 
--- Verify item from session B was NOT modified
+-- Verify item from session B was NOT modified.
+-- Reset to superuser role so RLS doesn't hide session B (owned by user_b).
+RESET ROLE;
 SELECT is(
   (SELECT order_index FROM public.session_exercises WHERE id = 'dddddddd-0000-0000-0000-000000000099'),
   0,
