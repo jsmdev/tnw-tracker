@@ -151,11 +151,8 @@ struct SessionDetailView: View {
         seDescriptor.predicate = #Predicate<SessionExercise> { $0.sessionId == sessionID }
         let sessionExercises = (try? context.fetch(seDescriptor)) ?? []
 
-        // Fetch exercises for each session exercise
-        let exerciseIds = sessionExercises.map(\.exerciseId)
-        var exDescriptor = FetchDescriptor<Exercise>()
-        // Fetch all exercises and filter in memory (predicate on [UUID] not supported in SwiftData)
-        let allExercises = (try? context.fetch(exDescriptor)) ?? []
+        // SwiftData no soporta `contains` con [UUID] en #Predicate — fetch all + map en memoria.
+        let allExercises = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
         let exerciseMap = Dictionary(uniqueKeysWithValues: allExercises.map { ($0.id, $0) })
 
         exercises = sessionExercises.map { se in
