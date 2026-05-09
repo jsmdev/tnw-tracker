@@ -1,8 +1,8 @@
 import ActivityKit
 import Foundation
 
-public struct ActiveWorkoutAttributes: ActivityAttributes {
-    public struct ContentState: Codable, Hashable {
+public struct ActiveWorkoutAttributes: ActivityAttributes, Sendable {
+    public struct ContentState: Codable, Hashable, Sendable {
         public var workoutName: String
         public var currentExerciseName: String?
         public var restSecondsRemaining: Int?

@@ -40,7 +40,7 @@ public final class ActiveWorkoutCoordinator {
     private let workoutRepository: WorkoutRepository
     private let syncEngine: SyncEngineImpl
     private let timerService: RestTimerService
-    private nonisolated(unsafe) let liveActivity: LiveActivityController
+    private let liveActivity: LiveActivityController
     private let supabase: SupabaseClient
     private let modelContext: ModelContext
     private let userId: UUID
@@ -251,7 +251,7 @@ public final class ActiveWorkoutCoordinator {
             options: .init(body: ["workout_id": wkt.id.uuidString])
         )
 
-        await liveActivity.end()
+        liveActivity.end()
 
         workout = nil
         workoutExercises = []

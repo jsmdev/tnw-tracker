@@ -34,7 +34,7 @@ public final class RestTimerService {
     private var tickTask: Task<Void, Never>?
     private let supabase: SupabaseClient
     private let modelContext: ModelContext
-    private nonisolated(unsafe) let liveActivity: LiveActivityController
+    private let liveActivity: LiveActivityController
 
     private var isOnline: Bool {
         true // NWPathMonitor pendiente de implementar
@@ -119,7 +119,7 @@ public final class RestTimerService {
         }
 
         state = nil
-        await liveActivity.end()
+        liveActivity.end()
     }
 
     public func extend(by seconds: Int) async {
@@ -159,12 +159,14 @@ public final class RestTimerService {
                     break
                 }
 
-                await liveActivity.update(
-                    exerciseName: nil,
+                let timerState = ActiveWorkoutAttributes.ContentState(
+                    workoutName: "",
+                    currentExerciseName: nil,
                     restSecondsRemaining: max(0, Int(current.remaining)),
                     completedSets: 0,
                     totalSets: 0
                 )
+                liveActivity.update(state: timerState)
             }
         }
     }
@@ -188,6 +190,6 @@ public final class RestTimerService {
         }
 
         state = nil
-        await liveActivity.end()
+        liveActivity.end()
     }
 }
