@@ -2,11 +2,11 @@ import Foundation
 import Observation
 import SwiftUI
 
-public struct ActiveWorkoutPresentation: Identifiable {
+public struct ActiveWorkoutPresentation: Identifiable, Equatable {
     public let id: UUID
 }
 
-public struct WorkoutSummaryPresentation: Identifiable {
+public struct WorkoutSummaryPresentation: Identifiable, Equatable {
     public let id: UUID
 }
 

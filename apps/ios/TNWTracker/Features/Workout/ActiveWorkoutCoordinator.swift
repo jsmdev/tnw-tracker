@@ -97,6 +97,7 @@ public final class ActiveWorkoutCoordinator {
         workoutExercises = wkt.workoutExercises.sorted { $0.orderIndex < $1.orderIndex }
         currentExerciseIndex = 0
         phase = .active
+        logger.info("Coordinator phase → .active (start from session: \(session.id))")
         liveActivity.start(workoutId: wkt.id, workoutName: wkt.name)
         startElapsedTimer()
     }
@@ -116,6 +117,7 @@ public final class ActiveWorkoutCoordinator {
         workoutExercises = []
         currentExerciseIndex = 0
         phase = .active
+        logger.info("Coordinator phase → .active (ad-hoc: \(name))")
         liveActivity.start(workoutId: wkt.id, workoutName: wkt.name)
         startElapsedTimer()
     }
@@ -168,11 +170,14 @@ public final class ActiveWorkoutCoordinator {
 
         if isLastSet && isLastExercise {
             phase = .finishing
+            logger.info("Coordinator phase → .finishing (last set + last exercise)")
         } else if isLastSet {
             phase = .restingBetweenExercises
+            logger.info("Coordinator phase → .restingBetweenExercises (set \(setNumber), rest \(restSeconds)s)")
             await timerService.start(workoutId: wkt.id, type: .betweenExercises, durationSeconds: restSeconds)
         } else {
             phase = .restingBetweenSets
+            logger.info("Coordinator phase → .restingBetweenSets (set \(setNumber), rest \(restSeconds)s)")
             await timerService.start(workoutId: wkt.id, type: .betweenSets, durationSeconds: restSeconds)
         }
     }
@@ -223,6 +228,7 @@ public final class ActiveWorkoutCoordinator {
         try await workoutRepository.update(wkt)
         elapsedTask?.cancel()
         phase = .paused
+        logger.info("Coordinator phase → .paused")
     }
 
     public func resume() async throws {
@@ -231,6 +237,7 @@ public final class ActiveWorkoutCoordinator {
         try modelContext.save()
         try await workoutRepository.update(wkt)
         phase = .active
+        logger.info("Coordinator phase → .active (resumed)")
         startElapsedTimer()
     }
 
@@ -260,6 +267,7 @@ public final class ActiveWorkoutCoordinator {
         currentExerciseIndex = 0
         phase = .idle
         elapsedSeconds = 0
+        logger.info("Coordinator phase → .idle (finished)")
     }
 
     // MARK: - Helpers
@@ -267,6 +275,12 @@ public final class ActiveWorkoutCoordinator {
     public var currentExercise: WorkoutExercise? {
         guard workoutExercises.indices.contains(currentExerciseIndex) else { return nil }
         return workoutExercises[currentExerciseIndex]
+    }
+
+    /// Expone el estado del timer de descanso para que las Views lo puedan leer directamente.
+    /// Forwarding a `RestTimerService.state` — ambos son @MainActor @Observable.
+    public var timerState: RestTimerState? {
+        timerService.state
     }
 
     private func startElapsedTimer() {

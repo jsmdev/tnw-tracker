@@ -6,6 +6,10 @@ struct RootView: View {
     @Environment(AppEnvironment.self) private var appEnv
     @Environment(\.modelContext) private var modelContext
 
+    /// Coordinator created lazily when the fullScreenCover opens.
+    /// Stored in @State so it survives re-renders without recreation.
+    @State private var activeCoordinator: ActiveWorkoutCoordinator?
+
     var body: some View {
         @Bindable var router = appEnv.router
         NavigationStack(path: $router.path) {
@@ -14,14 +18,36 @@ struct RootView: View {
                     destination(for: route)
                 }
         }
-        .fullScreenCover(item: $router.presentedActiveWorkout) { _ in
-            Text("Active Workout")
+        .fullScreenCover(item: $router.presentedActiveWorkout) { presentation in
+            activeWorkoutCover(presentation: presentation)
         }
         .fullScreenCover(item: $router.presentedWorkoutSummary) { _ in
             Text("Workout Summary")
         }
         .onOpenURL { url in
             router.handle(deepLink: url)
+        }
+        .onChange(of: router.presentedActiveWorkout) { _, newValue in
+            if newValue != nil, activeCoordinator == nil {
+                activeCoordinator = appEnv.makeActiveWorkoutCoordinator()
+            } else if newValue == nil {
+                activeCoordinator = nil
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func activeWorkoutCover(presentation: ActiveWorkoutPresentation) -> some View {
+        if let coordinator = activeCoordinator {
+            NavigationStack {
+                ActiveWorkoutView(coordinator: coordinator)
+            }
+        } else {
+            // Coordinator not ready — dismiss cover immediately
+            Color.clear
+                .onAppear {
+                    appEnv.router.presentedActiveWorkout = nil
+                }
         }
     }
 
