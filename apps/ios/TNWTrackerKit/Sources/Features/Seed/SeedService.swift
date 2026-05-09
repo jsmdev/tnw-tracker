@@ -60,10 +60,15 @@
                 context.insert(routine)
             }
 
-            // PlanRoutines — vinculan plan ↔ rutinas
+            // PlanRoutines — vinculan plan ↔ rutinas.
+            // Modelos del dominio NO declaran `@Relationship(inverse:)` en el child,
+            // así que SwiftData no popula la relación automáticamente desde el FK.
+            // Asignamos a la propiedad de relación del parent para que las queries
+            // (e.g., `plan.planRoutines.count`) devuelvan los datos sembrados.
             for (idx, routine) in [push, pull, legs].enumerated() {
                 let pr = PlanRoutine(planId: plan.id, routineId: routine.id, orderIndex: idx)
                 context.insert(pr)
+                plan.planRoutines.append(pr)
             }
 
             // Sessions (templates) y RoutineSessions
@@ -91,6 +96,7 @@
             {
                 let rs = RoutineSession(routineId: routine.id, sessionId: session.id, orderIndex: idx)
                 context.insert(rs)
+                routine.routineSessions.append(rs)
             }
 
             try context.save()
@@ -110,6 +116,7 @@
                 se.targetReps = 10
                 se.restBetweenSetsSeconds = 90
                 context.insert(se)
+                session.sessionExercises.append(se)
             }
             return session
         }

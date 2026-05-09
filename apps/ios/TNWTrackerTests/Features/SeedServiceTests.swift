@@ -41,4 +41,19 @@ struct SeedServiceTests {
         #expect(routines.count == 3)
         #expect(exercises.count >= 5)
     }
+
+    @Test("seedIfNeeded wirea las relaciones SwiftData parent→children")
+    func seedWiresRelationships() async throws {
+        let seedService = SeedService(container: container)
+        try await seedService.seedIfNeeded()
+
+        let context = ModelContext(container)
+        let plan = try #require(try context.fetch(FetchDescriptor<Plan>()).first)
+        let routines = try context.fetch(FetchDescriptor<Routine>())
+        let sessions = try context.fetch(FetchDescriptor<Session>())
+
+        #expect(plan.planRoutines.count == 3)
+        #expect(routines.allSatisfy { $0.routineSessions.count == 1 })
+        #expect(sessions.allSatisfy { $0.sessionExercises.count >= 2 })
+    }
 }
