@@ -19,7 +19,7 @@ struct TnwTrackerApp: App {
             Group {
                 if let env = appEnv {
                     if env.isAuthenticated {
-                        ContentView()
+                        RootView()
                             .environment(env)
                     } else {
                         LoginView { email, password in

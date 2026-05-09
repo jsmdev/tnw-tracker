@@ -10,6 +10,9 @@ private let logger = Logger(subsystem: "com.tnwtracker", category: "auth")
 @Observable
 @MainActor
 public final class AppEnvironment {
+    /// Routing
+    public let router = Router()
+
     // Auth
     public var isAuthenticated: Bool = false
     public var currentUserId: UUID?
