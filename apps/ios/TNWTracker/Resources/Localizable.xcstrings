@@ -1,5 +1,22 @@
 {
   "sourceLanguage" : "en",
-  "strings" : {},
+  "strings" : {
+    "settings.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajustes"
+          }
+        }
+      }
+    }
+  },
   "version" : "1.0"
 }

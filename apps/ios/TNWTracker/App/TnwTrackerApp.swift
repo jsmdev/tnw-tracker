@@ -33,6 +33,9 @@ struct TnwTrackerApp: App {
             .modelContainer(container)
             .task {
                 appEnv = AppEnvironment.bootstrap(modelContext: container.mainContext)
+                #if DEBUG
+                    try? SeedService.seedIfNeeded(context: container.mainContext)
+                #endif
                 appEnv?.startAuthListener()
                 // Verificar sesión existente
                 if await appEnv?.authRepository.currentSession() != nil {

@@ -33,7 +33,7 @@ struct RootView: View {
         case .sessionHistory:
             Text("Session History")
         case .settings:
-            Text("Settings")
+            SettingsView()
         }
     }
 }
