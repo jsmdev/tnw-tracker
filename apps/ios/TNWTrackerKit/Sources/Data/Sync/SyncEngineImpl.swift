@@ -98,7 +98,7 @@ public final class SyncEngineImpl: SyncEngine {
 
         // Actualizar cursor con el updated_at más reciente
         // (en producción parsear el array de resultados y aplicar conflictos)
-        let newCursor = ISO8601DateFormatter().string(from: Date())
+        let newCursor = Date().ISO8601Format()
         UserDefaults.standard.set(newCursor, forKey: key)
     }
 

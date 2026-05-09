@@ -85,8 +85,8 @@ public final class RestTimerService {
                 "workout_id": .string(workoutId.uuidString),
                 "timer_type": .string(type.rawValue),
                 "duration_seconds": .integer(durationSeconds),
-                "started_at": .string(ISO8601DateFormatter().string(from: startedAt)),
-                "ends_at": .string(ISO8601DateFormatter().string(from: endsAt)),
+                "started_at": .string(startedAt.ISO8601Format()),
+                "ends_at": .string(endsAt.ISO8601Format()),
                 "is_active": .bool(true)
             ]
             try? await supabase.from("rest_timers").insert(row).execute()
@@ -140,7 +140,7 @@ public final class RestTimerService {
         if isOnline {
             try? await supabase
                 .from("rest_timers")
-                .update(["ends_at": ISO8601DateFormatter().string(from: current.endsAt)])
+                .update(["ends_at": current.endsAt.ISO8601Format()])
                 .eq("id", value: current.id.uuidString)
                 .execute()
         }
