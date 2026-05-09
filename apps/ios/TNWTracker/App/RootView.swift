@@ -1,13 +1,15 @@
+import SwiftData
 import SwiftUI
+import TNWTrackerKit
 
 struct RootView: View {
     @Environment(AppEnvironment.self) private var appEnv
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         @Bindable var router = appEnv.router
         NavigationStack(path: $router.path) {
-            Text("TNW Tracker")
-                .navigationTitle("TNW Tracker")
+            HomeView(container: modelContext.container)
                 .navigationDestination(for: Route.self) { route in
                     destination(for: route)
                 }
