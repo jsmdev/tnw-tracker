@@ -34,10 +34,15 @@ public final class AuthRepository: AuthRepositoryProtocol {
 
     public func authStateChanges() -> AsyncStream<AuthChangeEvent> {
         AsyncStream { continuation in
-            Task {
+            let task = Task {
                 for await (event, _) in supabase.auth.authStateChanges {
                     continuation.yield(event)
                 }
+            }
+            // Cuando el consumer cancela su Task externo, el AsyncStream termina
+            // y este callback cancela el Task interno — evita leak en la chain.
+            continuation.onTermination = { @Sendable _ in
+                task.cancel()
             }
         }
     }
