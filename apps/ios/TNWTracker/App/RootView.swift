@@ -21,8 +21,8 @@ struct RootView: View {
         .fullScreenCover(item: $router.presentedActiveWorkout) { presentation in
             activeWorkoutCover(presentation: presentation)
         }
-        .fullScreenCover(item: $router.presentedWorkoutSummary) { _ in
-            Text("Workout Summary")
+        .fullScreenCover(item: $router.presentedWorkoutSummary) { presentation in
+            WorkoutSummaryView(workoutId: presentation.id)
         }
         .onOpenURL { url in
             router.handle(deepLink: url)

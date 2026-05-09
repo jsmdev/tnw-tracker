@@ -31,6 +31,10 @@ public final class ActiveWorkoutCoordinator {
     public private(set) var elapsedSeconds: Int = 0
     public var timerTriggerMode: TimerTriggerMode = .auto
 
+    /// Set to the completed workout ID just before state is cleared in `finish()`.
+    /// Observers (ActiveWorkoutView) use this to trigger WorkoutSummaryView.
+    public private(set) var completedWorkoutId: UUID?
+
     // targetSets mapeados desde la Session template
     private var targetSetsMap: [UUID: Int] = [:]
     private var restSecondsMap: [UUID: Int] = [:]
@@ -260,6 +264,10 @@ public final class ActiveWorkoutCoordinator {
 
         liveActivity.end()
 
+        // Capture the completed workout ID BEFORE clearing state so that
+        // WorkoutSummaryView can fetch it from SwiftData.
+        completedWorkoutId = wkt.id
+
         workout = nil
         workoutExercises = []
         targetSetsMap = [:]
@@ -267,7 +275,7 @@ public final class ActiveWorkoutCoordinator {
         currentExerciseIndex = 0
         phase = .idle
         elapsedSeconds = 0
-        logger.info("Coordinator phase → .idle (finished)")
+        logger.info("Coordinator phase → .idle (finished, summary ID: \(wkt.id))")
     }
 
     // MARK: - Helpers

@@ -12,11 +12,13 @@ import TNWTrackerKit
 /// RPESelector + SetCard are consumed from DesignSystem.
 struct ActiveWorkoutView: View {
     @Environment(AppEnvironment.self) private var appEnv
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     let coordinator: ActiveWorkoutCoordinator
 
     @State private var setLogItem: SetLogSheetItem?
+    @State private var exerciseNames: [UUID: String] = [:]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -41,6 +43,17 @@ struct ActiveWorkoutView: View {
                 },
                 onCancel: { setLogItem = nil }
             )
+        }
+        .task {
+            await loadExerciseNames()
+        }
+        .onChange(of: coordinator.workoutExercises.count) {
+            Task { await loadExerciseNames() }
+        }
+        .onChange(of: coordinator.completedWorkoutId) { _, newId in
+            guard let id = newId else { return }
+            // Workout finished: present WorkoutSummaryView
+            appEnv.router.presentedWorkoutSummary = WorkoutSummaryPresentation(id: id)
         }
     }
 
@@ -169,9 +182,35 @@ struct ActiveWorkoutView: View {
     }
 
     private func exerciseHeader(exercise: WorkoutExercise) -> some View {
-        // Exercise name is resolved in a separate fetch; show exercise index while loading.
-        // TODO(Batch 8): wire exercise name via coordinator's exerciseNames map.
-        SectionHeader(title: "active-workout.exercise-header")
+        // Exercise name resolved via FK lookup against Exercise model.
+        // Pattern: FetchDescriptor<Exercise> by exerciseId — same as SessionDetailView.
+        // Exercise names are domain data (not localization keys) → Text(verbatim:).
+        HStack(alignment: .firstTextBaseline) {
+            if let name = exerciseNames[exercise.exerciseId] {
+                Text(verbatim: name)
+                    .font(.title3)
+                    .fontWeight(.semibold)
+            } else {
+                Text("active-workout.exercise-header")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, Spacing.md)
+        .padding(.top, Spacing.lg)
+        .padding(.bottom, Spacing.xs)
+    }
+
+    // MARK: - Exercise Name Loading
+
+    @MainActor
+    private func loadExerciseNames() async {
+        guard !coordinator.workoutExercises.isEmpty else { return }
+        let context = ModelContext(modelContext.container)
+        let allExercises = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
+        let map = Dictionary(uniqueKeysWithValues: allExercises.map { ($0.id, $0.name) })
+        exerciseNames = map
     }
 
     private func loggedSetsSection(exercise: WorkoutExercise) -> some View {
