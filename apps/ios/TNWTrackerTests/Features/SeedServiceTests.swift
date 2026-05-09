@@ -12,10 +12,11 @@ struct SeedServiceTests {
     }
 
     @Test("seedIfNeeded inserta 1 plan, 3 rutinas y ≥5 ejercicios en store vacío")
-    func seedCreatesExpectedEntities() throws {
-        let context = ModelContext(container)
-        try SeedService.seedIfNeeded(context: context)
+    func seedCreatesExpectedEntities() async throws {
+        let seedService = SeedService(container: container)
+        try await seedService.seedIfNeeded()
 
+        let context = ModelContext(container)
         let plans = try context.fetch(FetchDescriptor<Plan>())
         let routines = try context.fetch(FetchDescriptor<Routine>())
         let exercises = try context.fetch(FetchDescriptor<Exercise>())
@@ -26,11 +27,12 @@ struct SeedServiceTests {
     }
 
     @Test("seedIfNeeded es idempotente — llamar dos veces no duplica datos")
-    func seedIsIdempotent() throws {
-        let context = ModelContext(container)
-        try SeedService.seedIfNeeded(context: context)
-        try SeedService.seedIfNeeded(context: context)
+    func seedIsIdempotent() async throws {
+        let seedService = SeedService(container: container)
+        try await seedService.seedIfNeeded()
+        try await seedService.seedIfNeeded()
 
+        let context = ModelContext(container)
         let plans = try context.fetch(FetchDescriptor<Plan>())
         let routines = try context.fetch(FetchDescriptor<Routine>())
         let exercises = try context.fetch(FetchDescriptor<Exercise>())

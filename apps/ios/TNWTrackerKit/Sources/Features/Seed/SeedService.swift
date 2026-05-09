@@ -4,25 +4,33 @@
 
     /// Inserta datos canónicos de desarrollo en el store.
     /// Solo existe en builds DEBUG. Nunca llames esto en producción.
-    public enum SeedService {
+    public actor SeedService {
+        private let container: ModelContainer
+
+        public init(container: ModelContainer) {
+            self.container = container
+        }
+
         // MARK: - Public API
 
         /// Inserta datos solo si el store está vacío (idempotente).
-        public static func seedIfNeeded(context: ModelContext) throws {
+        public func seedIfNeeded() throws {
+            let context = ModelContext(container)
             let existing = try context.fetch(FetchDescriptor<Plan>())
             guard existing.isEmpty else { return }
             try seed(context: context)
         }
 
         /// Borra todos los datos de entrenamiento y re-siembra desde cero.
-        public static func reseed(context: ModelContext) throws {
+        public func reseed() throws {
+            let context = ModelContext(container)
             try deleteAll(context: context)
             try seed(context: context)
         }
 
         // MARK: - Private
 
-        private static func seed(context: ModelContext) throws {
+        private func seed(context: ModelContext) throws {
             // Dummy userId para seed data — no se sincroniza con backend en DEBUG
             let devUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
 
@@ -88,7 +96,7 @@
             try context.save()
         }
 
-        private static func makeSession(
+        private func makeSession(
             userId: UUID,
             name: String,
             exercises: [(Exercise, Int)],
@@ -106,7 +114,7 @@
             return session
         }
 
-        private static func deleteAll(context: ModelContext) throws {
+        private func deleteAll(context: ModelContext) throws {
             try context.delete(model: RoutineSession.self)
             try context.delete(model: SessionExercise.self)
             try context.delete(model: Session.self)

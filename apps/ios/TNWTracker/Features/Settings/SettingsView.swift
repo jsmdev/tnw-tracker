@@ -23,10 +23,13 @@ struct SettingsView: View {
                         titleVisibility: .visible
                     ) {
                         Button("Reset & seed", role: .destructive) {
-                            do {
-                                try SeedService.reseed(context: context)
-                            } catch {
-                                reseedError = error.localizedDescription
+                            let container = context.container
+                            Task {
+                                do {
+                                    try await SeedService(container: container).reseed()
+                                } catch {
+                                    reseedError = error.localizedDescription
+                                }
                             }
                         }
                         Button("Cancel", role: .cancel) {}
