@@ -25,6 +25,7 @@ DerivedData/
 *.xcworkspace/xcuserdata/
 *.playground/playground.xcworkspace
 .build/
+apps/ios/build/
 
 # macOS
 .DS_Store
