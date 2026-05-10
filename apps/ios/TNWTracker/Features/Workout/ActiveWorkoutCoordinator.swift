@@ -237,7 +237,10 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         guard currentExerciseIndex < workoutExercises.count - 1 else { return }
         currentExerciseIndex += 1
         phase = .active
-        logger.info("Coordinator phase → .active (advanced to exercise \(currentExerciseIndex))")
+        // Capturar a variable local: el closure de Logger.info exige captura explícita;
+        // swiftformat (redundantSelf) revierte `self.` así que evitamos el conflicto.
+        let advancedTo = currentExerciseIndex
+        logger.info("Coordinator phase → .active (advanced to exercise \(advancedTo))")
     }
 
     public func skipTimer() async {
