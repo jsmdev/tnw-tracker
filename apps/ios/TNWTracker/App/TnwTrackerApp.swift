@@ -37,6 +37,7 @@ struct TnwTrackerApp: App {
                     try? await SeedService(container: container).seedIfNeeded()
                 #endif
                 appEnv?.startAuthListener()
+                appEnv?.startIntentObserver()
                 // Restaurar sesión existente: Supabase guarda la sesión en Keychain pero
                 // NO emite .signedIn al arrancar si ya estaba activa. Hay que setear
                 // currentUserId aquí o makeActiveWorkoutCoordinator() crashea.

@@ -7,10 +7,24 @@ import TNWTrackerKit
 
 private let logger = Logger(subsystem: "com.tnwtracker", category: "coordinator")
 
+// MARK: - DrainCoordinatorProtocol
+
+/// Minimal protocol for drain dispatch — testable without the full coordinator.
+/// Only the methods and properties called by drainIfActive / drainPendingIntents are declared here.
+@MainActor
+public protocol DrainCoordinatorProtocol: AnyObject {
+    /// The ID of the currently active workout, or nil if no workout is running.
+    var activeWorkoutId: UUID? { get }
+    func skipTimer() async
+    func pause() async throws
+    func resume() async throws
+    func finish() async throws
+}
+
 /// FSM del workout activo. Coordina sets, timer y Live Activity.
 @MainActor
 @Observable
-public final class ActiveWorkoutCoordinator {
+public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     // MARK: - Phase
 
     public enum Phase: Sendable, Equatable {
@@ -276,6 +290,13 @@ public final class ActiveWorkoutCoordinator {
         phase = .idle
         elapsedSeconds = 0
         logger.info("Coordinator phase → .idle (finished, summary ID: \(wkt.id))")
+    }
+
+    // MARK: - DrainCoordinatorProtocol conformance
+
+    /// Returns the ID of the current active workout for drain matching.
+    public var activeWorkoutId: UUID? {
+        workout?.id
     }
 
     // MARK: - Helpers

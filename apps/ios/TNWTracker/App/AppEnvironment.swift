@@ -1,4 +1,5 @@
 import Foundation
+import notify
 import Observation
 import os.log
 import Supabase
@@ -6,6 +7,7 @@ import SwiftData
 import TNWTrackerKit
 
 private let logger = Logger(subsystem: "com.tnwtracker", category: "auth")
+private let drainLogger = Logger(subsystem: "com.tnwtracker", category: "drain")
 
 @Observable
 @MainActor
@@ -37,6 +39,14 @@ public final class AppEnvironment {
     // MARK: - Auth listener Task (cancelable)
 
     private var authListenerTask: Task<Void, Never>?
+
+    // MARK: - Darwin notification observer (intent drain)
+
+    /// The active workout coordinator — set by ActiveWorkoutCover when a workout starts.
+    public var activeCoordinator: (any DrainCoordinatorProtocol)?
+
+    /// BSD notify token — used to cancel the Darwin registration in deinit.
+    private var darwinNotifyToken: Int32 = NOTIFY_TOKEN_INVALID
 
     // MARK: - Bootstrap (production)
 
@@ -91,8 +101,11 @@ public final class AppEnvironment {
         // `@MainActor` se deallocan en el hilo del main actor.
         MainActor.assumeIsolated {
             authListenerTask?.cancel()
+            if darwinNotifyToken != NOTIFY_TOKEN_INVALID {
+                notify_cancel(darwinNotifyToken)
+            }
         }
-        logger.info("AppEnvironment deinit — authListenerTask cancelado")
+        logger.info("AppEnvironment deinit — authListenerTask cancelado, darwin observer desregistrado")
     }
 
     // MARK: - Auth Listener
@@ -131,6 +144,98 @@ public final class AppEnvironment {
         default:
             break
         }
+    }
+
+    // MARK: - Darwin Notification Observer
+
+    /// Registers a Darwin notification observer for `com.tnwtracker.workout.intent`.
+    /// Uses `notify_register_dispatch` — the idiomatic BSD notify API on Darwin.
+    /// Must be called once at app startup. Cleaned up in deinit.
+    public func startIntentObserver() {
+        // Cancel existing registration before re-registering (idempotent).
+        if darwinNotifyToken != NOTIFY_TOKEN_INVALID {
+            notify_cancel(darwinNotifyToken)
+            darwinNotifyToken = NOTIFY_TOKEN_INVALID
+        }
+
+        var token: Int32 = NOTIFY_TOKEN_INVALID
+        let status = notify_register_dispatch(
+            "com.tnwtracker.workout.intent",
+            &token,
+            DispatchQueue.global(qos: .utility)
+        ) { [weak self] _ in
+            // Callback runs on the utility queue — hop to MainActor to call drain.
+            Task { @MainActor [weak self] in
+                await self?.drainIfActive()
+            }
+        }
+
+        if status == NOTIFY_STATUS_OK {
+            darwinNotifyToken = token
+            drainLogger.info("IntentObserver registrado (notify_register_dispatch) — token \(token)")
+        } else {
+            drainLogger.error("notify_register_dispatch falló con status \(status)")
+        }
+    }
+
+    /// Called when a Darwin notification arrives or the app foregrounds.
+    public func drainIfActive() async {
+        guard let coordinator = activeCoordinator,
+              let workoutId = coordinator.activeWorkoutId
+        else { return }
+
+        do {
+            try await AppEnvironment.drainPendingIntents(
+                context: modelContext,
+                coordinator: coordinator,
+                coordinatorWorkoutId: workoutId
+            )
+        } catch {
+            drainLogger.error("drainPendingIntents falló: \(error, privacy: .public)")
+        }
+    }
+
+    /// Drains unconsumed WorkoutIntentEvent rows for the given workoutId,
+    /// dispatching to the coordinator in FIFO (createdAt ascending) order.
+    /// Marks consumedAt on each processed event. Safe to call multiple times (idempotent).
+    @MainActor
+    public static func drainPendingIntents(
+        context: ModelContext,
+        coordinator: any DrainCoordinatorProtocol,
+        coordinatorWorkoutId: UUID
+    ) async throws {
+        var descriptor = FetchDescriptor<WorkoutIntentEvent>(
+            sortBy: [SortDescriptor(\.createdAt, order: .forward)]
+        )
+        descriptor.predicate = #Predicate { $0.consumedAt == nil }
+
+        let events = try context.fetch(descriptor)
+        drainLogger.debug("drainPendingIntents — \(events.count) unconsumed events")
+
+        for event in events {
+            guard event.workoutId == coordinatorWorkoutId else { continue }
+
+            drainLogger
+                .info(
+                    "Dispatching intent \(event.kind, privacy: .public) for workout \(event.workoutId, privacy: .private)"
+                )
+            switch event.kind {
+            case "skip":
+                await coordinator.skipTimer()
+            case "pause":
+                try await coordinator.pause()
+            case "resume":
+                try await coordinator.resume()
+            case "end":
+                try await coordinator.finish()
+            default:
+                drainLogger.warning("Unknown intent kind: \(event.kind, privacy: .public)")
+            }
+
+            event.consumedAt = Date()
+        }
+
+        try context.save()
     }
 
     // MARK: - Factories

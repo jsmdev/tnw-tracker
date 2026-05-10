@@ -5,6 +5,7 @@ import TNWTrackerKit
 struct RootView: View {
     @Environment(AppEnvironment.self) private var appEnv
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         @Bindable var router = appEnv.router
@@ -26,6 +27,15 @@ struct RootView: View {
         }
         .onOpenURL { url in
             router.handle(deepLink: url)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Drain pending intents when app foregrounds — catches up events
+            // that arrived while the app was backgrounded / suspended.
+            if newPhase == .active {
+                Task {
+                    await appEnv.drainIfActive()
+                }
+            }
         }
     }
 
@@ -67,6 +77,7 @@ private struct ActiveWorkoutCover: View {
             guard coordinator == nil else { return }
             let c = appEnv.makeActiveWorkoutCoordinator()
             coordinator = c
+            appEnv.activeCoordinator = c
             // Fetch Session y arrancar el workout. Si la session no existe o el
             // start falla, cerramos el cover para volver al Home.
             let id = sessionID
@@ -75,13 +86,18 @@ private struct ActiveWorkoutCover: View {
             descriptor.fetchLimit = 1
             guard let session = try? modelContext.fetch(descriptor).first else {
                 appEnv.router.presentedActiveWorkout = nil
+                appEnv.activeCoordinator = nil
                 return
             }
             do {
                 try await c.start(from: session)
             } catch {
                 appEnv.router.presentedActiveWorkout = nil
+                appEnv.activeCoordinator = nil
             }
+        }
+        .onDisappear {
+            appEnv.activeCoordinator = nil
         }
     }
 }

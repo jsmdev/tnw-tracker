@@ -14,7 +14,7 @@ struct NextSessionEntry: TimelineEntry {
 
 struct NextSessionProvider: TimelineProvider {
     func placeholder(in _: Context) -> NextSessionEntry {
-        NextSessionEntry(date: Date(), sessionName: "Pecho + Tríceps")
+        NextSessionEntry(date: Date(), sessionName: "Push Day")
     }
 
     func getSnapshot(in _: Context, completion: @escaping (NextSessionEntry) -> Void) {
@@ -54,10 +54,10 @@ struct NextSessionWidgetEntryView: View {
 
     private var smallView: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Próxima sesión")
+            Text("widget.next-session.title", bundle: .main)
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Text(entry.sessionName ?? "Sin sesión")
+            Text(entry.sessionName ?? String(localized: "widget.next-session.empty-small", bundle: .main))
                 .font(.headline)
                 .lineLimit(2)
         }
@@ -68,10 +68,13 @@ struct NextSessionWidgetEntryView: View {
     private var mediumView: some View {
         HStack {
             VStack(alignment: .leading, spacing: 6) {
-                Label("Próxima sesión", systemImage: "dumbbell.fill")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Text(entry.sessionName ?? "Sin sesión planificada")
+                Label(
+                    LocalizedStringResource("widget.next-session.title"),
+                    systemImage: "dumbbell.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                Text(entry.sessionName ?? String(localized: "widget.next-session.empty-message", bundle: .main))
                     .font(.title3.bold())
                     .lineLimit(2)
             }
@@ -102,8 +105,8 @@ struct NextSessionWidget: Widget {
         StaticConfiguration(kind: kind, provider: NextSessionProvider()) { entry in
             NextSessionWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("Próxima Sesión")
-        .description("Muestra tu próxima sesión planificada.")
+        .configurationDisplayName(LocalizedStringResource("widget.next-session.display-name"))
+        .description(LocalizedStringResource("widget.next-session.description"))
         .supportedFamilies([.systemSmall, .systemMedium])
     }
 }
