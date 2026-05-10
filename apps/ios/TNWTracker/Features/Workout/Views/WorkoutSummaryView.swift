@@ -67,6 +67,7 @@ struct WorkoutSummaryView: View {
             .font(.title2)
             .fontWeight(.bold)
             .padding(.top, Spacing.sm)
+            .accessibilityIdentifier(AXID.Summary.workoutNameLabel)
     }
 
     // MARK: - Stats (duration + volume)
@@ -207,6 +208,7 @@ struct WorkoutSummaryView: View {
         } label: {
             Text("summary.close-button")
         }
+        .accessibilityIdentifier(AXID.Summary.closeButton)
     }
 
     private func closeAndGoHome() {

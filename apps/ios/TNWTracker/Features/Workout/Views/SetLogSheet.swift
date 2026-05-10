@@ -58,6 +58,7 @@ struct SetLogSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("set-log.cancel-button", action: onCancel)
+                        .accessibilityIdentifier(AXID.SetLog.cancelButton)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("set-log.save-button") {
@@ -65,6 +66,7 @@ struct SetLogSheet: View {
                     }
                     .disabled(!formState.isValid)
                     .fontWeight(.semibold)
+                    .accessibilityIdentifier(AXID.SetLog.saveButton)
                 }
             }
         }
@@ -85,6 +87,7 @@ struct SetLogSheet: View {
                     .focused($focusedField, equals: .reps)
                     .frame(minWidth: 60)
                     .accessibilityLabel("set-log.reps-label")
+                    .accessibilityIdentifier(AXID.SetLog.repsField)
             }
 
             HStack {
@@ -97,6 +100,7 @@ struct SetLogSheet: View {
                     .focused($focusedField, equals: .weight)
                     .frame(minWidth: 80)
                     .accessibilityLabel("set-log.weight-label")
+                    .accessibilityIdentifier(AXID.SetLog.weightField)
                 Text("set-log.weight-unit")
                     .foregroundStyle(.secondary)
                     .font(.caption)

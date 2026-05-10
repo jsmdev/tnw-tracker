@@ -66,6 +66,7 @@ struct ActiveWorkoutView: View {
             // El arranque real se dispara desde ActiveWorkoutCover.task.
             ProgressView()
                 .controlSize(.large)
+                .accessibilityIdentifier(AXID.ActiveWorkout.progressIndicator)
         } else {
             workoutContent
         }
@@ -103,6 +104,7 @@ struct ActiveWorkoutView: View {
                     .font(.title3)
                     .fontWeight(.semibold)
                     .monospacedDigit()
+                    .accessibilityIdentifier(AXID.ActiveWorkout.elapsedTimer)
             }
 
             Spacer()
@@ -192,10 +194,12 @@ struct ActiveWorkoutView: View {
                 Text(verbatim: name)
                     .font(.title3)
                     .fontWeight(.semibold)
+                    .accessibilityIdentifier(AXID.ActiveWorkout.exerciseTitle)
             } else {
                 Text("active-workout.exercise-header")
                     .font(.title3)
                     .fontWeight(.semibold)
+                    .accessibilityIdentifier(AXID.ActiveWorkout.exerciseTitle)
             }
             Spacer()
         }
@@ -243,6 +247,7 @@ struct ActiveWorkoutView: View {
                 nextSetNumber: exercise.exerciseSets.count + 1
             )
         }
+        .accessibilityIdentifier(AXID.ActiveWorkout.logSetButton)
     }
 
     private func undoButton(exercise: WorkoutExercise) -> some View {
@@ -306,6 +311,7 @@ struct ActiveWorkoutView: View {
         .buttonStyle(.bordered)
         .controlSize(.large)
         .foregroundStyle(.red)
+        .accessibilityIdentifier(AXID.ActiveWorkout.endButton)
     }
 
     // MARK: - Toolbar

@@ -44,6 +44,7 @@ struct RestTimerView: View {
                 .monospacedDigit()
                 .foregroundStyle(.primary)
                 .contentTransition(.numericText(countsDown: true))
+                .accessibilityIdentifier(AXID.RestTimer.timerLabel)
         }
     }
 
@@ -57,6 +58,7 @@ struct RestTimerView: View {
         .buttonStyle(.bordered)
         .controlSize(.large)
         .symbolEffect(.bounce, value: remaining.components.seconds)
+        .accessibilityIdentifier(AXID.RestTimer.skipButton)
     }
 }
 
