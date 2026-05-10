@@ -111,6 +111,7 @@ struct SessionListView: View {
             } label: {
                 Image(systemName: "line.3.horizontal.decrease.circle")
             }
+            .accessibilityLabel("a11y.filter-button")
         }
     }
 

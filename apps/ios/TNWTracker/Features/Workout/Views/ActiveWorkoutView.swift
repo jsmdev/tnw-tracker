@@ -318,6 +318,7 @@ struct ActiveWorkoutView: View {
             } label: {
                 Image(systemName: "chevron.down")
             }
+            .accessibilityLabel("a11y.dismiss-button")
         }
     }
 }

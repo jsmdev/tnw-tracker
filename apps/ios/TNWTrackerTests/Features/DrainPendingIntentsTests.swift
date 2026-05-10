@@ -90,7 +90,7 @@ struct DrainPendingIntentsTests {
         #expect(spy.calls[0] == "skip")
         #expect(spy.calls[1] == "pause")
 
-        var descriptor = FetchDescriptor<WorkoutIntentEvent>(
+        let descriptor = FetchDescriptor<WorkoutIntentEvent>(
             predicate: #Predicate { $0.workoutId == workoutId }
         )
         let events = try context.fetch(descriptor)
@@ -136,7 +136,7 @@ struct DrainPendingIntentsTests {
         #expect(spy.calls.count == 1)
         #expect(spy.calls[0] == "pause")
 
-        var descriptor = FetchDescriptor<WorkoutIntentEvent>(
+        let descriptor = FetchDescriptor<WorkoutIntentEvent>(
             predicate: #Predicate { $0.workoutId == otherId }
         )
         let notConsumed = try context.fetch(descriptor)
