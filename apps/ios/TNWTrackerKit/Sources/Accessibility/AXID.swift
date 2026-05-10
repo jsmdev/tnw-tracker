@@ -33,9 +33,7 @@ public enum AXID {
     }
 
     public enum Summary {
-        public static let title = "summary.title"
         public static let workoutNameLabel = "summary.workoutNameLabel"
-        public static let durationLabel = "summary.durationLabel"
         public static let closeButton = "summary.closeButton"
     }
 }
