@@ -73,12 +73,28 @@ targets:
     dependencies:
       - target: TNWTracker
       - target: TNWTrackerKit
+  TNWTrackerUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: TNWTrackerUITests/
+    settings:
+      base:
+        INFOPLIST_FILE: TNWTrackerUITests/Info.plist
+        PRODUCT_BUNDLE_IDENTIFIER: com.tnwtracker.uitests
+        TEST_TARGET_NAME: TNWTracker
+        SWIFT_VERSION: "6.0"
+        SWIFT_STRICT_CONCURRENCY: complete
+    dependencies:
+      - target: TNWTracker
+      - target: TNWTrackerKit
 schemes:
   TNWTracker:
     build:
       targets:
         TNWTracker: all
         TNWTrackerTests: [test]
+        TNWTrackerUITests: [test]
     test:
       targets:
         - TNWTrackerTests
+        - TNWTrackerUITests
