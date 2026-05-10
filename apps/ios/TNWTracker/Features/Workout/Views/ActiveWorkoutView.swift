@@ -113,7 +113,8 @@ struct ActiveWorkoutView: View {
                     Text("active-workout.exercise-progress-label")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text("\(coordinator.currentExerciseIndex + 1) / \(coordinator.workoutExercises.count)")
+                    // audit: progress "N / M" uses verbatim — "/" separator is not localizable
+                    Text(verbatim: "\(coordinator.currentExerciseIndex + 1) / \(coordinator.workoutExercises.count)")
                         .font(.title3)
                         .fontWeight(.semibold)
                 }

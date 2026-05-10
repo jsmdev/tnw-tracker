@@ -192,11 +192,21 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         } else if isLastSet {
             phase = .restingBetweenExercises
             logger.info("Coordinator phase → .restingBetweenExercises (set \(setNumber), rest \(restSeconds)s)")
-            await timerService.start(workoutId: wkt.id, type: .betweenExercises, durationSeconds: restSeconds)
+            await timerService.start(
+                workoutId: wkt.id,
+                workoutName: wkt.name,
+                type: .betweenExercises,
+                durationSeconds: restSeconds
+            )
         } else {
             phase = .restingBetweenSets
             logger.info("Coordinator phase → .restingBetweenSets (set \(setNumber), rest \(restSeconds)s)")
-            await timerService.start(workoutId: wkt.id, type: .betweenSets, durationSeconds: restSeconds)
+            await timerService.start(
+                workoutId: wkt.id,
+                workoutName: wkt.name,
+                type: .betweenSets,
+                durationSeconds: restSeconds
+            )
         }
     }
 
@@ -217,6 +227,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         await timerService.skip()
         if phase == .restingBetweenSets || phase == .restingBetweenExercises {
             phase = .active
+            logger.info("Coordinator phase → .active (undoLastSet)")
         }
     }
 
@@ -226,12 +237,15 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         guard currentExerciseIndex < workoutExercises.count - 1 else { return }
         currentExerciseIndex += 1
         phase = .active
+        logger.info("Coordinator phase → .active (advanced to exercise \(currentExerciseIndex))")
     }
 
     public func skipTimer() async {
         let wasRestingBetweenExercises = (phase == .restingBetweenExercises)
         await timerService.skip()
         phase = .active
+        logger
+            .info("Coordinator phase → .active (skipTimer, wasRestingBetweenExercises: \(wasRestingBetweenExercises))")
         if wasRestingBetweenExercises {
             advanceToNextExercise()
         }

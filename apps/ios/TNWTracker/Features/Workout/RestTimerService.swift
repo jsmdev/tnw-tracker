@@ -30,6 +30,8 @@ public struct RestTimerState: Sendable, Equatable {
 @Observable
 public final class RestTimerService {
     public private(set) var state: RestTimerState?
+    /// The workout name associated with the active timer; used by the Live Activity tick.
+    public private(set) var workoutName: String = ""
 
     private var tickTask: Task<Void, Never>?
     private let supabase: SupabaseClient
@@ -54,9 +56,12 @@ public final class RestTimerService {
 
     public func start(
         workoutId: UUID,
+        workoutName: String,
         type: TimerType,
         durationSeconds: Int
     ) async {
+        // Store name for Live Activity tick updates
+        self.workoutName = workoutName
         // Cancelar timer anterior si hubiera
         await cancelTick()
 
@@ -92,11 +97,16 @@ public final class RestTimerService {
             try? await supabase.from("rest_timers").insert(row).execute()
         }
 
+        logger
+            .info(
+                "RestTimerService started: workout=\(workoutId.uuidString, privacy: .public) type=\(type.rawValue) duration=\(durationSeconds)s"
+            )
         startTick()
     }
 
     public func skip() async {
         guard let current = state else { return }
+        logger.info("RestTimerService skip: timer \(current.id.uuidString, privacy: .public)")
         await cancelTick()
 
         // Marcar inactivo localmente
@@ -155,12 +165,14 @@ public final class RestTimerService {
                 guard let self, let current = state else { break }
 
                 if current.isExpired {
+                    logger.info("RestTimerService timer expired: \(current.id.uuidString, privacy: .public)")
                     await handleExpiry()
                     break
                 }
 
+                logger.debug("RestTimerService tick: \(max(0, Int(current.remaining)))s remaining")
                 let timerState = ActiveWorkoutAttributes.ContentState(
-                    workoutName: "",
+                    workoutName: workoutName,
                     currentExerciseName: nil,
                     restSecondsRemaining: max(0, Int(current.remaining)),
                     completedSets: 0,

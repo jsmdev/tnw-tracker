@@ -109,9 +109,15 @@ struct SessionDetailView: View {
                         .fontWeight(.medium)
 
                     if let sets = se.targetSets, let reps = se.targetReps {
-                        Text("session-detail.sets-reps \(sets) \(reps)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                        // Use verbatim + String(localized:) to avoid creating a literal
+                        // LocalizedStringKey like "session-detail.sets-reps %lld %lld".
+                        // The catalog key "session-detail.sets-reps" carries %lld format args.
+                        Text(verbatim: String(
+                            format: String(localized: "session-detail.sets-reps"),
+                            sets, reps
+                        ))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     }
                 }
 
