@@ -134,7 +134,7 @@ jobs:
         run: |
           supabase db reset
           node supabase/tests/seed-e2e.mjs
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --filter admin exec playwright install --with-deps chromium
       - name: Ejecutar tests E2E
         run: pnpm --filter admin test:e2e
         env:
