@@ -726,6 +726,15 @@ export type Database = {
         }[]
       }
       refresh_mv_weekly_volume: { Args: never; Returns: undefined }
+      reorder_items: {
+        Args: {
+          p_items: Json
+          p_parent_col: string
+          p_parent_id: string
+          p_table: string
+        }
+        Returns: undefined
+      }
       show_limit: { Args: never; Returns: number }
       show_trgm: { Args: { "": string }; Returns: string[] }
     }
