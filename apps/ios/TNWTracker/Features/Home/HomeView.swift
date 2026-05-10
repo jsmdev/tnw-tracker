@@ -113,6 +113,7 @@ struct HomeView: View {
                     PrimaryButton(title: "home.quick-start.button") {
                         appEnv.router.presentedActiveWorkout = ActiveWorkoutPresentation(id: session.id)
                     }
+                    .accessibilityIdentifier(AXID.Home.quickStartButton)
                     .padding(.top, Spacing.xs)
                 }
             }
