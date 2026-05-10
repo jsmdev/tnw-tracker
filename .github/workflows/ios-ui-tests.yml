@@ -1,0 +1,69 @@
+name: iOS UI Tests
+on:
+  pull_request:
+    branches: [develop, main]
+
+concurrency:
+  group: ios-ui-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-ui-tests:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detectar código iOS
+        id: ios-check
+        run: |
+          count=$(find apps/ios -name "*.swift" 2>/dev/null | wc -l)
+          echo "count=$count" >> $GITHUB_OUTPUT
+
+      - name: Seleccionar Xcode 26
+        if: steps.ios-check.outputs.count != '0'
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26.0"
+
+      - name: Instalar xcodegen
+        if: steps.ios-check.outputs.count != '0'
+        run: brew install xcodegen
+
+      - name: Generar proyecto Xcode
+        if: steps.ios-check.outputs.count != '0'
+        working-directory: apps/ios
+        run: xcodegen generate
+
+      - name: Cache SPM packages
+        if: steps.ios-check.outputs.count != '0'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+          key: spm-${{ runner.os }}-${{ hashFiles('apps/ios/project.yml') }}
+          restore-keys: |
+            spm-${{ runner.os }}-
+
+      - name: Pre-boot iPhone 17 simulator
+        if: steps.ios-check.outputs.count != '0'
+        run: xcrun simctl boot "iPhone 17" || true
+
+      - name: Ejecutar UI tests
+        if: steps.ios-check.outputs.count != '0'
+        run: |
+          xcodebuild test \
+            -project apps/ios/TnwTracker.xcodeproj \
+            -scheme TNWTracker \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -only-testing:TNWTrackerUITests \
+            -resultBundlePath build/TestResults.xcresult \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+      - name: Subir resultados de test en fallo
+        if: failure() && steps.ios-check.outputs.count != '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-ui-tests-results
+          path: build/TestResults.xcresult
