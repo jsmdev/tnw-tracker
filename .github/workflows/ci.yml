@@ -106,6 +106,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - uses: supabase/setup-cli@v1
         with:
           version: latest
@@ -119,12 +125,6 @@ jobs:
       - name: Exportar anon key de Supabase
         run: |
           echo "SUPABASE_ANON_KEY=$(supabase status -o json | jq -r .anon_key)" >> $GITHUB_ENV
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
       - name: Ejecutar tests E2E
         run: pnpm --filter admin test:e2e
