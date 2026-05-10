@@ -6,7 +6,12 @@ import TNWTrackerKit
 struct TnwTrackerApp: App {
     private let container: ModelContainer = {
         do {
-            return try ModelContainerFactory.makeContainer()
+            #if DEBUG
+                let isUITesting = ProcessInfo.processInfo.arguments.contains("--uitesting")
+                return try ModelContainerFactory.makeContainer(inMemory: isUITesting)
+            #else
+                return try ModelContainerFactory.makeContainer()
+            #endif
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }
@@ -32,6 +37,17 @@ struct TnwTrackerApp: App {
             }
             .modelContainer(container)
             .task {
+                #if DEBUG
+                    if ProcessInfo.processInfo.arguments.contains("--uitesting") {
+                        // UI test bypass: pre-authenticated, in-memory container, no real auth.
+                        // SeedService runs to populate the empty in-memory store.
+                        // startAuthListener and currentSession are NOT called.
+                        appEnv = AppEnvironment.bootstrapForUITesting(modelContext: container.mainContext)
+                        try? await SeedService(container: container).seedIfNeeded()
+                        appEnv?.startIntentObserver()
+                        return
+                    }
+                #endif
                 appEnv = AppEnvironment.bootstrap(modelContext: container.mainContext)
                 #if DEBUG
                     try? await SeedService(container: container).seedIfNeeded()

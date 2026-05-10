@@ -270,6 +270,21 @@ public final class AppEnvironment {
 
 #if DEBUG
     extension AppEnvironment {
+        /// UUID estable para UI testing — usado por bootstrapForUITesting.
+        /// Coincide con el userId implícito en el seed de SeedService.
+        static let uiTestingUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+
+        /// Bootstrap para UI tests: retorna instancia pre-autenticada con userId fijo.
+        /// NO arranca authListener, NO consulta currentSession.
+        /// Skips: startAuthListener(), authRepository.currentSession().
+        /// Keeps: startIntentObserver(), SeedService (llamados por TnwTrackerApp.task).
+        static func bootstrapForUITesting(modelContext: ModelContext) -> AppEnvironment {
+            let env = AppEnvironment(modelContext: modelContext)
+            env.isAuthenticated = true
+            env.currentUserId = uiTestingUserId
+            return env
+        }
+
         /// Crea una instancia mínima de `AppEnvironment` con un `authRepository` inyectable.
         /// Exclusivo para tests — usa un `ModelContainer` in-memory y un `SupabaseClient` stub.
         static func makeForTesting(authRepository: any AuthRepositoryProtocol) -> AppEnvironment {
