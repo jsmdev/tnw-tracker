@@ -46,6 +46,12 @@ struct DeepLinkParserTests {
         #expect(DeepLinkParser.route(from: url) == .sessionHistory)
     }
 
+    // REQ-ROUTE-03: tnwtracker://workout/active → DeepLink.openActiveWorkout.
+    @Test func parsesWorkoutActive() throws {
+        let url = try #require(URL(string: "tnwtracker://workout/active"))
+        #expect(DeepLinkParser.parse(url) == .openActiveWorkout)
+    }
+
     @Test func rejectsUnknownScheme() throws {
         let url = try #require(URL(string: "https://example.com/session/8400E1D8-3F4A-4B3F-9DAB-1234567890AB"))
         #expect(DeepLinkParser.route(from: url) == nil)
@@ -59,6 +65,32 @@ struct DeepLinkParserTests {
     @Test func rejectsSessionDetailWithInvalidUUID() throws {
         let url = try #require(URL(string: "tnwtracker://session/not-a-uuid"))
         #expect(DeepLinkParser.route(from: url) == nil)
+    }
+
+    @Test func rejectsWorkoutWithoutActivePath() throws {
+        let url = try #require(URL(string: "tnwtracker://workout"))
+        #expect(DeepLinkParser.parse(url) == nil)
+    }
+
+    /// Cobertura parameterizada de URLs válidas e inválidas (REQ-ROUTE-03 verification).
+    @Test(arguments: [
+        ("tnwtracker://session/8400E1D8-3F4A-4B3F-9DAB-1234567890AB", true),
+        ("tnwtracker://exercise/AAAABBBB-CCCC-DDDD-EEEE-FFFFFFFFFFFF", true),
+        ("tnwtracker://session-history", true),
+        ("tnwtracker://settings", true),
+        ("tnwtracker://workout/active", true),
+        ("tnwtracker://session/not-a-uuid", false),
+        ("tnwtracker://workout", false),
+        ("tnwtracker://nope", false),
+        ("https://example.com/session/8400E1D8-3F4A-4B3F-9DAB-1234567890AB", false),
+    ])
+    func parameterizedValidAndInvalidUrls(input: String, isValid: Bool) throws {
+        let url = try #require(URL(string: input))
+        if isValid {
+            #expect(DeepLinkParser.parse(url) != nil)
+        } else {
+            #expect(DeepLinkParser.parse(url) == nil)
+        }
     }
 }
 

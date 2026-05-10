@@ -33,7 +33,15 @@ public final class Router {
     }
 
     public func handle(deepLink url: URL) {
-        guard let route = DeepLinkParser.route(from: url) else { return }
-        push(route)
+        guard let link = DeepLinkParser.parse(url) else { return }
+        switch link {
+        case let .route(route):
+            push(route)
+        case .openActiveWorkout:
+            // ActiveWorkout requiere acceso al coordinator activo para conocer su
+            // sessionID; el Router no lo tiene. RootView intercepta este caso vía
+            // onOpenURL antes de delegar al router.
+            break
+        }
     }
 }

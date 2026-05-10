@@ -11,10 +11,13 @@ struct EmptyState: View {
     var cta: LocalizedStringKey?
     var ctaAction: (() -> Void)?
 
+    // REQ-DS-05: icon size escala con Dynamic Type (no hardcoded point size).
+    @ScaledMetric private var iconSize: CGFloat = 56
+
     var body: some View {
         VStack(spacing: Spacing.lg) {
             Image(systemName: systemImage)
-                .font(.system(size: 56))
+                .font(.system(size: iconSize))
                 .foregroundStyle(.secondary)
 
             VStack(spacing: Spacing.sm) {

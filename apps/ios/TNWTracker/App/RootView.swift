@@ -26,6 +26,17 @@ struct RootView: View {
                 }
         }
         .onOpenURL { url in
+            // REQ-ROUTE-03: el deep link tnwtracker://workout/active reabre el
+            // active workout cover si hay un coordinator vivo (Live Activity →
+            // tap → app foreground). El Router no accede al coordinator, así
+            // que se intercepta aquí.
+            if case .openActiveWorkout = DeepLinkParser.parse(url) {
+                if let activeId = appEnv.activeCoordinator?.activeWorkoutId {
+                    router.presentedActiveWorkout = ActiveWorkoutPresentation(id: activeId)
+                }
+                // Si no hay workout activo, no-op: el usuario aterriza en Home.
+                return
+            }
             router.handle(deepLink: url)
         }
         .onChange(of: scenePhase) { _, newPhase in

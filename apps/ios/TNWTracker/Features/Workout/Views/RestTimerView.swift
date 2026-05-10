@@ -13,6 +13,9 @@ struct RestTimerView: View {
     let onSkip: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    // REQ-DS-05: el size del countdown escala con Dynamic Type vía @ScaledMetric
+    // (NO hardcodear `.font(.system(size: N))` — rompe accessibility XXL).
+    @ScaledMetric private var countdownSize: CGFloat = 52
 
     /// Remaining duration as a `Duration` for TimeFormatStyle.
     private var remaining: Duration {
@@ -37,7 +40,7 @@ struct RestTimerView: View {
 
             // REQ-AWV-07: Duration.TimeFormatStyle — no manual "Xs" interpolation
             Text(remaining, format: .time(pattern: .minuteSecond))
-                .font(.system(size: 52, weight: .bold, design: .rounded))
+                .font(.system(size: countdownSize, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.primary)
                 .contentTransition(.numericText(countsDown: true))

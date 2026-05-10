@@ -52,8 +52,12 @@ public final class SyncEngineImpl: SyncEngine {
     }
 
     public func pushPendingChanges() async throws {
-        guard isOnline else { return }
+        guard isOnline else {
+            logger.debug("Sync: pushPendingChanges skipped — offline")
+            return
+        }
         let ops = try await syncQueue.drain()
+        logger.debug("Sync: pushPendingChanges entry, queued=\(ops.count)")
 
         for op in ops {
             op.attempts += 1
@@ -85,9 +89,13 @@ public final class SyncEngineImpl: SyncEngine {
     }
 
     public func pullRemoteChanges(for tableName: String) async throws {
-        guard isOnline else { return }
+        guard isOnline else {
+            logger.debug("Sync: pullRemoteChanges(\(tableName)) skipped — offline")
+            return
+        }
         let key = cursorKey(for: tableName)
         let lastCursor = UserDefaults.standard.string(forKey: key) ?? "1970-01-01T00:00:00Z"
+        logger.debug("Sync: pullRemoteChanges(\(tableName)) entry, lastCursor=\(lastCursor)")
 
         try await supabase
             .from(tableName)

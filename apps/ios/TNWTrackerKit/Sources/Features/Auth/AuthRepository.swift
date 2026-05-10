@@ -21,21 +21,28 @@ public final class AuthRepository: AuthRepositoryProtocol {
     }
 
     public func signIn(email: String, password: String) async throws -> Auth.Session {
-        try await supabase.auth.signIn(email: email, password: password)
+        logger.info("Auth: signIn attempt")
+        let session = try await supabase.auth.signIn(email: email, password: password)
+        logger.info("Auth: signIn success")
+        return session
     }
 
     public func signOut() async throws {
+        logger.info("Auth: signOut")
         try await supabase.auth.signOut()
     }
 
     public func currentSession() async -> Auth.Session? {
-        try? await supabase.auth.session
+        let session = try? await supabase.auth.session
+        logger.info("Auth: currentSession lookup, present=\(session != nil)")
+        return session
     }
 
     public func authStateChanges() -> AsyncStream<AuthChangeEvent> {
         AsyncStream { continuation in
             let task = Task {
                 for await (event, _) in supabase.auth.authStateChanges {
+                    logger.info("Auth: authStateChanges event=\(String(describing: event))")
                     continuation.yield(event)
                 }
             }

@@ -116,6 +116,12 @@ struct ActiveWorkoutLiveActivityView: View {
 
 struct ActiveWorkoutLiveActivity: Widget {
     var body: some WidgetConfiguration {
+        // REQ-LAI-07: frequent pushes habilitados via Info.plist
+        // (NSSupportsLiveActivitiesFrequentUpdates = true). En el SDK iOS 26
+        // ActivityConfiguration NO acepta `frequentPushesEnabled` como parámetro
+        // de init; el spec lo describía así por imprecisión. La propiedad
+        // `Activity.frequentPushesEnabled` existe sólo como flag de runtime
+        // read-only (informa si Apple permitió frequent pushes para esa instance).
         ActivityConfiguration(for: ActiveWorkoutAttributes.self) { context in
             ActiveWorkoutLiveActivityView(context: context)
         } dynamicIsland: { context in
