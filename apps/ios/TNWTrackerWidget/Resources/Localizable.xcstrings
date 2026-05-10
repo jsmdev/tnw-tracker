@@ -1,5 +1,102 @@
 {
   "sourceLanguage" : "en",
-  "strings" : {},
+  "strings" : {
+    "intent.end-workout.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End the current workout"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finalizar el entrenamiento actual"
+          }
+        }
+      }
+    },
+    "intent.end-workout.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End Workout"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finalizar entrenamiento"
+          }
+        }
+      }
+    },
+    "intent.pause-workout.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause the current workout"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausar el entrenamiento actual"
+          }
+        }
+      }
+    },
+    "intent.pause-workout.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause Workout"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pausar entrenamiento"
+          }
+        }
+      }
+    },
+    "intent.skip-rest.description" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip the rest timer and proceed to the next set"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saltarse el descanso y pasar a la siguiente serie"
+          }
+        }
+      }
+    },
+    "intent.skip-rest.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skip Rest"
+          }
+        },
+        "es-ES" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saltar descanso"
+          }
+        }
+      }
+    }
+  },
   "version" : "1.0"
 }

@@ -181,7 +181,7 @@ struct WorkoutSummaryBuilderTests {
         let userId = UUID()
 
         // Workout started 75 minutes ago
-        var workout = Workout(userId: userId, name: "Duration Test")
+        let workout = Workout(userId: userId, name: "Duration Test")
         let startTime = Date().addingTimeInterval(-75 * 60)
         workout.startedAt = startTime
         workout.completedAt = Date()
@@ -211,7 +211,7 @@ struct WorkoutSummaryBuilderTests {
         let context = ModelContext(container)
         let userId = UUID()
 
-        var workout = Workout(userId: userId, name: "Short Workout")
+        let workout = Workout(userId: userId, name: "Short Workout")
         let startTime = Date().addingTimeInterval(-30 * 60) // 30 min ago
         workout.startedAt = startTime
         workout.completedAt = Date()
