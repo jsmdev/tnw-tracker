@@ -14,22 +14,34 @@ updates:
         patterns:
           - "next"
           - "@next/*"
+        update-types:
+          - "minor"
+          - "patch"
       react:
         patterns:
           - "react"
           - "react-dom"
           - "@types/react"
           - "@types/react-dom"
+        update-types:
+          - "minor"
+          - "patch"
       tailwind:
         patterns:
           - "tailwindcss"
           - "@tailwindcss/*"
           - "tailwind-merge"
           - "tailwind-variants"
+        update-types:
+          - "minor"
+          - "patch"
       dev-deps:
         dependency-type: development
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
     labels:
       - "deps"
       - "automated"
