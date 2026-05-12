@@ -8,13 +8,13 @@
     "./next": "./next.js"
   },
   "peerDependencies": {
-    "eslint": ">=9.0.0"
+    "eslint": ">=10.0.0"
   },
   "dependencies": {
-    "@eslint/js": "^9.17.0",
+    "@eslint/js": "^10.0.1",
     "typescript-eslint": "^8.59.2"
   },
   "devDependencies": {
-    "eslint": "^9.17.0"
+    "eslint": "^10.3.0"
   }
 }
