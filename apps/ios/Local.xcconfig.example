@@ -1,0 +1,5 @@
+// Copy this file to Local.xcconfig and fill in your own Apple Developer Team ID.
+// Find your Team ID at https://developer.apple.com/account → Membership details,
+// or run: security find-identity -v -p codesigning
+DEVELOPMENT_TEAM = YOUR_TEAM_ID_HERE
+CODE_SIGN_STYLE = Automatic
