@@ -30,6 +30,15 @@ jobs:
         if: steps.ios-check.outputs.count != '0'
         run: brew install xcodegen
 
+      - name: Stub Local.xcconfig para CI
+        # Local.xcconfig es gitignored (vive solo en máquinas de devs).
+        # XcodeGen exige que el archivo referenciado en configFiles exista.
+        # En CI usamos los placeholders del .example: code signing está desactivado
+        # y los UI tests corren con bootstrap-bypass (sin tocar Supabase real).
+        if: steps.ios-check.outputs.count != '0'
+        working-directory: apps/ios
+        run: cp Local.xcconfig.example Local.xcconfig
+
       - name: Generar proyecto Xcode
         if: steps.ios-check.outputs.count != '0'
         working-directory: apps/ios
