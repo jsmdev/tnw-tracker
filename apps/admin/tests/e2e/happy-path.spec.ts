@@ -19,8 +19,13 @@ test("happy path: login → crear ejercicio → verlo en lista", async ({ page }
   // Marcar el primer grupo muscular disponible
   await page.getByRole("checkbox").first().check();
   await page.getByRole("button", { name: "Crear ejercicio" }).click();
+  // El server action redirige a /dashboard/exercises/{id} tras el INSERT.
+  // Esperar al redirect garantiza que la creación completó antes de seguir.
+  await page.waitForURL(/\/dashboard\/exercises\/[a-f0-9-]+/);
 
   // 3. Volver a la lista y verificar que aparece
+  // Usar getByRole("cell") porque el nombre también aparece en el ConfirmDialog
+  // de borrado, y getByText() falla en strict mode con múltiples matches.
   await page.goto("/dashboard/exercises");
-  await expect(page.getByText(exerciseName)).toBeVisible();
+  await expect(page.getByRole("cell", { name: exerciseName })).toBeVisible();
 });
