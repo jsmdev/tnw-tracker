@@ -19,8 +19,11 @@ import Testing
 // - We test only the observable surface: workoutName property + state.workoutId after start().
 
 private func makeDummySupabase() -> SupabaseClient {
-    SupabaseClient(
-        supabaseURL: URL(string: "https://test.invalid")!,
+    guard let url = URL(string: "https://test.invalid") else {
+        preconditionFailure("Invalid dummy Supabase URL")
+    }
+    return SupabaseClient(
+        supabaseURL: url,
         supabaseKey: "test-key"
     )
 }

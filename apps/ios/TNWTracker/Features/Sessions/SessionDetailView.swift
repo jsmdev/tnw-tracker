@@ -170,7 +170,7 @@ struct SessionDetailView: View {
 // MARK: - Preview
 
 #Preview("SessionDetailView — with exercises") {
-    let container = try! ModelContainerFactory.makeContainer(inMemory: true)
+    let container = ModelContainerFactory.previewContainer()
     let context = ModelContext(container)
     let userId = UUID()
     let session = Session(userId: userId, name: "Push Day")
@@ -192,7 +192,7 @@ struct SessionDetailView: View {
     context.insert(se1)
     context.insert(se2)
     session.sessionExercises = [se1, se2]
-    try! context.save()
+    try? context.save()
 
     return NavigationStack {
         SessionDetailView(sessionID: session.id)

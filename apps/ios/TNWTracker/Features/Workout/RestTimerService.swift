@@ -97,10 +97,12 @@ public final class RestTimerService {
             try? await supabase.from("rest_timers").insert(row).execute()
         }
 
-        logger
-            .info(
-                "RestTimerService started: workout=\(workoutId.uuidString, privacy: .public) type=\(type.rawValue) duration=\(durationSeconds)s"
-            )
+        logger.info(
+            """
+            RestTimerService started: workout=\(workoutId.uuidString, privacy: .public) \
+            type=\(type.rawValue) duration=\(durationSeconds)s
+            """
+        )
         startTick()
     }
 

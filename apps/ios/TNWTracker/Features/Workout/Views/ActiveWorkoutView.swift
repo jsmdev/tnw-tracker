@@ -332,7 +332,7 @@ struct ActiveWorkoutView: View {
 // MARK: - Preview
 
 #Preview("ActiveWorkoutView — active") {
-    let container = try! ModelContainerFactory.makeContainer(inMemory: true)
+    let container = ModelContainerFactory.previewContainer()
     let context = ModelContext(container)
     let appEnv = AppEnvironment.bootstrap(modelContext: context)
     // Preview with a stubbed coordinator state is not trivial because

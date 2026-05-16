@@ -53,5 +53,5 @@ struct SettingsView: View {
     NavigationStack {
         SettingsView()
     }
-    .modelContainer(try! ModelContainerFactory.makeContainer(inMemory: true))
+    .modelContainer(ModelContainerFactory.previewContainer())
 }

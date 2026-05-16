@@ -23,7 +23,12 @@ public struct SkipRestIntent: AppIntent {
     /// Default init for widget process invocation.
     public init() {
         _workoutId = UUID()
-        mailbox = IntentMailbox(container: try! ModelContainerFactory.makeContainer())
+        do {
+            let container = try ModelContainerFactory.makeContainer()
+            mailbox = IntentMailbox(container: container)
+        } catch {
+            fatalError("SkipRestIntent.init failed to build ModelContainer: \(error)")
+        }
     }
 
     /// Test-injectable init.

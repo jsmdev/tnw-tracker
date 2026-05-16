@@ -13,7 +13,12 @@ import Testing
 @MainActor
 struct SessionListModelTests {
     let container: ModelContainer
-    let devUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+    let devUserId: UUID = {
+        guard let uid = UUID(uuidString: "00000000-0000-0000-0000-000000000001") else {
+            preconditionFailure("Invalid devUserId UUID literal")
+        }
+        return uid
+    }()
 
     init() throws {
         container = try ModelContainerFactory.makeContainer(inMemory: true)

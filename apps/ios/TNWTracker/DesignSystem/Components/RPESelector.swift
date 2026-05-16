@@ -44,7 +44,7 @@ struct RPESelector: View {
 }
 
 #Preview("RPESelector") {
-    @Previewable @State var rpe: Int? = nil
+    @Previewable @State var rpe: Int?
     VStack(spacing: Spacing.md) {
         RPESelector(selection: $rpe)
         Text(rpe.map { "RPE: \($0)" } ?? "No selection")

@@ -82,7 +82,7 @@ struct DeepLinkParserTests {
         ("tnwtracker://session/not-a-uuid", false),
         ("tnwtracker://workout", false),
         ("tnwtracker://nope", false),
-        ("https://example.com/session/8400E1D8-3F4A-4B3F-9DAB-1234567890AB", false),
+        ("https://example.com/session/8400E1D8-3F4A-4B3F-9DAB-1234567890AB", false)
     ])
     func parameterizedValidAndInvalidUrls(input: String, isValid: Bool) throws {
         let url = try #require(URL(string: input))

@@ -33,5 +33,24 @@ type_name:
 identifier_name:
   min_length: 2
   max_length: 50
+  excluded:
+    - i
+    - j
+    - k
+    - s
+    - a
+    - b
+    - c
+    - x
+    - y
+    - z
+
+function_body_length:
+  warning: 60
+  error: 100
+
+type_body_length:
+  warning: 300
+  error: 400
 
 reporter: github-actions-logging

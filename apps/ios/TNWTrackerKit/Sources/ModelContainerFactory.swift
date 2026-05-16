@@ -2,6 +2,16 @@ import Foundation
 import SwiftData
 
 public enum ModelContainerFactory {
+    /// In-memory container for SwiftUI #Preview blocks.
+    /// Crashes with a descriptive message if schema initialization fails — fine for Xcode previews.
+    public static func previewContainer() -> ModelContainer {
+        do {
+            return try makeContainer(inMemory: true)
+        } catch {
+            fatalError("ModelContainerFactory.previewContainer() failed: \(error)")
+        }
+    }
+
     public static func makeContainer(inMemory: Bool = false) throws -> ModelContainer {
         let schema = Schema(versionedSchema: SchemaV1.self)
         let url: URL = if inMemory {
