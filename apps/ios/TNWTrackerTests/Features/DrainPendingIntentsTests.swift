@@ -164,6 +164,6 @@ struct DrainPendingIntentsTests {
             coordinator: spy2,
             coordinatorWorkoutId: workoutId
         )
-        #expect(spy2.calls.count == 0)
+        #expect(spy2.calls.isEmpty)
     }
 }
