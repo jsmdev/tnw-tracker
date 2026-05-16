@@ -36,17 +36,13 @@ struct PrimaryButton: View {
     @ViewBuilder
     private var loadingButton: some View {
         if #available(iOS 26, *) {
-            Button(action: {}) {
-                loadingLabel
-            }
-            .disabled(true)
-            .buttonStyle(.glassProminent)
+            Button(action: {}, label: { loadingLabel })
+                .disabled(true)
+                .buttonStyle(.glassProminent)
         } else {
-            Button(action: {}) {
-                loadingLabel
-            }
-            .disabled(true)
-            .buttonStyle(.borderedProminent)
+            Button(action: {}, label: { loadingLabel })
+                .disabled(true)
+                .buttonStyle(.borderedProminent)
         }
     }
 

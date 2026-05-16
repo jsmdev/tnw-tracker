@@ -124,14 +124,14 @@ struct HomeView: View {
 // MARK: - Preview
 
 #Preview("HomeView — with data") {
-    let container = try! ModelContainerFactory.makeContainer(inMemory: true)
+    let container = ModelContainerFactory.previewContainer()
     let context = ModelContext(container)
     let userId = UUID()
     let session = Session(userId: userId, name: "Push Day")
     context.insert(session)
     let se = SessionExercise(sessionId: session.id, exerciseId: UUID(), orderIndex: 0)
     context.insert(se)
-    try! context.save()
+    try? context.save()
 
     return NavigationStack {
         HomeView(container: container)
@@ -141,7 +141,7 @@ struct HomeView: View {
 }
 
 #Preview("HomeView — empty") {
-    let container = try! ModelContainerFactory.makeContainer(inMemory: true)
+    let container = ModelContainerFactory.previewContainer()
     return NavigationStack {
         HomeView(container: container)
     }

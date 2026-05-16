@@ -215,10 +215,12 @@ public final class AppEnvironment {
         for event in events {
             guard event.workoutId == coordinatorWorkoutId else { continue }
 
-            drainLogger
-                .info(
-                    "Dispatching intent \(event.kind, privacy: .public) for workout \(event.workoutId, privacy: .private)"
-                )
+            drainLogger.info(
+                """
+                Dispatching intent \(event.kind, privacy: .public) \
+                for workout \(event.workoutId, privacy: .private)
+                """
+            )
             switch event.kind {
             case "skip":
                 await coordinator.skipTimer()
@@ -272,7 +274,12 @@ public final class AppEnvironment {
     extension AppEnvironment {
         /// UUID estable para UI testing — usado por bootstrapForUITesting.
         /// Coincide con el userId implícito en el seed de SeedService.
-        static let uiTestingUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        static let uiTestingUserId: UUID = {
+            guard let uid = UUID(uuidString: "00000000-0000-0000-0000-000000000001") else {
+                preconditionFailure("Invalid UUID literal for uiTestingUserId")
+            }
+            return uid
+        }()
 
         /// Bootstrap para UI tests: retorna instancia pre-autenticada con userId fijo.
         /// NO arranca authListener, NO consulta currentSession.
@@ -294,8 +301,11 @@ public final class AppEnvironment {
             } catch {
                 fatalError("makeForTesting: no se pudo crear ModelContainer in-memory: \(error)")
             }
+            guard let stubURL = URL(string: "https://test.supabase.co") else {
+                preconditionFailure("Invalid stub Supabase URL")
+            }
             let stubSupabase = SupabaseClient(
-                supabaseURL: URL(string: "https://test.supabase.co")!,
+                supabaseURL: stubURL,
                 supabaseKey: "test-anon-key"
             )
             return AppEnvironment(

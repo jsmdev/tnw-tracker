@@ -126,7 +126,7 @@ struct SessionListView: View {
 // MARK: - Preview
 
 #Preview("SessionListView — with data") {
-    let container = try! ModelContainerFactory.makeContainer(inMemory: true)
+    let container = ModelContainerFactory.previewContainer()
     let context = ModelContext(container)
     let userId = UUID()
     let push = Session(userId: userId, name: "Push Day")
@@ -136,7 +136,7 @@ struct SessionListView: View {
     let se = SessionExercise(sessionId: push.id, exerciseId: UUID(), orderIndex: 0)
     context.insert(se)
     push.sessionExercises = [se]
-    try! context.save()
+    try? context.save()
 
     return NavigationStack {
         SessionListView(container: container)
@@ -146,7 +146,7 @@ struct SessionListView: View {
 }
 
 #Preview("SessionListView — empty") {
-    let container = try! ModelContainerFactory.makeContainer(inMemory: true)
+    let container = ModelContainerFactory.previewContainer()
     return NavigationStack {
         SessionListView(container: container)
     }

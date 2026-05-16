@@ -45,4 +45,12 @@ identifier_name:
     - y
     - z
 
+function_body_length:
+  warning: 60
+  error: 100
+
+type_body_length:
+  warning: 300
+  error: 400
+
 reporter: github-actions-logging

@@ -243,7 +243,7 @@ struct WorkoutSummaryView: View {
 // MARK: - Preview
 
 #Preview("WorkoutSummaryView") {
-    let container = try! ModelContainerFactory.makeContainer(inMemory: true)
+    let container = ModelContainerFactory.previewContainer()
     let context = ModelContext(container)
     let userId = UUID()
     let exerciseId = UUID()
@@ -266,7 +266,7 @@ struct WorkoutSummaryView: View {
         s.reps = 8; s.weight = 80.0; s.weightUnit = .kg; s.isWarmup = false
         context.insert(s); we.exerciseSets.append(s)
     }
-    try! context.save()
+    try? context.save()
 
     let appEnv = AppEnvironment.bootstrap(modelContext: context)
     return WorkoutSummaryView(workoutId: workout.id)

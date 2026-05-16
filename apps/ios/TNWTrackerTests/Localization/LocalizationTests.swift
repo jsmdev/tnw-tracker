@@ -120,12 +120,10 @@ struct LocalizationTests {
         // Try exact language identifier (e.g. "es-ES"), then base code (e.g. "es")
         let candidates = [languageCode, String(languageCode.prefix(2))]
         for lang in candidates {
-            if let lprojPath = bundle.path(forResource: lang, ofType: "lproj"),
-               let lprojBundle = Bundle(path: lprojPath)
-            {
-                let resolved = lprojBundle.localizedString(forKey: key, value: nil, table: nil)
-                if resolved != key { return resolved }
-            }
+            guard let lprojPath = bundle.path(forResource: lang, ofType: "lproj"),
+                  let lprojBundle = Bundle(path: lprojPath) else { continue }
+            let resolved = lprojBundle.localizedString(forKey: key, value: nil, table: nil)
+            if resolved != key { return resolved }
         }
         return ""
     }

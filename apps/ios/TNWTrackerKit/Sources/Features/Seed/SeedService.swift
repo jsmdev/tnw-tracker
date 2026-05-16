@@ -32,7 +32,9 @@
 
         private func seed(context: ModelContext) throws {
             // Dummy userId para seed data — no se sincroniza con backend en DEBUG
-            let devUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+            guard let devUserId = UUID(uuidString: "00000000-0000-0000-0000-000000000001") else {
+                preconditionFailure("Invalid devUserId UUID literal")
+            }
 
             // Ejercicios canónicos (7)
             let squat = Exercise(name: "Squat", category: "strength")
@@ -91,9 +93,8 @@
                 context: context
             )
 
-            for (idx, (routine, session)) in [(push, pushSession), (pull, pullSession), (legs, legsSession)]
-                .enumerated()
-            {
+            let routineSessionPairs = [(push, pushSession), (pull, pullSession), (legs, legsSession)]
+            for (idx, (routine, session)) in routineSessionPairs.enumerated() {
                 let rs = RoutineSession(routineId: routine.id, sessionId: session.id, orderIndex: idx)
                 context.insert(rs)
                 routine.routineSessions.append(rs)

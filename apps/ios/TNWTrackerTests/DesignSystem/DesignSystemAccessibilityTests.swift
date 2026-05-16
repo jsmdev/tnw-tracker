@@ -25,18 +25,21 @@ struct DesignSystemAccessibilityTests {
             guard url.pathExtension == "swift" else { continue }
             let content = try String(contentsOf: url, encoding: .utf8)
             let lines = content.components(separatedBy: .newlines)
-            for (index, line) in lines.enumerated() {
-                // .frame(height: <number>) is forbidden — must use minHeight for tap targets
-                if line.contains(".frame(height:") {
-                    violations
-                        .append("\(url.lastPathComponent):\(index + 1): \(line.trimmingCharacters(in: .whitespaces))")
-                }
+            // .frame(height: <number>) is forbidden — must use minHeight for tap targets
+            for (index, line) in lines.enumerated() where line.contains(".frame(height:") {
+                violations.append(
+                    "\(url.lastPathComponent):\(index + 1): \(line.trimmingCharacters(in: .whitespaces))"
+                )
             }
         }
 
         #expect(
             violations.isEmpty,
-            "Hardcoded .frame(height:) found in DesignSystem components — use .frame(minHeight: 44) for tap targets instead:\n\(violations.joined(separator: "\n"))"
+            """
+            Hardcoded .frame(height:) found in DesignSystem components — \
+            use .frame(minHeight: 44) for tap targets instead:
+            \(violations.joined(separator: "\n"))
+            """
         )
     }
 
@@ -61,11 +64,10 @@ struct DesignSystemAccessibilityTests {
             guard url.pathExtension == "swift" else { continue }
             let content = try String(contentsOf: url, encoding: .utf8)
             let lines = content.components(separatedBy: .newlines)
-            for (index, line) in lines.enumerated() {
-                if line.contains("foregroundColor(") {
-                    violations
-                        .append("\(url.lastPathComponent):\(index + 1): \(line.trimmingCharacters(in: .whitespaces))")
-                }
+            for (index, line) in lines.enumerated() where line.contains("foregroundColor(") {
+                violations.append(
+                    "\(url.lastPathComponent):\(index + 1): \(line.trimmingCharacters(in: .whitespaces))"
+                )
             }
         }
 
@@ -103,7 +105,11 @@ struct DesignSystemAccessibilityTests {
 
         #expect(
             violations.isEmpty,
-            "Hardcoded .system(size:) in Typography — use semantic font styles (.title, .body, etc.):\n\(violations.joined(separator: "\n"))"
+            """
+            Hardcoded .system(size:) in Typography — \
+            use semantic font styles (.title, .body, etc.):
+            \(violations.joined(separator: "\n"))
+            """
         )
     }
 
@@ -128,11 +134,10 @@ struct DesignSystemAccessibilityTests {
             guard url.pathExtension == "swift" else { continue }
             let content = try String(contentsOf: url, encoding: .utf8)
             let lines = content.components(separatedBy: .newlines)
-            for (index, line) in lines.enumerated() {
-                if line.contains("AnyView") {
-                    violations
-                        .append("\(url.lastPathComponent):\(index + 1): \(line.trimmingCharacters(in: .whitespaces))")
-                }
+            for (index, line) in lines.enumerated() where line.contains("AnyView") {
+                violations.append(
+                    "\(url.lastPathComponent):\(index + 1): \(line.trimmingCharacters(in: .whitespaces))"
+                )
             }
         }
 
