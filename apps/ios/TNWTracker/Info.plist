@@ -39,8 +39,8 @@
 	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
 	<true/>
 	<key>SUPABASE_URL</key>
-	<string>https://rdpmtnkpfiavhiarjuko.supabase.co</string>
+	<string>$(SUPABASE_URL)</string>
 	<key>SUPABASE_ANON_KEY</key>
-	<string>eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJkcG10bmtwZmlhdmhpYXJqdWtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyMTU5NzQsImV4cCI6MjA5Mjc5MTk3NH0.FoYMefLkszS-1WRatzy2o2YHH9HmrmtL3xzy852oA1Y</string>
+	<string>$(SUPABASE_ANON_KEY)</string>
 </dict>
 </plist>
