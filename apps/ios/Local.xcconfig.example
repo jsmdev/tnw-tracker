@@ -1,5 +1,15 @@
-// Copy this file to Local.xcconfig and fill in your own Apple Developer Team ID.
+// Copy this file to Local.xcconfig and fill in your local values.
+// Local.xcconfig is gitignored — values stay on your machine.
+
+// === Apple Developer ===
 // Find your Team ID at https://developer.apple.com/account → Membership details,
 // or run: security find-identity -v -p codesigning
 DEVELOPMENT_TEAM = YOUR_TEAM_ID_HERE
 CODE_SIGN_STYLE = Automatic
+
+// === Supabase credentials ===
+// Get these from Supabase Studio → Project Settings → API.
+// NOTE: xcconfig treats `//` as a comment delimiter, so `https://` must be
+// written as `https:/$()/` to survive parsing. Do not "fix" the slashes.
+SUPABASE_URL = https:/$()/your-project.supabase.co
+SUPABASE_ANON_KEY = your-anon-key-here
