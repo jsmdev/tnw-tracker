@@ -3,7 +3,6 @@ import Observation
 import os.log
 import Supabase
 import SwiftData
-import TNWTrackerKit
 
 private let logger = Logger(subsystem: "com.tnwtracker", category: "coordinator")
 
@@ -14,6 +13,20 @@ public struct RestTimerState: Sendable, Equatable {
     public let type: TimerType
     public let startedAt: Date
     public var endsAt: Date
+
+    public init(
+        id: UUID,
+        workoutId: UUID,
+        type: TimerType,
+        startedAt: Date,
+        endsAt: Date
+    ) {
+        self.id = id
+        self.workoutId = workoutId
+        self.type = type
+        self.startedAt = startedAt
+        self.endsAt = endsAt
+    }
 
     public var remaining: TimeInterval {
         endsAt.timeIntervalSinceNow
