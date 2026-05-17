@@ -19,6 +19,7 @@ public final class SyncEngineImpl: SyncEngine {
     private let supabase: SupabaseClient
     private let conflictResolver: ConflictResolver
     private let modelContext: ModelContext
+    private let networkMonitor: any NetworkMonitoring
 
     /// Claves para cursor en UserDefaults
     private func cursorKey(for tableName: String) -> String {
@@ -26,15 +27,19 @@ public final class SyncEngineImpl: SyncEngine {
     }
 
     private var isOnline: Bool {
-        // Simplificado — en producción usar NWPathMonitor
-        true
+        networkMonitor.isOnline
     }
 
-    public init(modelContext: ModelContext, supabase: SupabaseClient) {
+    public init(
+        modelContext: ModelContext,
+        supabase: SupabaseClient,
+        networkMonitor: any NetworkMonitoring
+    ) {
         self.modelContext = modelContext
         syncQueue = SyncQueue(modelContext: modelContext)
         self.supabase = supabase
         conflictResolver = ConflictResolver()
+        self.networkMonitor = networkMonitor
     }
 
     public func enqueueLocalChange(

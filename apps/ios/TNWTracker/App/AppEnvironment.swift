@@ -33,6 +33,10 @@ public final class AppEnvironment {
     /// Live Activity
     public let liveActivity: LiveActivityController
 
+    /// Connectivity (NWPathMonitor wrapper). Shared across services that gate
+    /// remote calls on online status.
+    public let networkMonitor: any NetworkMonitoring
+
     private let supabase: SupabaseClient
     private let modelContext: ModelContext
 
@@ -60,7 +64,9 @@ public final class AppEnvironment {
         let supabase = supabaseProvider.client
         self.supabase = supabase
 
-        let engine = SyncEngineImpl(modelContext: modelContext, supabase: supabase)
+        let monitor = NetworkMonitor()
+        networkMonitor = monitor
+        let engine = SyncEngineImpl(modelContext: modelContext, supabase: supabase, networkMonitor: monitor)
         syncEngine = engine
         liveActivity = LiveActivityController()
 
@@ -76,12 +82,14 @@ public final class AppEnvironment {
     private init(
         modelContext: ModelContext,
         supabase: SupabaseClient,
-        authRepository: any AuthRepositoryProtocol
+        authRepository: any AuthRepositoryProtocol,
+        networkMonitor: any NetworkMonitoring
     ) {
         self.modelContext = modelContext
         self.supabase = supabase
+        self.networkMonitor = networkMonitor
 
-        let engine = SyncEngineImpl(modelContext: modelContext, supabase: supabase)
+        let engine = SyncEngineImpl(modelContext: modelContext, supabase: supabase, networkMonitor: networkMonitor)
         syncEngine = engine
         liveActivity = LiveActivityController()
 
@@ -247,7 +255,8 @@ public final class AppEnvironment {
         RestTimerService(
             supabase: supabase,
             modelContext: modelContext,
-            liveActivity: liveActivity
+            liveActivity: liveActivity,
+            networkMonitor: networkMonitor
         )
     }
 
@@ -311,7 +320,8 @@ public final class AppEnvironment {
             return AppEnvironment(
                 modelContext: ModelContext(container),
                 supabase: stubSupabase,
-                authRepository: authRepository
+                authRepository: authRepository,
+                networkMonitor: StubNetworkMonitor(isOnline: true)
             )
         }
 

@@ -42,7 +42,8 @@ struct RestTimerServiceTests {
         let service = RestTimerService(
             supabase: makeDummySupabase(),
             modelContext: context,
-            liveActivity: LiveActivityController()
+            liveActivity: LiveActivityController(),
+            networkMonitor: StubNetworkMonitor(isOnline: true)
         )
 
         let workoutId = UUID()
@@ -72,7 +73,8 @@ struct RestTimerServiceTests {
         let service = RestTimerService(
             supabase: makeDummySupabase(),
             modelContext: context,
-            liveActivity: LiveActivityController()
+            liveActivity: LiveActivityController(),
+            networkMonitor: StubNetworkMonitor(isOnline: true)
         )
 
         let name = "Legs Day"
@@ -88,6 +90,33 @@ struct RestTimerServiceTests {
         await service.skip()
     }
 
+    /// Offline path: start() still sets local state and doesn't crash when networkMonitor
+    /// reports offline. Remote Supabase calls are gated by isOnline; they must be skipped.
+    @Test("start() works offline — local state is set without crashing")
+    func startWorksOffline() async throws {
+        let container = try ModelContainerFactory.makeContainer(inMemory: true)
+        let context = ModelContext(container)
+        let service = RestTimerService(
+            supabase: makeDummySupabase(),
+            modelContext: context,
+            liveActivity: LiveActivityController(),
+            networkMonitor: StubNetworkMonitor(isOnline: false)
+        )
+
+        let workoutId = UUID()
+        await service.start(
+            workoutId: workoutId,
+            workoutName: "Offline Workout",
+            type: .betweenSets,
+            durationSeconds: 45
+        )
+
+        #expect(service.state != nil)
+        #expect(service.state?.workoutId == workoutId)
+
+        await service.skip()
+    }
+
     /// After skip(), workoutName persists (stored on service, not cleared on skip).
     @Test("workoutName persists after skip()")
     func workoutNamePersistsAfterSkip() async throws {
@@ -96,7 +125,8 @@ struct RestTimerServiceTests {
         let service = RestTimerService(
             supabase: makeDummySupabase(),
             modelContext: context,
-            liveActivity: LiveActivityController()
+            liveActivity: LiveActivityController(),
+            networkMonitor: StubNetworkMonitor(isOnline: true)
         )
 
         let name = "Pull Day"
