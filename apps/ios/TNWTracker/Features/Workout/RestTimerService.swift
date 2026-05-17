@@ -37,19 +37,22 @@ public final class RestTimerService {
     private let supabase: SupabaseClient
     private let modelContext: ModelContext
     private let liveActivity: LiveActivityController
+    private let networkMonitor: any NetworkMonitoring
 
     private var isOnline: Bool {
-        true // NWPathMonitor pendiente de implementar
+        networkMonitor.isOnline
     }
 
     public init(
         supabase: SupabaseClient,
         modelContext: ModelContext,
-        liveActivity: LiveActivityController
+        liveActivity: LiveActivityController,
+        networkMonitor: any NetworkMonitoring
     ) {
         self.supabase = supabase
         self.modelContext = modelContext
         self.liveActivity = liveActivity
+        self.networkMonitor = networkMonitor
     }
 
     // MARK: - Public API
