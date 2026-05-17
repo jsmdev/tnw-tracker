@@ -34,10 +34,11 @@ export function RoutineForm({ routine }: Props) {
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="routine-name" className="block text-sm font-medium text-gray-700 mb-1">
           Nombre <span className="text-red-500">*</span>
         </label>
         <input
+          id="routine-name"
           type="text"
           name="name"
           defaultValue={routine?.name}
@@ -48,8 +49,14 @@ export function RoutineForm({ routine }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+        <label
+          htmlFor="routine-description"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Descripción
+        </label>
         <textarea
+          id="routine-description"
           name="description"
           defaultValue={routine?.description ?? ""}
           rows={3}

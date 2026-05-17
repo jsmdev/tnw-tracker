@@ -31,10 +31,11 @@ export function PlanForm({ plan }: Props) {
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="plan-name" className="block text-sm font-medium text-gray-700 mb-1">
           Nombre <span className="text-red-500">*</span>
         </label>
         <input
+          id="plan-name"
           type="text"
           name="name"
           defaultValue={plan?.name}
@@ -45,8 +46,11 @@ export function PlanForm({ plan }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+        <label htmlFor="plan-description" className="block text-sm font-medium text-gray-700 mb-1">
+          Descripción
+        </label>
         <textarea
+          id="plan-description"
           name="description"
           defaultValue={plan?.description ?? ""}
           rows={3}
@@ -56,8 +60,14 @@ export function PlanForm({ plan }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Duración (semanas)</label>
+        <label
+          htmlFor="plan-duration-weeks"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Duración (semanas)
+        </label>
         <input
+          id="plan-duration-weeks"
           type="number"
           name="duration_weeks"
           defaultValue={plan?.duration_weeks ?? ""}
