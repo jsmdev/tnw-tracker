@@ -160,18 +160,20 @@ export async function addSessionToRoutineAction(
 export async function removeSessionFromRoutineAction(
   routineSessionId: string,
   routineId: string
-): Promise<void> {
+): Promise<{ error?: string }> {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
   try {
     await requireOwnership(supabase, "routines", routineId, user.id);
   } catch (e) {
-    if (e instanceof OwnershipError) return;
+    if (e instanceof OwnershipError) return { error: "No autorizado" };
     throw e;
   }
 
-  await supabase.from("routine_sessions").delete().eq("id", routineSessionId);
+  const { error } = await supabase.from("routine_sessions").delete().eq("id", routineSessionId);
+  if (error) return { error: error.message };
 
   revalidatePath(`/dashboard/routines/${routineId}`);
+  return {};
 }

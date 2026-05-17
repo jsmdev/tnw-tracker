@@ -164,18 +164,20 @@ export async function addExerciseToSessionAction(
 export async function removeExerciseFromSessionAction(
   sessionExerciseId: string,
   sessionId: string
-): Promise<void> {
+): Promise<{ error?: string }> {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
   try {
     await requireOwnership(supabase, "sessions", sessionId, user.id);
   } catch (e) {
-    if (e instanceof OwnershipError) return;
+    if (e instanceof OwnershipError) return { error: "No autorizado" };
     throw e;
   }
 
-  await supabase.from("session_exercises").delete().eq("id", sessionExerciseId);
+  const { error } = await supabase.from("session_exercises").delete().eq("id", sessionExerciseId);
+  if (error) return { error: error.message };
 
   revalidatePath(`/dashboard/sessions/${sessionId}`);
+  return {};
 }

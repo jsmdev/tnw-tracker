@@ -35,6 +35,7 @@ interface Props {
 
 function SortableRow({ item, planId }: { item: PlanRoutineRow; planId: string }) {
   const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
   });
@@ -46,8 +47,10 @@ function SortableRow({ item, planId }: { item: PlanRoutineRow; planId: string })
   };
 
   function handleRemove() {
+    setError(null);
     startTransition(async () => {
-      await removeRoutineFromPlanAction(item.id, planId);
+      const result = await removeRoutineFromPlanAction(item.id, planId);
+      if (result?.error) setError(result.error);
     });
   }
 
@@ -55,37 +58,46 @@ function SortableRow({ item, planId }: { item: PlanRoutineRow; planId: string })
     <li
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 bg-white border border-gray-200 rounded-lg px-4 py-3"
+      className="flex flex-col gap-1 bg-white border border-gray-200 rounded-lg px-4 py-3"
     >
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none shrink-0"
-        aria-label="Arrastrar para reordenar"
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-          <circle cx="5" cy="4" r="1.5" />
-          <circle cx="11" cy="4" r="1.5" />
-          <circle cx="5" cy="8" r="1.5" />
-          <circle cx="11" cy="8" r="1.5" />
-          <circle cx="5" cy="12" r="1.5" />
-          <circle cx="11" cy="12" r="1.5" />
-        </svg>
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing touch-none shrink-0"
+          aria-label="Arrastrar para reordenar"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <circle cx="5" cy="4" r="1.5" />
+            <circle cx="11" cy="4" r="1.5" />
+            <circle cx="5" cy="8" r="1.5" />
+            <circle cx="11" cy="8" r="1.5" />
+            <circle cx="5" cy="12" r="1.5" />
+            <circle cx="11" cy="12" r="1.5" />
+          </svg>
+        </button>
 
-      <span className="text-xs font-medium text-gray-400 w-6 shrink-0">{item.order_index + 1}</span>
+        <span className="text-xs font-medium text-gray-400 w-6 shrink-0">
+          {item.order_index + 1}
+        </span>
 
-      <p className="flex-1 font-medium text-gray-900 text-sm truncate">{item.routine.name}</p>
+        <p className="flex-1 font-medium text-gray-900 text-sm truncate">{item.routine.name}</p>
 
-      <button
-        type="button"
-        onClick={handleRemove}
-        disabled={isPending}
-        className="text-red-400 hover:text-red-600 text-sm font-medium disabled:opacity-50 shrink-0"
-      >
-        {isPending ? "..." : "Quitar"}
-      </button>
+        <button
+          type="button"
+          onClick={handleRemove}
+          disabled={isPending}
+          className="text-red-400 hover:text-red-600 text-sm font-medium disabled:opacity-50 shrink-0"
+        >
+          {isPending ? "..." : "Quitar"}
+        </button>
+      </div>
+      {error && (
+        <p role="alert" className="text-xs text-red-600">
+          {error}
+        </p>
+      )}
     </li>
   );
 }

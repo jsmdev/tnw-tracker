@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ExerciseForm } from "@/components/exercise/ExerciseForm";
 import { VideoUploader } from "@/components/exercise/VideoUploader";
-import { deleteExerciseVideoAction } from "@/app/actions/exercise";
+import { DeleteVideoButton } from "@/components/exercise/DeleteVideoButton";
 
 export default async function ExercisePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -69,17 +69,7 @@ export default async function ExercisePage({ params }: { params: Promise<{ id: s
                     {v.url}
                   </a>
                 </div>
-                <form
-                  action={deleteExerciseVideoAction.bind(null, v.id, exercise.id)}
-                  className="ml-4 shrink-0"
-                >
-                  <button
-                    type="submit"
-                    className="text-red-500 hover:text-red-700 text-sm font-medium"
-                  >
-                    Eliminar
-                  </button>
-                </form>
+                <DeleteVideoButton videoId={v.id} exerciseId={exercise.id} />
               </li>
             ))}
           </ul>
