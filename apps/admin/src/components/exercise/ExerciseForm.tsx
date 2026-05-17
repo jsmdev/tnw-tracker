@@ -55,10 +55,11 @@ export function ExerciseForm({ exercise }: Props) {
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="exercise-name" className="block text-sm font-medium text-gray-700 mb-1">
           Nombre <span className="text-red-500">*</span>
         </label>
         <input
+          id="exercise-name"
           type="text"
           name="name"
           defaultValue={exercise?.name}
@@ -69,10 +70,11 @@ export function ExerciseForm({ exercise }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="exercise-category" className="block text-sm font-medium text-gray-700 mb-1">
           Categoría <span className="text-red-500">*</span>
         </label>
         <select
+          id="exercise-category"
           name="category"
           defaultValue={exercise?.category ?? ""}
           required
@@ -116,8 +118,14 @@ export function ExerciseForm({ exercise }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Instrucciones</label>
+        <label
+          htmlFor="exercise-instructions"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Instrucciones
+        </label>
         <textarea
+          id="exercise-instructions"
           name="instructions"
           defaultValue={exercise?.instructions ?? ""}
           rows={4}
