@@ -166,18 +166,20 @@ export async function addRoutineToPlanAction(
 export async function removeRoutineFromPlanAction(
   planRoutineId: string,
   planId: string
-): Promise<void> {
+): Promise<{ error?: string }> {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
   try {
     await requireOwnership(supabase, "plans", planId, user.id);
   } catch (e) {
-    if (e instanceof OwnershipError) return;
+    if (e instanceof OwnershipError) return { error: "No autorizado" };
     throw e;
   }
 
-  await supabase.from("plan_routines").delete().eq("id", planRoutineId);
+  const { error } = await supabase.from("plan_routines").delete().eq("id", planRoutineId);
+  if (error) return { error: error.message };
 
   revalidatePath(`/dashboard/plans/${planId}`);
+  return {};
 }

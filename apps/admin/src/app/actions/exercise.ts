@@ -124,18 +124,20 @@ export async function createExerciseVideoAction(
 export async function deleteExerciseVideoAction(
   videoId: string,
   exerciseId: string
-): Promise<void> {
+): Promise<{ error?: string }> {
   const supabase = await createClient();
   const user = await requireUser(supabase);
 
   try {
     await requireOwnership(supabase, "exercises", exerciseId, user.id);
   } catch (e) {
-    if (e instanceof OwnershipError) return;
+    if (e instanceof OwnershipError) return { error: "No autorizado" };
     throw e;
   }
 
-  await supabase.from("exercise_videos").delete().eq("id", videoId);
+  const { error } = await supabase.from("exercise_videos").delete().eq("id", videoId);
+  if (error) return { error: error.message };
 
   revalidatePath(`/dashboard/exercises/${exerciseId}`);
+  return {};
 }
