@@ -35,10 +35,11 @@ export function SessionForm({ session }: Props) {
       )}
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="session-name" className="block text-sm font-medium text-gray-700 mb-1">
           Nombre <span className="text-red-500">*</span>
         </label>
         <input
+          id="session-name"
           type="text"
           name="name"
           defaultValue={session?.name}
@@ -49,8 +50,14 @@ export function SessionForm({ session }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+        <label
+          htmlFor="session-description"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
+          Descripción
+        </label>
         <textarea
+          id="session-description"
           name="description"
           defaultValue={session?.description ?? ""}
           rows={3}
@@ -60,10 +67,14 @@ export function SessionForm({ session }: Props) {
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
+        <label
+          htmlFor="session-rest-seconds"
+          className="block text-sm font-medium text-gray-700 mb-1"
+        >
           Descanso entre ejercicios (segundos)
         </label>
         <input
+          id="session-rest-seconds"
           type="number"
           name="rest_between_exercises_seconds"
           defaultValue={session?.rest_between_exercises_seconds ?? 60}
