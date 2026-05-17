@@ -174,12 +174,13 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         let restSeconds = restSecondsMap[we.id] ?? 90
 
         guard let outcome = WorkoutPhaseTransition.evaluate(
-            setNumber: setNumber,
-            target: target,
-            restSeconds: restSeconds,
-            currentExerciseIndex: currentExerciseIndex,
-            totalExercises: workoutExercises.count,
-            isWarmup: isWarmup,
+            set: .init(number: setNumber, isWarmup: isWarmup),
+            exercise: .init(
+                target: target,
+                restSeconds: restSeconds,
+                index: currentExerciseIndex,
+                total: workoutExercises.count
+            ),
             triggerMode: timerTriggerMode
         ) else { return }
 

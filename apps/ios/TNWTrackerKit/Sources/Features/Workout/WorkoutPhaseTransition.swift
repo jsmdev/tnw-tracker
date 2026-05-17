@@ -35,31 +35,49 @@ public enum WorkoutPhaseTransition {
         }
     }
 
+    /// Información del set recién registrado.
+    public struct SetContext: Sendable, Equatable {
+        public let number: Int
+        public let isWarmup: Bool
+
+        public init(number: Int, isWarmup: Bool) {
+            self.number = number
+            self.isWarmup = isWarmup
+        }
+    }
+
+    /// Contexto del ejercicio actual dentro del workout.
+    public struct ExerciseContext: Sendable, Equatable {
+        public let target: Int
+        public let restSeconds: Int
+        public let index: Int
+        public let total: Int
+
+        public init(target: Int, restSeconds: Int, index: Int, total: Int) {
+            self.target = target
+            self.restSeconds = restSeconds
+            self.index = index
+            self.total = total
+        }
+    }
+
     /// Evalúa la transición tras registrar un set.
     ///
     /// - Parameters:
-    ///   - setNumber: número 1-indexed del set recién registrado.
-    ///   - target: cantidad de sets objetivo para el ejercicio actual.
-    ///   - restSeconds: duración del descanso configurado para el ejercicio.
-    ///   - currentExerciseIndex: índice 0-indexed del ejercicio actual.
-    ///   - totalExercises: cantidad total de ejercicios en el workout.
-    ///   - isWarmup: si el set registrado es de calentamiento.
+    ///   - set: información del set recién registrado.
+    ///   - exercise: contexto del ejercicio actual dentro del workout.
     ///   - triggerMode: política de disparo del timer.
     /// - Returns: `Outcome` con la siguiente fase y el timer opcional,
     ///   o `nil` si no corresponde transicionar (warmup / modo manual).
     public static func evaluate(
-        setNumber: Int,
-        target: Int,
-        restSeconds: Int,
-        currentExerciseIndex: Int,
-        totalExercises: Int,
-        isWarmup: Bool,
+        set: SetContext,
+        exercise: ExerciseContext,
         triggerMode: TimerTriggerMode
     ) -> Outcome? {
-        guard triggerMode == .auto, !isWarmup else { return nil }
+        guard triggerMode == .auto, !set.isWarmup else { return nil }
 
-        let isLastSet = setNumber >= target
-        let isLastExercise = currentExerciseIndex >= totalExercises - 1
+        let isLastSet = set.number >= exercise.target
+        let isLastExercise = exercise.index >= exercise.total - 1
 
         if isLastSet, isLastExercise {
             return Outcome(nextPhase: .finishing, restTimer: nil)
@@ -68,13 +86,13 @@ public enum WorkoutPhaseTransition {
         if isLastSet {
             return Outcome(
                 nextPhase: .restingBetweenExercises,
-                restTimer: RestSpec(type: .betweenExercises, durationSeconds: restSeconds)
+                restTimer: RestSpec(type: .betweenExercises, durationSeconds: exercise.restSeconds)
             )
         }
 
         return Outcome(
             nextPhase: .restingBetweenSets,
-            restTimer: RestSpec(type: .betweenSets, durationSeconds: restSeconds)
+            restTimer: RestSpec(type: .betweenSets, durationSeconds: exercise.restSeconds)
         )
     }
 }

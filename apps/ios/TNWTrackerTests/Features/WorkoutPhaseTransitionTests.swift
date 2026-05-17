@@ -17,12 +17,8 @@ struct WorkoutPhaseTransitionTests {
     @Test("warmup set returns nil — no transition fires")
     func warmupReturnsNil() {
         let outcome = WorkoutPhaseTransition.evaluate(
-            setNumber: 1,
-            target: 4,
-            restSeconds: 90,
-            currentExerciseIndex: 0,
-            totalExercises: 3,
-            isWarmup: true,
+            set: .init(number: 1, isWarmup: true),
+            exercise: .init(target: 4, restSeconds: 90, index: 0, total: 3),
             triggerMode: .auto
         )
         #expect(outcome == nil)
@@ -31,12 +27,8 @@ struct WorkoutPhaseTransitionTests {
     @Test("manual trigger mode returns nil — coordinator must not auto-advance")
     func manualModeReturnsNil() {
         let outcome = WorkoutPhaseTransition.evaluate(
-            setNumber: 1,
-            target: 4,
-            restSeconds: 90,
-            currentExerciseIndex: 0,
-            totalExercises: 3,
-            isWarmup: false,
+            set: .init(number: 1, isWarmup: false),
+            exercise: .init(target: 4, restSeconds: 90, index: 0, total: 3),
             triggerMode: .manual
         )
         #expect(outcome == nil)
@@ -48,12 +40,8 @@ struct WorkoutPhaseTransitionTests {
     func lastSetOfLastExerciseFinishes() throws {
         let outcome = try #require(
             WorkoutPhaseTransition.evaluate(
-                setNumber: 4,
-                target: 4,
-                restSeconds: 90,
-                currentExerciseIndex: 2,
-                totalExercises: 3,
-                isWarmup: false,
+                set: .init(number: 4, isWarmup: false),
+                exercise: .init(target: 4, restSeconds: 90, index: 2, total: 3),
                 triggerMode: .auto
             )
         )
@@ -67,12 +55,8 @@ struct WorkoutPhaseTransitionTests {
     func lastSetOfNonLastExerciseRestsBetweenExercises() throws {
         let outcome = try #require(
             WorkoutPhaseTransition.evaluate(
-                setNumber: 4,
-                target: 4,
-                restSeconds: 120,
-                currentExerciseIndex: 0,
-                totalExercises: 3,
-                isWarmup: false,
+                set: .init(number: 4, isWarmup: false),
+                exercise: .init(target: 4, restSeconds: 120, index: 0, total: 3),
                 triggerMode: .auto
             )
         )
@@ -88,12 +72,8 @@ struct WorkoutPhaseTransitionTests {
     func nonLastSetRestsBetweenSets() throws {
         let outcome = try #require(
             WorkoutPhaseTransition.evaluate(
-                setNumber: 2,
-                target: 4,
-                restSeconds: 90,
-                currentExerciseIndex: 0,
-                totalExercises: 3,
-                isWarmup: false,
+                set: .init(number: 2, isWarmup: false),
+                exercise: .init(target: 4, restSeconds: 90, index: 0, total: 3),
                 triggerMode: .auto
             )
         )
@@ -109,12 +89,8 @@ struct WorkoutPhaseTransitionTests {
     func singleExerciseWorkoutFinishes() throws {
         let outcome = try #require(
             WorkoutPhaseTransition.evaluate(
-                setNumber: 3,
-                target: 3,
-                restSeconds: 60,
-                currentExerciseIndex: 0,
-                totalExercises: 1,
-                isWarmup: false,
+                set: .init(number: 3, isWarmup: false),
+                exercise: .init(target: 3, restSeconds: 60, index: 0, total: 1),
                 triggerMode: .auto
             )
         )
@@ -130,12 +106,8 @@ struct WorkoutPhaseTransitionTests {
         // tratarlo como "último set" es más seguro que ignorarlo.
         let outcome = try #require(
             WorkoutPhaseTransition.evaluate(
-                setNumber: 5,
-                target: 4,
-                restSeconds: 90,
-                currentExerciseIndex: 0,
-                totalExercises: 3,
-                isWarmup: false,
+                set: .init(number: 5, isWarmup: false),
+                exercise: .init(target: 4, restSeconds: 90, index: 0, total: 3),
                 triggerMode: .auto
             )
         )
