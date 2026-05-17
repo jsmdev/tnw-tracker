@@ -22,26 +22,17 @@ public protocol DrainCoordinatorProtocol: AnyObject {
 }
 
 /// FSM del workout activo. Coordina sets, timer y Live Activity.
+/// La decisión pura de transición de fase tras un set vive en
+/// `WorkoutPhaseTransition` (Kit) para poder testearla en aislamiento.
 @MainActor
 @Observable
 public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
-    // MARK: - Phase
-
-    public enum Phase: Sendable, Equatable {
-        case idle
-        case active
-        case restingBetweenSets
-        case restingBetweenExercises
-        case paused
-        case finishing
-    }
-
     // MARK: - Observed state
 
     public private(set) var workout: Workout?
     public private(set) var workoutExercises: [WorkoutExercise] = []
     public private(set) var currentExerciseIndex: Int = 0
-    public private(set) var phase: Phase = .idle
+    public private(set) var phase: WorkoutPhase = .idle
     public private(set) var elapsedSeconds: Int = 0
     public var timerTriggerMode: TimerTriggerMode = .auto
 
@@ -179,33 +170,31 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
             self.undoLastSetId = nil
         }
 
-        guard timerTriggerMode == .auto, !isWarmup else { return }
-
         let target = targetSetsMap[we.id] ?? Int.max
         let restSeconds = restSecondsMap[we.id] ?? 90
-        let isLastSet = setNumber >= target
-        let isLastExercise = currentExerciseIndex >= workoutExercises.count - 1
 
-        if isLastSet && isLastExercise {
-            phase = .finishing
-            logger.info("Coordinator phase → .finishing (last set + last exercise)")
-        } else if isLastSet {
-            phase = .restingBetweenExercises
-            logger.info("Coordinator phase → .restingBetweenExercises (set \(setNumber), rest \(restSeconds)s)")
-            await timerService.start(
-                workoutId: wkt.id,
-                workoutName: wkt.name,
-                type: .betweenExercises,
-                durationSeconds: restSeconds
+        guard let outcome = WorkoutPhaseTransition.evaluate(
+            setNumber: setNumber,
+            target: target,
+            restSeconds: restSeconds,
+            currentExerciseIndex: currentExerciseIndex,
+            totalExercises: workoutExercises.count,
+            isWarmup: isWarmup,
+            triggerMode: timerTriggerMode
+        ) else { return }
+
+        phase = outcome.nextPhase
+        logger
+            .info(
+                "Coordinator phase → \(String(describing: outcome.nextPhase)) (set \(setNumber), rest \(restSeconds)s)"
             )
-        } else {
-            phase = .restingBetweenSets
-            logger.info("Coordinator phase → .restingBetweenSets (set \(setNumber), rest \(restSeconds)s)")
+
+        if let spec = outcome.restTimer {
             await timerService.start(
                 workoutId: wkt.id,
                 workoutName: wkt.name,
-                type: .betweenSets,
-                durationSeconds: restSeconds
+                type: spec.type,
+                durationSeconds: spec.durationSeconds
             )
         }
     }
@@ -338,11 +327,4 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
             }
         }
     }
-}
-
-// MARK: - TimerTriggerMode
-
-public enum TimerTriggerMode: String, Codable, Sendable {
-    case auto
-    case manual
 }
