@@ -17,7 +17,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@supabase/ssr": "^0.10.3",
-    "@supabase/supabase-js": "^2.105.4",
+    "@supabase/supabase-js": "^2.106.2",
     "@tailwindcss/postcss": "^4.3.0",
     "@tnw/zod-schemas": "workspace:*",
     "next": "^16.2.6",
