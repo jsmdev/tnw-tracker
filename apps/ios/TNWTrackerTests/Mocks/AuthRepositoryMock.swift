@@ -18,11 +18,12 @@ final class AuthRepositoryMock: AuthRepositoryProtocol {
 
     // MARK: - Stream control
 
-    private var continuation: AsyncStream<AuthChangeEvent>.Continuation?
+    private var continuation: AsyncStream<AuthStateChange>.Continuation?
 
     /// Emite un evento al stream activo (si hay uno).
-    func emit(_ event: AuthChangeEvent) {
-        continuation?.yield(event)
+    /// `userId` modela la sesión que Supabase adjunta al evento.
+    func emit(_ event: AuthChangeEvent, userId: UUID? = nil) {
+        continuation?.yield(AuthStateChange(event: event, userId: userId))
     }
 
     // MARK: - AuthRepositoryProtocol
@@ -39,9 +40,9 @@ final class AuthRepositoryMock: AuthRepositoryProtocol {
         nil
     }
 
-    func authStateChanges() -> AsyncStream<AuthChangeEvent> {
+    func authStateChanges() -> AsyncStream<AuthStateChange> {
         streamCreatedCount += 1
-        return AsyncStream<AuthChangeEvent> { [weak self] cont in
+        return AsyncStream<AuthStateChange> { [weak self] cont in
             self?.continuation = cont
             cont.onTermination = { @Sendable [weak self] _ in
                 Task { @MainActor [weak self] in

@@ -52,15 +52,11 @@ struct TnwTrackerApp: App {
                 #if DEBUG
                     try? await SeedService(container: container).seedIfNeeded()
                 #endif
+                // El auth listener maneja la restauración: al suscribirse, Supabase
+                // emite `.initialSession` con la sesión persistida (o nil). `handle`
+                // resuelve isAuthenticated + currentUserId desde ese evento.
                 appEnv?.startAuthListener()
                 appEnv?.startIntentObserver()
-                // Restaurar sesión existente: Supabase guarda la sesión en Keychain pero
-                // NO emite .signedIn al arrancar si ya estaba activa. Hay que setear
-                // currentUserId aquí o makeActiveWorkoutCoordinator() crashea.
-                if let session = await appEnv?.authRepository.currentSession() {
-                    appEnv?.isAuthenticated = true
-                    appEnv?.currentUserId = UUID(uuidString: session.user.id.uuidString)
-                }
             }
         }
     }
