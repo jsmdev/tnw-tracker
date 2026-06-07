@@ -17,11 +17,61 @@ struct AuthListenerTests {
 
         #expect(mock.streamCreatedCount == 1)
 
-        mock.emit(.signedIn)
+        mock.emit(.signedIn, userId: UUID())
         // Dar tiempo al MainActor para procesar el evento
         try await Task.sleep(for: .milliseconds(100))
 
         #expect(env.isAuthenticated == true)
+    }
+
+    // MARK: - Test 1b: signedIn debe setear currentUserId (regresión del crash al iniciar workout)
+
+    @Test("Listener procesa signedIn y setea currentUserId desde la sesión del evento")
+    func signedInSetsCurrentUserId() async throws {
+        let mock = AuthRepositoryMock()
+        let env = AppEnvironment.makeForTesting(authRepository: mock)
+        env.startAuthListener()
+        await Task.yield()
+
+        let uid = UUID()
+        mock.emit(.signedIn, userId: uid)
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(env.isAuthenticated == true)
+        #expect(env.currentUserId == uid)
+    }
+
+    // MARK: - Test 1c: initialSession restaura sesión al arrancar (Supabase emite initialSession, no signedIn)
+
+    @Test("Listener procesa initialSession con sesión y restaura currentUserId")
+    func initialSessionRestoresUserId() async throws {
+        let mock = AuthRepositoryMock()
+        let env = AppEnvironment.makeForTesting(authRepository: mock)
+        env.startAuthListener()
+        await Task.yield()
+
+        let uid = UUID()
+        mock.emit(.initialSession, userId: uid)
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(env.isAuthenticated == true)
+        #expect(env.currentUserId == uid)
+    }
+
+    // MARK: - Test 1d: initialSession sin sesión deja al usuario deslogueado
+
+    @Test("Listener procesa initialSession sin sesión y permanece deslogueado")
+    func initialSessionWithoutSessionStaysLoggedOut() async throws {
+        let mock = AuthRepositoryMock()
+        let env = AppEnvironment.makeForTesting(authRepository: mock)
+        env.startAuthListener()
+        await Task.yield()
+
+        mock.emit(.initialSession, userId: nil)
+        try await Task.sleep(for: .milliseconds(100))
+
+        #expect(env.isAuthenticated == false)
+        #expect(env.currentUserId == nil)
     }
 
     // MARK: - Test 2: stopAuthListener detiene el procesamiento

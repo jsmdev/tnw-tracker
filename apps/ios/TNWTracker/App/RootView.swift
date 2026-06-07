@@ -86,7 +86,12 @@ private struct ActiveWorkoutCover: View {
         }
         .task {
             guard coordinator == nil else { return }
-            let c = appEnv.makeActiveWorkoutCoordinator()
+            guard let c = appEnv.makeActiveWorkoutCoordinator() else {
+                // Sin userId resuelto no se puede iniciar el workout: cerrar el cover.
+                appEnv.router.presentedActiveWorkout = nil
+                appEnv.activeCoordinator = nil
+                return
+            }
             coordinator = c
             appEnv.activeCoordinator = c
             // Fetch Session y arrancar el workout. Si la session no existe o el

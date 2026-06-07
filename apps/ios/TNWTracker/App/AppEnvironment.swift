@@ -128,23 +128,28 @@ public final class AppEnvironment {
 
         authListenerTask = Task { [weak self] in
             logger.info("Auth listener iniciado")
-            for await event in stream {
+            for await change in stream {
                 guard !Task.isCancelled else { break }
-                await self?.handle(authEvent: event)
+                await self?.handle(change)
             }
             logger.info("Auth listener terminado")
         }
     }
 
-    private func handle(authEvent event: AuthChangeEvent) async {
-        switch event {
-        case .signedIn:
-            isAuthenticated = true
-            logger.info("Auth: signedIn")
-            if let session = await authRepository.currentSession() {
-                currentUserId = UUID(uuidString: session.user.id.uuidString)
+    private func handle(_ change: AuthStateChange) async {
+        switch change.event {
+        // `.signedIn` (login fresco) e `.initialSession` (restauración al arrancar)
+        // traen el userId en el propio evento. Lo usamos directamente: re-consultar
+        // `auth.session` desde aquí devuelve nil por reentrancy del actor de auth.
+        case .signedIn, .initialSession:
+            if let uid = change.userId {
+                isAuthenticated = true
+                currentUserId = uid
+                logger.info("Auth: \(String(describing: change.event)) — userId resuelto")
+                try? await syncEngine.fullSync()
+            } else {
+                logger.info("Auth: \(String(describing: change.event)) sin sesión")
             }
-            try? await syncEngine.fullSync()
         case .signedOut:
             isAuthenticated = false
             currentUserId = nil
@@ -261,9 +266,12 @@ public final class AppEnvironment {
     }
 
     /// Factory para el coordinator del workout activo.
-    public func makeActiveWorkoutCoordinator() -> ActiveWorkoutCoordinator {
+    /// Devuelve `nil` si no hay userId resuelto — el callsite degrada cerrando el
+    /// cover en vez de crashear (antes hacía `fatalError`).
+    public func makeActiveWorkoutCoordinator() -> ActiveWorkoutCoordinator? {
         guard let uid = currentUserId else {
-            fatalError("makeActiveWorkoutCoordinator llamado sin userId — asegurar login previo")
+            logger.error("makeActiveWorkoutCoordinator sin userId — sesión no resuelta")
+            return nil
         }
         return ActiveWorkoutCoordinator(
             userId: uid,
