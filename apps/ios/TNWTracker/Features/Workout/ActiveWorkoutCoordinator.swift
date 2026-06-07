@@ -83,8 +83,13 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// Inicia el workout desde una Session template.
     public func start(from session: TNWTrackerKit.Session) async throws {
         guard phase == .idle else { return }
-        let existing = try await workoutRepository.fetchActive()
-        guard existing == nil else { return }
+        // Si quedó un workout activo/pausado sin terminar (p.ej. la app se cerró a
+        // mitad o un finish() previo falló en red), lo reanudamos en vez de crear uno
+        // nuevo o quedar en silencio con phase .idle (bug #88: spinner infinito).
+        if let existing = try await workoutRepository.fetchActive() {
+            adoptExisting(existing)
+            return
+        }
 
         let wkt = Workout(userId: userId, name: session.name)
         wkt.sessionId = session.id
@@ -114,8 +119,10 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// Inicia un workout ad-hoc sin Session template.
     public func startAdHoc(name: String) async throws {
         guard phase == .idle else { return }
-        let existing = try await workoutRepository.fetchActive()
-        guard existing == nil else { return }
+        if let existing = try await workoutRepository.fetchActive() {
+            adoptExisting(existing)
+            return
+        }
 
         let wkt = Workout(userId: userId, name: name)
         modelContext.insert(wkt)
@@ -129,6 +136,55 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         logger.info("Coordinator phase → .active (ad-hoc: \(name))")
         liveActivity.start(workoutId: wkt.id, workoutName: wkt.name)
         startElapsedTimer()
+    }
+
+    // MARK: - Resume residual
+
+    /// Reanuda un workout activo/pausado residual: restaura el estado del
+    /// coordinador desde SwiftData en vez de crear uno nuevo. Evita perder datos
+    /// y el spinner infinito (bug #88).
+    private func adoptExisting(_ existing: Workout) {
+        workout = existing
+        workoutExercises = existing.workoutExercises.sorted { $0.orderIndex < $1.orderIndex }
+        repopulateMaps(for: existing)
+        currentExerciseIndex = firstIncompleteExerciseIndex()
+        elapsedSeconds = max(0, Int(Date().timeIntervalSince(existing.startedAt)))
+        phase = (existing.status == .paused) ? .paused : .active
+        liveActivity.start(workoutId: existing.id, workoutName: existing.name)
+        if phase == .active { startElapsedTimer() }
+        let resumedId = existing.id
+        logger.info("Coordinator adoptó workout residual \(resumedId)")
+    }
+
+    /// Repuebla targetSetsMap/restSecondsMap desde la Session original del workout,
+    /// para que la evaluación de descansos siga funcionando tras reanudar.
+    private func repopulateMaps(for wkt: Workout) {
+        guard let sessionId = wkt.sessionId else { return }
+        var descriptor = FetchDescriptor<TNWTrackerKit.Session>(
+            predicate: #Predicate { $0.id == sessionId }
+        )
+        descriptor.fetchLimit = 1
+        guard let session = try? modelContext.fetch(descriptor).first else { return }
+        let byExercise = Dictionary(
+            session.sessionExercises.map { ($0.exerciseId, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        for we in workoutExercises {
+            guard let se = byExercise[we.exerciseId] else { continue }
+            if let ts = se.targetSets { targetSetsMap[we.id] = ts }
+            if let rs = se.restBetweenSetsSeconds { restSecondsMap[we.id] = rs }
+        }
+    }
+
+    /// Primer ejercicio cuyas series efectivas (sin calentamiento) no alcanzan su
+    /// objetivo; si todos están completos (o no hay objetivo), el último ejercicio.
+    private func firstIncompleteExerciseIndex() -> Int {
+        for (idx, we) in workoutExercises.enumerated() {
+            guard let target = targetSetsMap[we.id] else { continue }
+            let done = we.exerciseSets.count(where: { !$0.isWarmup })
+            if done < target { return idx }
+        }
+        return max(0, workoutExercises.count - 1)
     }
 
     // MARK: - Set logging
@@ -274,10 +330,17 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         await timerService.skip()
 
         wkt.durationSeconds = elapsedSeconds
-        try await workoutRepository.complete(wkt)
-        try await syncEngine.pushPendingChanges()
+        // Cierre LOCAL robusto: complete() marca completed y persiste en SwiftData
+        // antes de encolar el sync. El push remoto es best-effort — un fallo de red
+        // NO debe dejar el workout activo ni colgar el coordinador (bug #88).
+        do {
+            try await workoutRepository.complete(wkt)
+        } catch {
+            logger.error("finish: complete() falló al encolar sync; workout cerrado localmente igual: \(error)")
+        }
+        try? await syncEngine.pushPendingChanges()
 
-        // Invocar Edge Function para calcular PRs
+        // Invocar Edge Function para calcular PRs (best-effort)
         try? await supabase.functions.invoke(
             "calc_personal_records",
             options: .init(body: ["workout_id": wkt.id.uuidString])

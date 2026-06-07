@@ -1,4 +1,5 @@
 import Foundation
+import Supabase
 import SwiftData
 import Testing
 @testable import TNWTracker
@@ -130,6 +131,91 @@ struct ActiveWorkoutCoordinatorTests {
 
         #expect(warmupSet.rpe == nil)
         #expect(we.exerciseSets.count == 1)
+    }
+
+    // MARK: - Bug #88: reanudar residual + finish() atómico
+
+    /// Construye el coordinador real con dependencias reales sobre el `context`
+    /// in-memory. El `SupabaseClient` apunta a un host inválido a propósito: el
+    /// sync remoto falla de verdad (sin mocks), ejercitando el camino best-effort.
+    private func makeCoordinator(_ context: ModelContext, userId: UUID) -> ActiveWorkoutCoordinator {
+        guard let invalidURL = URL(string: "https://test.invalid") else {
+            preconditionFailure("URL de prueba inválido")
+        }
+        let supabase = SupabaseClient(supabaseURL: invalidURL, supabaseKey: "test-key")
+        let monitor = NetworkMonitor()
+        let engine = SyncEngineImpl(modelContext: context, supabase: supabase, networkMonitor: monitor)
+        let repo = WorkoutRepository(modelContext: context, syncEngine: engine)
+        let timer = RestTimerService(
+            supabase: supabase,
+            modelContext: context,
+            liveActivity: LiveActivityController(),
+            networkMonitor: monitor
+        )
+        return ActiveWorkoutCoordinator(
+            userId: userId,
+            workoutRepository: repo,
+            syncEngine: engine,
+            timerService: timer,
+            liveActivity: LiveActivityController(),
+            supabase: supabase,
+            modelContext: context
+        )
+    }
+
+    @Test("start(from:) reanuda un workout activo residual en vez de quedar en idle")
+    func startResumesResidualActiveWorkout() async throws {
+        let context = ModelContext(container)
+        let userId = UUID()
+
+        // Workout residual activo ya persistido (p.ej. la app se cerró a mitad)
+        let residual = Workout(userId: userId, name: "Residual")
+        context.insert(residual)
+        let we = WorkoutExercise(workoutId: residual.id, exerciseId: UUID(), orderIndex: 0)
+        context.insert(we)
+        residual.workoutExercises.append(we)
+        try context.save()
+
+        // Una Session distinta: NO debería usarse porque hay un residual
+        let session = Session(userId: userId, name: "Sesión nueva")
+        context.insert(session)
+        try context.save()
+
+        let coordinator = makeCoordinator(context, userId: userId)
+        try await coordinator.start(from: session)
+
+        // Reanudó el residual (no quedó en .idle ni creó otro workout)
+        #expect(coordinator.phase == .active)
+        #expect(coordinator.workout?.id == residual.id)
+        let count = try context.fetchCount(FetchDescriptor<Workout>())
+        #expect(count == 1)
+    }
+
+    @Test("finish() deja el workout completed y phase .idle aunque el sync remoto falle")
+    func finishIsAtomicEvenWhenRemoteSyncFails() async throws {
+        let context = ModelContext(container)
+        let userId = UUID()
+
+        let session = Session(userId: userId, name: "Sesión")
+        context.insert(session)
+        let se = SessionExercise(sessionId: session.id, exerciseId: UUID(), orderIndex: 0)
+        se.targetSets = 1
+        context.insert(se)
+        session.sessionExercises.append(se)
+        try context.save()
+
+        let coordinator = makeCoordinator(context, userId: userId)
+        try await coordinator.start(from: session)
+        #expect(coordinator.phase == .active)
+
+        // El SupabaseClient apunta a host inválido → pushPendingChanges() falla en
+        // red de verdad. finish() debe absorberlo y cerrar igual.
+        try await coordinator.finish()
+
+        #expect(coordinator.phase == .idle)
+        #expect(coordinator.completedWorkoutId != nil)
+        let workouts = try context.fetch(FetchDescriptor<Workout>())
+        #expect(workouts.first?.status == .completed)
     }
 }
 
