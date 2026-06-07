@@ -30,6 +30,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.tnwtracker.app
     dependencies:
       - target: TNWTrackerKit
+      - target: TNWTrackerWidget
     entitlements:
       path: TNWTracker/TNWTracker.entitlements
       properties:
@@ -43,7 +44,7 @@ targets:
     settings:
       base:
         INFOPLIST_FILE: TNWTrackerWidget/Info.plist
-        PRODUCT_BUNDLE_IDENTIFIER: com.tnwtracker.widget
+        PRODUCT_BUNDLE_IDENTIFIER: com.tnwtracker.app.widget
     dependencies:
       - target: TNWTrackerKit
     entitlements:
