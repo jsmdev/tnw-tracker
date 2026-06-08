@@ -20,7 +20,7 @@
     "@supabase/supabase-js": "^2.105.4",
     "@tailwindcss/postcss": "^4.3.0",
     "@tnw/zod-schemas": "workspace:*",
-    "next": "^16.2.6",
+    "next": "^16.2.7",
     "postcss": "^8.5.14",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
