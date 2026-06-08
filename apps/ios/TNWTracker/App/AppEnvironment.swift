@@ -253,6 +253,20 @@ public final class AppEnvironment {
         try context.save()
     }
 
+    // MARK: - Personal Records
+
+    /// Recalcula los récords personales de un workout en el backend (best-effort).
+    /// Reusa la Edge Function `calc_personal_records` que invoca el cierre del
+    /// workout activo. Útil tras editar series en el histórico: si la edición
+    /// supera un récord, el backend lo crea. Nota: la función es append-only —
+    /// no elimina récords si la edición baja un valor.
+    public func recalculatePersonalRecords(for workoutId: UUID) async {
+        try? await supabase.functions.invoke(
+            "calc_personal_records",
+            options: .init(body: ["workout_id": workoutId.uuidString])
+        )
+    }
+
     // MARK: - Factories
 
     /// Crea un `RestTimerService` vinculado al `LiveActivityController` compartido.
