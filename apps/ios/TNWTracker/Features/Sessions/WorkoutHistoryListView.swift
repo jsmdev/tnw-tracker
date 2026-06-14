@@ -167,12 +167,12 @@ struct WorkoutHistoryListView: View {
     let context = ModelContext(container)
     let userId = UUID()
     for (i, name) in ["Push Day", "Pull Day", "Legs Day"].enumerated() {
-        let w = Workout(userId: userId, name: name)
-        w.status = .completed
-        w.startedAt = Date().addingTimeInterval(Double(-i) * 86400)
-        w.completedAt = w.startedAt
-        w.durationSeconds = 3600 + i * 300
-        context.insert(w)
+        let workout = Workout(userId: userId, name: name)
+        workout.status = .completed
+        workout.startedAt = Date().addingTimeInterval(Double(-i) * 86400)
+        workout.completedAt = workout.startedAt
+        workout.durationSeconds = 3600 + i * 300
+        context.insert(workout)
     }
     try? context.save()
 
