@@ -1,42 +1,11 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { ALL_TYPES, computeBestRecords, type SetRow } from "./records.ts";
 
 interface Payload {
   workout_id: string;
 }
 
-interface ExerciseSetRow {
-  id: string;
-  reps: number | null;
-  weight: number | null;
-  weight_unit: string;
-  workout_exercise: { exercise_id: string; workout_id: string } | null;
-}
-
-interface CurrentPR {
-  record_type: string;
-  value: number;
-  weight_unit: string;
-}
-
-interface PRInsert {
-  user_id: string;
-  exercise_id: string;
-  exercise_set_id: string;
-  record_type: string;
-  value: number;
-  weight_unit: string;
-}
-
-function toKg(weight: number | null, unit: string): number {
-  if (weight == null) return 0;
-  return unit === "lb" ? weight * 0.453592 : weight;
-}
-
-function bestPR(prs: CurrentPR[], type: string): number {
-  const filtered = prs.filter((p) => p.record_type === type);
-  if (filtered.length === 0) return 0;
-  return Math.max(...filtered.map((p) => (p.weight_unit === "lb" ? p.value * 0.453592 : p.value)));
-}
+// MARK: - Handler
 
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") {
@@ -70,88 +39,83 @@ Deno.serve(async (req: Request) => {
 
   if (!workout) return new Response("Workout not found", { status: 404 });
 
-  const { data: sets } = await sb
-    .from("exercise_sets")
-    .select(
-      "id, reps, weight, weight_unit, workout_exercise:workout_exercises!inner(exercise_id, workout_id)"
-    )
-    .eq("workout_exercise.workout_id", payload.workout_id)
-    .not("completed_at", "is", null)
-    .eq("is_warmup", false);
+  // Ejercicios afectados por este workout (los únicos cuyos PRs pueden cambiar).
+  const { data: wes } = await sb
+    .from("workout_exercises")
+    .select("exercise_id")
+    .eq("workout_id", payload.workout_id);
 
-  if (!sets || sets.length === 0) {
-    return Response.json({ created: 0 });
+  const exerciseIds = [...new Set((wes ?? []).map((w) => w.exercise_id as string))];
+  if (exerciseIds.length === 0) {
+    return Response.json({ recomputed: 0 });
   }
 
-  // Agrupar por exercise_id
-  const byExercise = new Map<string, ExerciseSetRow[]>();
-  for (const s of sets as ExerciseSetRow[]) {
-    const eid = s.workout_exercise?.exercise_id;
-    if (!eid) continue;
-    if (!byExercise.has(eid)) byExercise.set(eid, []);
-    byExercise.get(eid)!.push(s);
-  }
+  let upserts = 0;
+  let deletes = 0;
+  const allSetIds: string[] = [];
+  const prSetIds: string[] = [];
 
-  const prsToInsert: PRInsert[] = [];
+  for (const exerciseId of exerciseIds) {
+    // TODAS las series completadas (sin calentamiento) del usuario para este
+    // ejercicio, en todos sus workouts — la verdadera base del récord histórico.
+    const { data: rawSets } = await sb
+      .from("exercise_sets")
+      .select(
+        "id, reps, weight, weight_unit, completed_at, " +
+          "workout_exercise:workout_exercises!inner(exercise_id, workout:workouts!inner(user_id))"
+      )
+      .eq("workout_exercise.exercise_id", exerciseId)
+      .eq("workout_exercise.workout.user_id", workout.user_id)
+      .not("completed_at", "is", null)
+      .eq("is_warmup", false);
 
-  for (const [exerciseId, exSets] of byExercise) {
-    const { data: currentPRs } = await sb
-      .from("personal_records")
-      .select("record_type, value, weight_unit")
-      .eq("user_id", workout.user_id)
-      .eq("exercise_id", exerciseId);
+    const sets = (rawSets ?? []) as unknown as SetRow[];
+    for (const s of sets) allSetIds.push(s.id);
 
-    const bestWeight = bestPR(currentPRs ?? [], "max_weight");
-    const bestReps = bestPR(currentPRs ?? [], "max_reps");
-    const bestVolume = bestPR(currentPRs ?? [], "max_volume");
+    const bests = computeBestRecords(sets);
+    const bestByType = new Map(bests.map((b) => [b.record_type, b]));
 
-    for (const s of exSets) {
-      const weightKg = toKg(s.weight, s.weight_unit);
-      const volume = (s.reps ?? 0) * weightKg;
-
-      if (weightKg > bestWeight) {
-        prsToInsert.push({
-          user_id: workout.user_id,
-          exercise_id: exerciseId,
-          exercise_set_id: s.id,
-          record_type: "max_weight",
-          value: weightKg,
-          weight_unit: "kg",
-        });
-      }
-      if ((s.reps ?? 0) > bestReps) {
-        prsToInsert.push({
-          user_id: workout.user_id,
-          exercise_id: exerciseId,
-          exercise_set_id: s.id,
-          record_type: "max_reps",
-          value: s.reps ?? 0,
-          weight_unit: "kg",
-        });
-      }
-      if (volume > bestVolume) {
-        prsToInsert.push({
-          user_id: workout.user_id,
-          exercise_id: exerciseId,
-          exercise_set_id: s.id,
-          record_type: "max_volume",
-          value: volume,
-          weight_unit: "kg",
-        });
+    for (const type of ALL_TYPES) {
+      const best = bestByType.get(type);
+      if (best) {
+        await sb.from("personal_records").upsert(
+          {
+            user_id: workout.user_id,
+            exercise_id: exerciseId,
+            exercise_set_id: best.exercise_set_id,
+            record_type: type,
+            value: best.value,
+            weight_unit: "kg",
+            achieved_at: best.achieved_at,
+          },
+          { onConflict: "user_id,exercise_id,record_type" }
+        );
+        prSetIds.push(best.exercise_set_id);
+        upserts++;
+      } else {
+        // Sin datos para este tipo → el récord vigente ya no tiene respaldo.
+        const { count } = await sb
+          .from("personal_records")
+          .delete({ count: "exact" })
+          .eq("user_id", workout.user_id)
+          .eq("exercise_id", exerciseId)
+          .eq("record_type", type);
+        deletes += count ?? 0;
       }
     }
   }
 
-  if (prsToInsert.length > 0) {
-    await sb.from("personal_records").insert(prsToInsert);
+  // Reflejar el flag is_personal_record en las series afectadas: primero a false
+  // en todas, luego true en las que sostienen un récord vigente.
+  if (allSetIds.length > 0) {
+    await sb.from("exercise_sets").update({ is_personal_record: false }).in("id", allSetIds);
+  }
+  if (prSetIds.length > 0) {
     await sb
       .from("exercise_sets")
       .update({ is_personal_record: true })
-      .in(
-        "id",
-        prsToInsert.map((p) => p.exercise_set_id)
-      );
+      .in("id", [...new Set(prSetIds)]);
   }
 
-  return Response.json({ created: prsToInsert.length });
+  return Response.json({ recomputed: exerciseIds.length, upserts, deletes });
 });

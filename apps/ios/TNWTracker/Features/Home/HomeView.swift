@@ -35,6 +35,14 @@ struct HomeView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
+                    appEnv.router.push(.sessionHistory)
+                } label: {
+                    Image(systemName: "clock.arrow.circlepath")
+                }
+                .accessibilityLabel("a11y.history-button")
+            }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button {
                     appEnv.router.push(.settings)
                 } label: {
                     Image(systemName: "gearshape")

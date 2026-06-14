@@ -58,7 +58,9 @@ struct RootView: View {
         case let .exerciseDetail(exerciseID):
             Text(verbatim: exerciseID.uuidString)
         case .sessionHistory:
-            SessionListView(container: modelContext.container)
+            WorkoutHistoryListView(container: modelContext.container)
+        case let .workoutDetail(workoutID):
+            WorkoutDetailView(workoutID: workoutID)
         case .settings:
             SettingsView()
         }
