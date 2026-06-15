@@ -18,13 +18,13 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
-    "@tailwindcss/postcss": "^4.3.0",
+    "@tailwindcss/postcss": "^4.3.1",
     "@tnw/zod-schemas": "workspace:*",
     "next": "^16.2.6",
     "postcss": "^8.5.14",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "tailwindcss": "^4.3.0",
+    "tailwindcss": "^4.3.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
