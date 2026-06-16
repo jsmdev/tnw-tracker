@@ -72,7 +72,7 @@ struct RestTimerView: View {
         startedAt: Date(),
         endsAt: Date().addingTimeInterval(90)
     )
-    return RestTimerView(state: state, onSkip: {})
+    RestTimerView(state: state, onSkip: {})
         .padding()
 }
 
@@ -84,6 +84,6 @@ struct RestTimerView: View {
         startedAt: Date(),
         endsAt: Date().addingTimeInterval(5)
     )
-    return RestTimerView(state: state, onSkip: {})
+    RestTimerView(state: state, onSkip: {})
         .padding()
 }
