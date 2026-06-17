@@ -25,9 +25,10 @@ export function CloneButton({ cloneUrl }: Props) {
     <button
       onClick={handleClone}
       disabled={loading}
+      aria-busy={loading}
       className="text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
     >
-      {loading ? "Clonando…" : "Clonar"}
+      <span aria-live="polite">{loading ? "Clonando…" : "Clonar"}</span>
     </button>
   );
 }

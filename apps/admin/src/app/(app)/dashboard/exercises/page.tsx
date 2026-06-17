@@ -14,7 +14,9 @@ export default async function ExercisesPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Ejercicios</h1>
+        <h1 id="page-title" className="text-2xl font-bold text-gray-900">
+          Ejercicios
+        </h1>
         <Link
           href="/dashboard/exercises/new"
           className="bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 transition-colors"
@@ -24,7 +26,7 @@ export default async function ExercisesPage() {
       </div>
 
       <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full text-sm">
+        <table aria-labelledby="page-title" className="w-full text-sm">
           <thead className="bg-gray-50 text-gray-500 uppercase text-xs tracking-wide">
             <tr>
               <th className="px-6 py-3 text-left">Nombre</th>

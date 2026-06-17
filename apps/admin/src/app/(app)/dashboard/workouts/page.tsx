@@ -56,7 +56,9 @@ export default async function WorkoutsPage({
   return (
     <div className="max-w-4xl">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Entrenamientos</h1>
+        <h1 id="page-title" className="text-2xl font-bold text-gray-900">
+          Entrenamientos
+        </h1>
         <span className="text-sm text-gray-500">{count ?? 0} en total</span>
       </div>
 
@@ -64,7 +66,7 @@ export default async function WorkoutsPage({
         {!workouts || workouts.length === 0 ? (
           <p className="p-6 text-sm text-gray-500">No hay entrenamientos registrados.</p>
         ) : (
-          <table className="w-full text-sm">
+          <table aria-labelledby="page-title" className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Nombre</th>
