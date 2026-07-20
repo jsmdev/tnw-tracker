@@ -21,7 +21,7 @@
   "devDependencies": {
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.0",
-    "@supabase/supabase-js": "^2.105.0",
+    "@supabase/supabase-js": "^2.110.7",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.4",
     "prettier": "^3.4.2",
