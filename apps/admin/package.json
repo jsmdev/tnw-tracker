@@ -21,7 +21,7 @@
     "@tailwindcss/postcss": "^4.3.0",
     "@tnw/zod-schemas": "workspace:*",
     "next": "^16.2.6",
-    "postcss": "^8.5.14",
+    "postcss": "^8.5.23",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "tailwindcss": "^4.3.0",
