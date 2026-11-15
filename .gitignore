@@ -59,4 +59,5 @@ pnpm-debug.log*
 apps/admin/next-env.d.ts
 
 .atl/
-.claude/
+.claude/*
+!.claude/skills/
