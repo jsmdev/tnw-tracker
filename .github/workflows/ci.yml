@@ -19,6 +19,19 @@ jobs:
       - run: supabase test db
       - run: supabase stop
 
+  training-data-format:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: pip install -r docs/training-data/requirements.txt
+      # Validates the examples against the schema and the cross-reference rules.
+      - run: python docs/training-data/validate.py
+
   codeql:
     runs-on: ubuntu-latest
     permissions:

@@ -1,0 +1,55 @@
+{
+  "formatVersion": "1.0",
+  "generatedAt": "2030-03-05T06:00:00Z",
+  "source": {
+    "provider": "gym-machines"
+  },
+  "locale": "en",
+  "exercises": [
+    {
+      "id": "515640ad-a992-59a9-a5d1-2164d75d4e80",
+      "externalRef": {
+        "provider": "gym-machines",
+        "id": "9999"
+      },
+      "name": "Group class",
+      "type": "cardio"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "8d691c26-2e17-58ee-b1f2-82a1b1098705",
+      "externalRef": {
+        "provider": "gym-machines",
+        "id": "2030-03-10"
+      },
+      "completedAt": "2030-03-10T11:00:00Z",
+      "timeZone": "Europe/Madrid",
+      "entries": [
+        {
+          "id": "4d08fd8c-5007-5222-a761-25fb4667880f",
+          "externalRef": {
+            "provider": "gym-machines",
+            "id": "7001"
+          },
+          "exerciseId": "515640ad-a992-59a9-a5d1-2164d75d4e80",
+          "order": 1,
+          "status": "done",
+          "completedAt": "2030-03-10T11:00:00Z",
+          "sets": [
+            {
+              "id": "15a9f009-7ba7-524c-8276-d6339fe67201",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "7001#1"
+              },
+              "order": 1,
+              "source": "imported",
+              "durationSeconds": 2700
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

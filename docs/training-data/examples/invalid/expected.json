@@ -1,0 +1,66 @@
+{
+  "timestamp-without-offset.json": {
+    "rule": "schema:format",
+    "path": "/sessions/0/completedAt"
+  },
+  "imported-set-without-external-ref.json": {
+    "rule": "schema:required",
+    "path": "/sessions/0/entries/0/sets/0"
+  },
+  "done-entry-without-sets.json": {
+    "rule": "schema:required",
+    "path": "/sessions/0/entries/1"
+  },
+  "skipped-entry-with-sets.json": {
+    "rule": "schema:not",
+    "path": "/sessions/0/entries/2"
+  },
+  "set-without-reps-or-duration.json": {
+    "rule": "schema:anyOf",
+    "path": "/sessions/0/entries/0/sets/0"
+  },
+  "distance-without-duration.json": {
+    "rule": "schema:dependentRequired",
+    "path": "/sessions/0/entries/0/sets/0"
+  },
+  "provider-specific-property.json": {
+    "rule": "schema:additionalProperties",
+    "path": "/sessions/0/entries/0/sets/0"
+  },
+  "default-decision-keeping-manual.json": {
+    "rule": "schema:const",
+    "path": "/sessions/0/entries/1/reconciliation/keep"
+  },
+  "unsupported-major-version.json": {
+    "rule": "schema:pattern",
+    "path": "/formatVersion"
+  },
+  "unknown-exercise.json": {
+    "rule": "exercise-reference",
+    "path": "/sessions/0/entries/0/exerciseId"
+  },
+  "duplicate-external-ref.json": {
+    "rule": "unique-external-ref",
+    "path": "/sets"
+  },
+  "same-exercise-in-two-entries.json": {
+    "rule": "one-entry-per-exercise",
+    "path": "/sessions/0/entries"
+  },
+  "mixed-sources-without-reconciliation.json": {
+    "rule": "reconciliation",
+    "path": "/sessions/0/entries/0"
+  },
+  "superseded-set-of-kept-source.json": {
+    "rule": "reconciliation",
+    "path": "/sessions/0/entries/1/sets/0"
+  },
+  "cardio-set-with-reps.json": {
+    "rule": "exercise-type",
+    "path": "/sessions/0/entries/1/sets/0"
+  },
+  "duration-longer-than-session.json": {
+    "rule": "range",
+    "path": "/sessions/0/durationSeconds"
+  }
+}

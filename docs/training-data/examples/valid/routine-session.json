@@ -1,0 +1,216 @@
+{
+  "formatVersion": "1.0",
+  "generatedAt": "2030-03-05T06:00:00Z",
+  "source": {
+    "provider": "app"
+  },
+  "locale": "en",
+  "exercises": [
+    {
+      "id": "0fefa5bf-6860-49cb-a7e0-cad56994ef90",
+      "name": "Dumbbell row",
+      "type": "strength",
+      "equipment": "free_weights",
+      "muscleGroups": [
+        {
+          "muscle": "back",
+          "role": "primary"
+        },
+        {
+          "muscle": "biceps",
+          "role": "secondary"
+        }
+      ]
+    },
+    {
+      "id": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+      "externalRef": {
+        "provider": "gym-machines",
+        "id": "1002"
+      },
+      "name": "Chest press",
+      "type": "strength",
+      "equipment": "connected_machine",
+      "muscleGroups": [
+        {
+          "muscle": "chest",
+          "role": "primary"
+        },
+        {
+          "muscle": "triceps",
+          "role": "secondary"
+        }
+      ]
+    },
+    {
+      "id": "0a9fd207-e5e9-4b51-abc5-ee24e5d37f21",
+      "name": "Push-up",
+      "type": "bodyweight",
+      "equipment": "none",
+      "muscleGroups": [
+        {
+          "muscle": "chest",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "c6ca90c2-d93c-459a-9f5d-55084e9e2e1b",
+      "name": "Plank",
+      "type": "bodyweight",
+      "equipment": "none",
+      "muscleGroups": [
+        {
+          "muscle": "core",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "8be278ff-d5ff-4ecb-8ae6-62e8f54efa85",
+      "name": "Goblet squat",
+      "type": "strength",
+      "equipment": "free_weights"
+    }
+  ],
+  "routines": [
+    {
+      "id": "73e92494-cc90-49f4-b3ed-3f4b4271d7aa",
+      "name": "Upper body A",
+      "description": "Push and pull, about 45 minutes.",
+      "items": [
+        {
+          "order": 1,
+          "exerciseId": "0fefa5bf-6860-49cb-a7e0-cad56994ef90",
+          "targetSets": 3,
+          "targetReps": {
+            "min": 8,
+            "max": 12
+          },
+          "targetWeight": {
+            "value": 18,
+            "unit": "kg"
+          },
+          "restSeconds": 90
+        },
+        {
+          "order": 2,
+          "exerciseId": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+          "targetSets": 3,
+          "targetReps": {
+            "min": 8,
+            "max": 10
+          },
+          "restSeconds": 120
+        },
+        {
+          "order": 3,
+          "exerciseId": "c6ca90c2-d93c-459a-9f5d-55084e9e2e1b",
+          "targetSets": 2,
+          "targetDurationSeconds": 45,
+          "restSeconds": 60,
+          "notes": "Stop when your hips drop."
+        }
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "id": "f8df906a-93a6-4f2e-a882-5e2c2bbfaec4",
+      "name": "Upper body A",
+      "startedAt": "2030-03-06T17:05:00Z",
+      "completedAt": "2030-03-06T17:48:30Z",
+      "timeZone": "Europe/Madrid",
+      "durationSeconds": 2100,
+      "routineId": "73e92494-cc90-49f4-b3ed-3f4b4271d7aa",
+      "notes": "Short on time.",
+      "entries": [
+        {
+          "id": "a9417979-b090-45ce-bf4d-266e66b2cf74",
+          "exerciseId": "0fefa5bf-6860-49cb-a7e0-cad56994ef90",
+          "order": 1,
+          "status": "done",
+          "completedAt": "2030-03-06T17:13:05Z",
+          "sets": [
+            {
+              "id": "7f51dc58-d82f-46fb-b32c-a7d9c4c88ad5",
+              "order": 1,
+              "source": "manual",
+              "reps": 12,
+              "weight": {
+                "value": 18,
+                "unit": "kg"
+              },
+              "rir": 3,
+              "restSeconds": 90,
+              "completedAt": "2030-03-06T17:08:10Z"
+            },
+            {
+              "id": "e5c68112-dfa9-402c-a90c-c363d4bbbae2",
+              "order": 2,
+              "source": "manual",
+              "reps": 10,
+              "weight": {
+                "value": 18,
+                "unit": "kg"
+              },
+              "rir": 2,
+              "restSeconds": 95,
+              "completedAt": "2030-03-06T17:10:40Z"
+            },
+            {
+              "id": "e0edea41-8823-4c22-8c41-08939ebb1d22",
+              "order": 3,
+              "source": "manual",
+              "reps": 9,
+              "weight": {
+                "value": 18,
+                "unit": "kg"
+              },
+              "rir": 1,
+              "completedAt": "2030-03-06T17:13:05Z"
+            }
+          ]
+        },
+        {
+          "id": "8f25ddff-9f29-4e8b-916d-5694c829477b",
+          "exerciseId": "0a9fd207-e5e9-4b51-abc5-ee24e5d37f21",
+          "replacedExerciseId": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+          "order": 2,
+          "status": "done",
+          "notes": "Machine was busy.",
+          "sets": [
+            {
+              "id": "e948293c-61d1-4767-9fca-11a2cb9727fb",
+              "order": 1,
+              "source": "manual",
+              "reps": 15,
+              "rir": 2,
+              "completedAt": "2030-03-06T17:20:00Z"
+            },
+            {
+              "id": "55748755-e3fd-42d4-96e2-8ee2f4c50086",
+              "order": 2,
+              "source": "manual",
+              "reps": 12,
+              "rir": 1,
+              "completedAt": "2030-03-06T17:22:30Z"
+            }
+          ]
+        },
+        {
+          "id": "102da288-cb86-441b-b05d-7a8432249795",
+          "exerciseId": "c6ca90c2-d93c-459a-9f5d-55084e9e2e1b",
+          "order": 3,
+          "status": "skipped"
+        },
+        {
+          "id": "d379bb95-9aae-4c36-8a75-47f68c53b648",
+          "exerciseId": "8be278ff-d5ff-4ecb-8ae6-62e8f54efa85",
+          "order": 4,
+          "status": "removed"
+        }
+      ]
+    }
+  ]
+}

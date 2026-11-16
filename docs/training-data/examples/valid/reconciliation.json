@@ -1,0 +1,223 @@
+{
+  "formatVersion": "1.0",
+  "generatedAt": "2030-03-05T06:00:00Z",
+  "source": {
+    "provider": "app"
+  },
+  "locale": "en",
+  "exercises": [
+    {
+      "id": "766bb2d9-a0fe-5bab-a8ac-b5239930867e",
+      "externalRef": {
+        "provider": "gym-machines",
+        "id": "1001"
+      },
+      "name": "Leg press",
+      "type": "strength",
+      "equipment": "connected_machine",
+      "muscleGroups": [
+        {
+          "muscle": "quadriceps",
+          "role": "primary"
+        },
+        {
+          "muscle": "glutes",
+          "role": "secondary"
+        }
+      ],
+      "instructions": {
+        "setup": [
+          "Sit with your back flat against the pad.",
+          "Place your feet hip-width apart on the platform."
+        ],
+        "execution": [
+          "Push the platform away until your legs are almost straight.",
+          "Return slowly to the start."
+        ],
+        "tips": ["Keep your knees in line with your toes."]
+      },
+      "media": {
+        "image": {
+          "uri": "exercises/leg-press/image.jpg"
+        },
+        "video": {
+          "uri": "exercises/leg-press/video.mp4"
+        }
+      }
+    },
+    {
+      "id": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+      "externalRef": {
+        "provider": "gym-machines",
+        "id": "1002"
+      },
+      "name": "Chest press",
+      "type": "strength",
+      "equipment": "connected_machine",
+      "muscleGroups": [
+        {
+          "muscle": "chest",
+          "role": "primary"
+        },
+        {
+          "muscle": "triceps",
+          "role": "secondary"
+        }
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "id": "a9b6c5c3-5d89-4eb9-b661-75d614fb7041",
+      "startedAt": "2030-03-11T18:00:00Z",
+      "completedAt": "2030-03-11T18:40:00Z",
+      "timeZone": "Europe/Madrid",
+      "entries": [
+        {
+          "id": "f9e627d1-1538-4078-b0dc-d97f990c8aca",
+          "externalRef": {
+            "provider": "gym-machines",
+            "id": "8001"
+          },
+          "exerciseId": "766bb2d9-a0fe-5bab-a8ac-b5239930867e",
+          "order": 1,
+          "status": "done",
+          "reconciliation": {
+            "keep": "imported",
+            "decidedBy": "default",
+            "decidedAt": "2030-03-11T21:00:00Z"
+          },
+          "sets": [
+            {
+              "id": "23e94c1d-c65b-4e8d-b912-26014583a177",
+              "order": 1,
+              "source": "manual",
+              "reps": 12,
+              "weight": {
+                "value": 80,
+                "unit": "kg"
+              },
+              "completedAt": "2030-03-11T18:04:00Z",
+              "superseded": true
+            },
+            {
+              "id": "a82e8502-a6ee-4f15-a3c6-0d806664914e",
+              "order": 2,
+              "source": "manual",
+              "reps": 10,
+              "weight": {
+                "value": 80,
+                "unit": "kg"
+              },
+              "completedAt": "2030-03-11T18:07:00Z",
+              "superseded": true
+            },
+            {
+              "id": "d96681bc-af98-550d-a952-23aaa02b7948",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "8001#1"
+              },
+              "order": 1,
+              "source": "imported",
+              "reps": 12,
+              "weight": {
+                "value": 80,
+                "unit": "kg"
+              },
+              "durationSeconds": 40
+            },
+            {
+              "id": "32d4728a-4b1a-5f99-81eb-6dfb1a7ca2f6",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "8001#2"
+              },
+              "order": 2,
+              "source": "imported",
+              "reps": 11,
+              "weight": {
+                "value": 82.5,
+                "unit": "kg"
+              },
+              "durationSeconds": 39
+            }
+          ]
+        },
+        {
+          "id": "23cbefb0-3422-4d19-92a5-1f0727fc40c0",
+          "externalRef": {
+            "provider": "gym-machines",
+            "id": "8002"
+          },
+          "exerciseId": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+          "order": 2,
+          "status": "done",
+          "reconciliation": {
+            "keep": "manual",
+            "decidedBy": "user",
+            "decidedAt": "2030-03-12T08:15:00Z"
+          },
+          "sets": [
+            {
+              "id": "989f297d-c2d0-4f57-a703-46f6c9f3c795",
+              "order": 1,
+              "source": "manual",
+              "reps": 10,
+              "weight": {
+                "value": 42.5,
+                "unit": "kg"
+              },
+              "rir": 2,
+              "completedAt": "2030-03-11T18:20:00Z"
+            },
+            {
+              "id": "3d5eb140-9f00-498e-aaf6-2d171bbcb891",
+              "order": 2,
+              "source": "manual",
+              "reps": 8,
+              "weight": {
+                "value": 42.5,
+                "unit": "kg"
+              },
+              "rir": 1,
+              "completedAt": "2030-03-11T18:23:00Z"
+            },
+            {
+              "id": "411fba10-d506-5b4c-9545-9e47b015ad9f",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "8002#1"
+              },
+              "order": 1,
+              "source": "imported",
+              "reps": 10,
+              "weight": {
+                "value": 40,
+                "unit": "kg"
+              },
+              "durationSeconds": 33,
+              "superseded": true
+            },
+            {
+              "id": "f668c489-0d44-5df2-ab54-b7d8e2dce765",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "8002#2"
+              },
+              "order": 2,
+              "source": "imported",
+              "reps": 8,
+              "weight": {
+                "value": 40,
+                "unit": "kg"
+              },
+              "durationSeconds": 30,
+              "superseded": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

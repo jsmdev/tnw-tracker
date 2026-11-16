@@ -1,0 +1,82 @@
+{
+  "formatVersion": "1.0",
+  "generatedAt": "2030-03-05T06:00:00Z",
+  "source": {
+    "provider": "app"
+  },
+  "locale": "en",
+  "exercises": [
+    {
+      "id": "0a9fd207-e5e9-4b51-abc5-ee24e5d37f21",
+      "name": "Push-up",
+      "type": "bodyweight",
+      "equipment": "none",
+      "muscleGroups": [
+        {
+          "muscle": "chest",
+          "role": "primary"
+        }
+      ]
+    },
+    {
+      "id": "c6ca90c2-d93c-459a-9f5d-55084e9e2e1b",
+      "name": "Plank",
+      "type": "bodyweight",
+      "equipment": "none",
+      "muscleGroups": [
+        {
+          "muscle": "core",
+          "role": "primary"
+        }
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "id": "87e0ff9c-ac59-422d-9a86-9794cd200699",
+      "completedAt": "2030-03-08T07:30:00Z",
+      "timeZone": "Europe/Madrid",
+      "entries": [
+        {
+          "id": "9753c296-e1da-4e09-9708-cc99ab3b437f",
+          "exerciseId": "0a9fd207-e5e9-4b51-abc5-ee24e5d37f21",
+          "order": 1,
+          "status": "done",
+          "sets": [
+            {
+              "id": "dff8760d-115f-4265-9bec-1fe526d9be87",
+              "order": 1,
+              "source": "manual"
+            },
+            {
+              "id": "ca5283cc-5bdb-449a-81ea-dc5e49534c56",
+              "order": 2,
+              "source": "manual",
+              "reps": 16
+            }
+          ]
+        },
+        {
+          "id": "be8374c2-0ae2-48bb-a370-8f9e2197b329",
+          "exerciseId": "c6ca90c2-d93c-459a-9f5d-55084e9e2e1b",
+          "order": 2,
+          "status": "done",
+          "sets": [
+            {
+              "id": "3b8b59ee-dc1f-4d53-ab51-7f547b8c0368",
+              "order": 1,
+              "source": "manual",
+              "durationSeconds": 60
+            },
+            {
+              "id": "20024e29-74e3-42b0-9a95-c40ec7167965",
+              "order": 2,
+              "source": "manual",
+              "durationSeconds": 45
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
