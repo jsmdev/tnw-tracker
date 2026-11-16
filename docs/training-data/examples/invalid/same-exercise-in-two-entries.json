@@ -1,0 +1,183 @@
+{
+  "formatVersion": "1.0",
+  "generatedAt": "2030-03-05T06:00:00Z",
+  "source": {
+    "provider": "gym-machines"
+  },
+  "locale": "en",
+  "exercises": [
+    {
+      "id": "766bb2d9-a0fe-5bab-a8ac-b5239930867e",
+      "externalRef": {
+        "provider": "gym-machines",
+        "id": "1001"
+      },
+      "name": "Leg press",
+      "type": "strength",
+      "equipment": "connected_machine",
+      "muscleGroups": [
+        {
+          "muscle": "quadriceps",
+          "role": "primary"
+        },
+        {
+          "muscle": "glutes",
+          "role": "secondary"
+        }
+      ],
+      "instructions": {
+        "setup": [
+          "Sit with your back flat against the pad.",
+          "Place your feet hip-width apart on the platform."
+        ],
+        "execution": [
+          "Push the platform away until your legs are almost straight.",
+          "Return slowly to the start."
+        ],
+        "tips": ["Keep your knees in line with your toes."]
+      },
+      "media": {
+        "image": {
+          "uri": "exercises/leg-press/image.jpg"
+        },
+        "video": {
+          "uri": "exercises/leg-press/video.mp4"
+        }
+      }
+    },
+    {
+      "id": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+      "externalRef": {
+        "provider": "gym-machines",
+        "id": "1002"
+      },
+      "name": "Chest press",
+      "type": "strength",
+      "equipment": "connected_machine",
+      "muscleGroups": [
+        {
+          "muscle": "chest",
+          "role": "primary"
+        },
+        {
+          "muscle": "triceps",
+          "role": "secondary"
+        }
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "id": "095a8825-0691-55e9-a479-fb8a433501de",
+      "externalRef": {
+        "provider": "gym-machines",
+        "id": "2030-03-04"
+      },
+      "completedAt": "2030-03-04T18:42:10Z",
+      "timeZone": "Europe/Madrid",
+      "entries": [
+        {
+          "id": "c3c8dba1-47bd-56c8-9432-f45bee746f0e",
+          "externalRef": {
+            "provider": "gym-machines",
+            "id": "5001"
+          },
+          "exerciseId": "766bb2d9-a0fe-5bab-a8ac-b5239930867e",
+          "order": 1,
+          "status": "done",
+          "completedAt": "2030-03-04T18:31:40Z",
+          "sets": [
+            {
+              "id": "cebc0171-deb0-5e94-b4b9-8ce9f8383365",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "5001#1"
+              },
+              "order": 1,
+              "source": "imported",
+              "reps": 12,
+              "weight": {
+                "value": 80,
+                "unit": "kg"
+              },
+              "durationSeconds": 41
+            },
+            {
+              "id": "e7122979-a4c9-535c-93f1-0ec838e3c8b4",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "5001#2"
+              },
+              "order": 2,
+              "source": "imported",
+              "reps": 10,
+              "weight": {
+                "value": 85,
+                "unit": "kg"
+              },
+              "durationSeconds": 38
+            },
+            {
+              "id": "91f34a3f-5c8d-5d23-aba1-f06ac982f987",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "5001#3"
+              },
+              "order": 3,
+              "source": "imported",
+              "reps": 8,
+              "weight": {
+                "value": 90,
+                "unit": "kg"
+              },
+              "durationSeconds": 35
+            }
+          ]
+        },
+        {
+          "id": "e7e857d5-3f4e-5098-9dd8-3977ef4bc581",
+          "externalRef": {
+            "provider": "gym-machines",
+            "id": "5002"
+          },
+          "exerciseId": "766bb2d9-a0fe-5bab-a8ac-b5239930867e",
+          "order": 2,
+          "status": "done",
+          "completedAt": "2030-03-04T18:42:10Z",
+          "sets": [
+            {
+              "id": "6eb1a352-6987-530e-af56-f3d8e9a0b392",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "5002#1"
+              },
+              "order": 1,
+              "source": "imported",
+              "reps": 10,
+              "weight": {
+                "value": 40,
+                "unit": "kg"
+              },
+              "durationSeconds": 36
+            },
+            {
+              "id": "cf632636-3693-5525-ab78-986d2040189a",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "5002#2"
+              },
+              "order": 2,
+              "source": "imported",
+              "reps": 9,
+              "weight": {
+                "value": 40,
+                "unit": "kg"
+              },
+              "durationSeconds": 34
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

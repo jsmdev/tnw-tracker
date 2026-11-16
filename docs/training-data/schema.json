@@ -1,0 +1,536 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jsmdev/tnw-tracker/docs/training-data/schema.json",
+  "title": "Training data bundle",
+  "description": "Provider-neutral exchange format for exercises, routines and performed sessions. See docs/training-data-format.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["formatVersion", "generatedAt", "source", "exercises", "sessions"],
+  "properties": {
+    "formatVersion": {
+      "description": "Major.minor version of this format. Readers reject a major version they do not know.",
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "generatedAt": {
+      "$ref": "#/$defs/instant"
+    },
+    "source": {
+      "description": "System that produced the bundle.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider"],
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/provider"
+        }
+      }
+    },
+    "locale": {
+      "description": "BCP 47 language tag of every human-readable text in the bundle.",
+      "type": "string",
+      "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+    },
+    "exercises": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/exercise"
+      }
+    },
+    "routines": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/routine"
+      }
+    },
+    "sessions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/session"
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "description": "Identifier owned by this format: a UUID in canonical lower-case form. Stable across re-imports.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "instant": {
+      "description": "RFC 3339 timestamp with an explicit offset, normally UTC.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "provider": {
+      "description": "Opaque slug of the system an item comes from. It never names a vendor feature.",
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "externalRef": {
+      "description": "Identity of an item in the system it was imported from. Unique per provider and entity type.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "id"],
+      "properties": {
+        "provider": {
+          "$ref": "#/$defs/provider"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "origin": {
+      "description": "Who recorded the data: the user by hand in the app, or an import.",
+      "enum": ["manual", "imported"]
+    },
+    "seconds": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "position": {
+      "description": "1-based order.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "weight": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": {
+          "type": "number",
+          "minimum": 0
+        },
+        "unit": {
+          "enum": ["kg", "lb"]
+        }
+      }
+    },
+    "mediaRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri"],
+      "properties": {
+        "uri": {
+          "description": "Absolute URI, or a path relative to the media root agreed with the receiver.",
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "exercise": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "type"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "externalRef": {
+          "$ref": "#/$defs/externalRef"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "description": "How the exercise is logged: strength = reps with weight, bodyweight = reps or time without added weight, cardio = duration and distance.",
+          "enum": ["strength", "bodyweight", "cardio"]
+        },
+        "equipment": {
+          "enum": [
+            "none",
+            "free_weights",
+            "machine",
+            "connected_machine",
+            "cardio_machine",
+            "other"
+          ]
+        },
+        "muscleGroups": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["muscle", "role"],
+            "properties": {
+              "muscle": {
+                "enum": [
+                  "chest",
+                  "back",
+                  "shoulders",
+                  "biceps",
+                  "triceps",
+                  "forearms",
+                  "core",
+                  "glutes",
+                  "quadriceps",
+                  "hamstrings",
+                  "calves",
+                  "hips",
+                  "neck"
+                ]
+              },
+              "role": {
+                "enum": ["primary", "secondary"]
+              }
+            }
+          }
+        },
+        "instructions": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "setup": {
+              "$ref": "#/$defs/steps"
+            },
+            "execution": {
+              "$ref": "#/$defs/steps"
+            },
+            "tips": {
+              "$ref": "#/$defs/steps"
+            }
+          }
+        },
+        "media": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "image": {
+              "$ref": "#/$defs/mediaRef"
+            },
+            "video": {
+              "$ref": "#/$defs/mediaRef"
+            }
+          }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "routine": {
+      "description": "Session template.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "items"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "externalRef": {
+          "$ref": "#/$defs/externalRef"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/routineItem"
+          }
+        }
+      }
+    },
+    "routineItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order", "exerciseId"],
+      "properties": {
+        "order": {
+          "$ref": "#/$defs/position"
+        },
+        "exerciseId": {
+          "$ref": "#/$defs/id"
+        },
+        "targetSets": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "targetReps": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "max"],
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "targetWeight": {
+          "$ref": "#/$defs/weight"
+        },
+        "targetDurationSeconds": {
+          "$ref": "#/$defs/seconds"
+        },
+        "restSeconds": {
+          "$ref": "#/$defs/seconds"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "session": {
+      "description": "One visit to the gym.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "completedAt", "timeZone", "entries"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "externalRef": {
+          "$ref": "#/$defs/externalRef"
+        },
+        "name": {
+          "type": "string"
+        },
+        "startedAt": {
+          "$ref": "#/$defs/instant"
+        },
+        "completedAt": {
+          "$ref": "#/$defs/instant"
+        },
+        "timeZone": {
+          "description": "IANA time zone the session took place in, used to show local dates.",
+          "type": "string",
+          "pattern": "^[A-Za-z_]+(/[A-Za-z0-9_+-]+)+$|^UTC$"
+        },
+        "durationSeconds": {
+          "$ref": "#/$defs/seconds"
+        },
+        "routineId": {
+          "$ref": "#/$defs/id"
+        },
+        "notes": {
+          "type": "string"
+        },
+        "entries": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/entry"
+          }
+        }
+      }
+    },
+    "entry": {
+      "description": "One exercise inside a session.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "exerciseId", "order", "status"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "externalRef": {
+          "$ref": "#/$defs/externalRef"
+        },
+        "exerciseId": {
+          "$ref": "#/$defs/id"
+        },
+        "order": {
+          "$ref": "#/$defs/position"
+        },
+        "status": {
+          "description": "done = performed; skipped = planned but not performed; removed = taken out of the session by the user.",
+          "enum": ["done", "skipped", "removed"]
+        },
+        "replacedExerciseId": {
+          "description": "Exercise the routine planned in this position, when the user swapped it.",
+          "$ref": "#/$defs/id"
+        },
+        "completedAt": {
+          "description": "When the exercise was finished, if known.",
+          "$ref": "#/$defs/instant"
+        },
+        "sets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/set"
+          },
+          "description": "Strength, bodyweight and cardio data. Superseded sets and sets of removed entries do not count."
+        },
+        "reconciliation": {
+          "$ref": "#/$defs/reconciliation"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "done"
+              }
+            }
+          },
+          "then": {
+            "required": ["sets"]
+          }
+        },
+        {
+          "if": {
+            "required": ["status"],
+            "properties": {
+              "status": {
+                "const": "skipped"
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": ["sets"]
+            }
+          }
+        }
+      ]
+    },
+    "set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "order", "source"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "externalRef": {
+          "$ref": "#/$defs/externalRef"
+        },
+        "order": {
+          "$ref": "#/$defs/position"
+        },
+        "source": {
+          "$ref": "#/$defs/origin"
+        },
+        "reps": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "weight": {
+          "description": "Omitted for bodyweight sets. Zero means a real load of zero, never 'unknown'.",
+          "$ref": "#/$defs/weight"
+        },
+        "durationSeconds": {
+          "description": "Length of a timed set or of a cardio segment, or time under load when the source reports it.",
+          "$ref": "#/$defs/seconds"
+        },
+        "distanceMeters": {
+          "description": "Distance covered, for cardio.",
+          "type": "number",
+          "minimum": 0
+        },
+        "rir": {
+          "description": "Reps in reserve.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "restSeconds": {
+          "$ref": "#/$defs/seconds"
+        },
+        "completedAt": {
+          "$ref": "#/$defs/instant"
+        },
+        "superseded": {
+          "description": "True when reconciliation kept the other source. Superseded sets stay stored but do not count. Defaults to false.",
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "anyOf": [
+            {
+              "required": ["reps"]
+            },
+            {
+              "required": ["durationSeconds"]
+            }
+          ]
+        },
+        {
+          "$ref": "#/$defs/importedNeedsExternalRef"
+        }
+      ],
+      "dependentRequired": {
+        "distanceMeters": ["durationSeconds"]
+      }
+    },
+    "importedNeedsExternalRef": {
+      "if": {
+        "required": ["source"],
+        "properties": {
+          "source": {
+            "const": "imported"
+          }
+        }
+      },
+      "then": {
+        "required": ["externalRef"]
+      },
+      "description": "Imported data must carry the key that prevents duplicates."
+    },
+    "reconciliation": {
+      "description": "Present when an entry holds both manual and imported sets.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keep", "decidedBy"],
+      "properties": {
+        "keep": {
+          "$ref": "#/$defs/origin"
+        },
+        "decidedBy": {
+          "description": "default = the import rule applied; user = the user chose.",
+          "enum": ["default", "user"]
+        },
+        "decidedAt": {
+          "$ref": "#/$defs/instant"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["decidedBy"],
+            "properties": {
+              "decidedBy": {
+                "const": "default"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "keep": {
+                "const": "imported"
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

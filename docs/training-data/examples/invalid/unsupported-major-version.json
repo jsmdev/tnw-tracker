@@ -1,0 +1,95 @@
+{
+  "formatVersion": "2.0",
+  "generatedAt": "2030-03-05T06:00:00Z",
+  "source": {
+    "provider": "app"
+  },
+  "locale": "en",
+  "exercises": [
+    {
+      "id": "0e340229-e383-5ddf-9b75-4e990a4ddccc",
+      "externalRef": {
+        "provider": "gym-machines",
+        "id": "2001"
+      },
+      "name": "Treadmill run",
+      "type": "cardio",
+      "equipment": "cardio_machine"
+    },
+    {
+      "id": "7326ed61-faec-45a1-bf87-382506602686",
+      "name": "Outdoor walk",
+      "type": "cardio",
+      "equipment": "none"
+    }
+  ],
+  "sessions": [
+    {
+      "id": "d105d829-96e7-4db0-b2c2-825adf3c1a37",
+      "completedAt": "2030-03-09T09:15:00Z",
+      "timeZone": "Europe/Madrid",
+      "entries": [
+        {
+          "id": "51a8b4ee-8946-59c3-b2be-660084de7bbd",
+          "externalRef": {
+            "provider": "gym-machines",
+            "id": "6001"
+          },
+          "exerciseId": "0e340229-e383-5ddf-9b75-4e990a4ddccc",
+          "order": 1,
+          "status": "done",
+          "completedAt": "2030-03-09T08:50:00Z",
+          "sets": [
+            {
+              "id": "2ab4fc2c-1029-5cf8-b4ed-1d6fb155536e",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "6001#1"
+              },
+              "order": 1,
+              "source": "imported",
+              "durationSeconds": 300,
+              "distanceMeters": 650
+            },
+            {
+              "id": "c6e345f7-a7f1-5e55-80bd-dfc983135459",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "6001#2"
+              },
+              "order": 2,
+              "source": "imported",
+              "durationSeconds": 900,
+              "distanceMeters": 2600
+            },
+            {
+              "id": "b5e70ee2-5af2-568d-b9db-343e0655926d",
+              "externalRef": {
+                "provider": "gym-machines",
+                "id": "6001#3"
+              },
+              "order": 3,
+              "source": "imported",
+              "durationSeconds": 300,
+              "distanceMeters": 700
+            }
+          ]
+        },
+        {
+          "id": "d85e1660-0fa4-4dfd-a2fa-da6a948b5867",
+          "exerciseId": "7326ed61-faec-45a1-bf87-382506602686",
+          "order": 2,
+          "status": "done",
+          "sets": [
+            {
+              "id": "138af0b5-61ae-4082-985c-d3c9513bd703",
+              "order": 1,
+              "source": "manual",
+              "durationSeconds": 1200
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
