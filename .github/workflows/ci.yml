@@ -8,48 +8,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo lint --filter='[origin/${{ github.base_ref }}]'
-
-  typecheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo typecheck --filter='[origin/${{ github.base_ref }}]'
-
-  test-web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo test --filter='[origin/${{ github.base_ref }}]'
-
   test-pgtap:
     runs-on: ubuntu-latest
     steps:
@@ -60,18 +18,6 @@ jobs:
       - run: supabase start
       - run: supabase test db
       - run: supabase stop
-
-  build-admin:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm turbo build --filter=admin
 
   codeql:
     runs-on: ubuntu-latest
@@ -100,47 +46,3 @@ jobs:
         if: steps.swift-check.outputs.count != '0'
         with:
           args: --strict apps/ios
-
-  e2e-playwright:
-    needs: build-admin
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - uses: supabase/setup-cli@v2
-        with:
-          version: latest
-      - name: Levantar Supabase local
-        run: supabase start
-      - name: Debug supabase status JSON schema
-        run: supabase status -o json
-      - name: Exportar Supabase keys
-        run: |
-          STATUS=$(supabase status -o json)
-          SERVICE_ROLE=$(echo "$STATUS" | jq -r '.service_role_key // .SERVICE_ROLE_KEY // ."service_role key" // empty')
-          ANON=$(echo "$STATUS" | jq -r '.anon_key // .ANON_KEY // ."anon key" // empty')
-          if [ -z "$SERVICE_ROLE" ] || [ -z "$ANON" ]; then
-            echo "::error::No pude extraer keys del supabase status JSON. Revisar el step de debug arriba."
-            exit 1
-          fi
-          echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE" >> $GITHUB_ENV
-          echo "SUPABASE_ANON_KEY=$ANON" >> $GITHUB_ENV
-      - name: Aplicar migraciones y seed
-        run: |
-          supabase db reset
-          node supabase/tests/seed-e2e.mjs
-      - run: pnpm --filter admin exec playwright install --with-deps chromium
-      - name: Ejecutar tests E2E
-        run: pnpm --filter admin test:e2e
-        env:
-          CI: "true"
-          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.SUPABASE_ANON_KEY }}
-      - name: Detener Supabase
-        if: always()
-        run: supabase stop

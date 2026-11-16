@@ -3,29 +3,17 @@
   "version": "0.0.1",
   "private": true,
   "packageManager": "pnpm@9.15.0",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
     "prepare": "husky",
-    "lint": "turbo run lint",
-    "lint:fix": "turbo run lint -- --fix",
-    "typecheck": "turbo run typecheck",
-    "test": "turbo run test",
-    "build": "turbo run build",
-    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml,css}\" --ignore-path .prettierignore",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml,css}\" --ignore-path .prettierignore",
-    "db:seed": "pnpm --filter @tnw/database run seed"
+    "format": "prettier --write \"**/*.{ts,js,mjs,json,md,yml,yaml}\" --ignore-path .prettierignore",
+    "format:check": "prettier --check \"**/*.{ts,js,mjs,json,md,yml,yaml}\" --ignore-path .prettierignore"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.1",
     "@commitlint/config-conventional": "^21.0.0",
-    "@supabase/supabase-js": "^2.105.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.4",
-    "prettier": "^3.4.2",
-    "turbo": "^2.9.12"
+    "prettier": "^3.4.2"
   },
   "engines": {
     "node": ">=22",
