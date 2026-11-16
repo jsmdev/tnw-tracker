@@ -5,9 +5,9 @@ description: >
 
 inputs:
   xcode-version:
-    description: Versión de Xcode del CI. Debe coincidir con la de desarrollo (ver apps/ios/README.md).
+    description: Versión de Xcode del CI (ver apps/ios/README.md).
     required: false
-    default: "27.2"
+    default: "26.6"
 
 runs:
   using: composite

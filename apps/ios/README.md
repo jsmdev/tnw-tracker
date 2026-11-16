@@ -33,6 +33,8 @@ Los dos jobs comparten la acción `.github/actions/ios-setup`, que selecciona Xc
 
 ### Versión de Xcode
 
-El CI usa **Xcode 27.2**, la misma versión que se usa en desarrollo. Está fijada en un único sitio: el valor por defecto de `xcode-version` en `.github/actions/ios-setup/action.yml`.
+El CI usa **Xcode 26.6** en el runner `macos-26`. Está fijada en un único sitio: el valor por defecto de `xcode-version` en `.github/actions/ios-setup/action.yml`.
 
-Xcode 27 solo está disponible en el runner `xcode-27` de GitHub, que sigue en vista previa y puede tener colas más largas. Si deja de estar disponible, la alternativa estable es el runner `macos-26` con Xcode 26.6: hay que cambiar `runs-on` en el workflow y `xcode-version` en la acción.
+En desarrollo se usa Xcode 27.2, y el CI no puede igualarla todavía. GitHub solo ofrece Xcode 27 en el runner `xcode-27`, que sigue en vista previa. Se probó en el PR #149 y dos de las seis ejecuciones de los jobs fallaron porque el simulador dejó de responder, sin relación con el código. Como `ios-ui-tests` es una comprobación obligatoria, se prefiere el runner estable.
+
+Mientras dure esta diferencia, el CI compila con el SDK de iOS 26: el código que use API nuevas de iOS 27 compilará en local pero no en el CI. Cuando el runner `xcode-27` salga de la vista previa, hay que cambiar `runs-on` en el workflow y `xcode-version` en la acción a la versión de desarrollo.
