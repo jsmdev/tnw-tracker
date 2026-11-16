@@ -1,0 +1,105 @@
+name: iOS Tests
+on:
+  pull_request:
+    branches: [develop, main]
+
+concurrency:
+  group: ios-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+# Los jobs solo leen el código: checkout, caché y artefactos no necesitan más.
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      ios: ${{ steps.filter.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # En pull_request, HEAD es el merge commit del PR y HEAD^1 la punta
+          # de la rama base: su diff es exactamente lo que cambia el PR.
+          fetch-depth: 2
+
+      - name: Detectar cambios de iOS
+        id: filter
+        run: |
+          if git diff --quiet HEAD^1 HEAD -- \
+            apps/ios \
+            .github/workflows/ios-tests.yml \
+            .github/actions/ios-setup; then
+            echo "ios=false" >> "$GITHUB_OUTPUT"
+          else
+            # También cuando git falla: ante la duda, se ejecutan los tests.
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  ios-unit-tests:
+    needs: changes
+    if: needs.changes.outputs.ios == 'true'
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ./.github/actions/ios-setup
+
+      - name: Ejecutar tests unitarios
+        run: |
+          xcodebuild test \
+            -project apps/ios/TnwTracker.xcodeproj \
+            -scheme TNWTracker \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -only-testing:TNWTrackerTests \
+            -resultBundlePath build/UnitTestResults.xcresult \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+      - name: Comprobar que se ejecutaron tests
+        # Un filtro que no coincide con ningún test también termina en verde.
+        run: |
+          total=$(xcrun xcresulttool get test-results summary \
+            --path build/UnitTestResults.xcresult | jq '.totalTestCount')
+          echo "Tests ejecutados: $total"
+          test "$total" -gt 0
+
+      - name: Subir resultados de test en fallo
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: ios-unit-tests-results
+          path: build/UnitTestResults.xcresult
+
+  ios-ui-tests:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Detectar código iOS
+        id: ios-check
+        run: |
+          count=$(find apps/ios -name "*.swift" 2>/dev/null | wc -l)
+          echo "count=$count" >> $GITHUB_OUTPUT
+
+      - uses: ./.github/actions/ios-setup
+        if: steps.ios-check.outputs.count != '0'
+
+      - name: Ejecutar UI tests
+        if: steps.ios-check.outputs.count != '0'
+        run: |
+          xcodebuild test \
+            -project apps/ios/TnwTracker.xcodeproj \
+            -scheme TNWTracker \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -only-testing:TNWTrackerUITests \
+            -resultBundlePath build/TestResults.xcresult \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+      - name: Subir resultados de test en fallo
+        if: failure() && steps.ios-check.outputs.count != '0'
+        uses: actions/upload-artifact@v5
+        with:
+          name: ios-ui-tests-results
+          path: build/TestResults.xcresult
