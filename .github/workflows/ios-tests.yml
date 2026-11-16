@@ -7,6 +7,10 @@ concurrency:
   group: ios-tests-${{ github.ref }}
   cancel-in-progress: true
 
+# Los jobs solo leen el código: checkout, caché y artefactos no necesitan más.
+permissions:
+  contents: read
+
 jobs:
   changes:
     runs-on: ubuntu-latest
