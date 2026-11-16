@@ -1,0 +1,50 @@
+name: iOS setup
+description: >
+  Selecciona Xcode, genera el proyecto con XcodeGen y restaura la caché de
+  paquetes SPM. El job que la usa debe haber hecho checkout antes.
+
+inputs:
+  xcode-version:
+    description: Versión de Xcode del CI (ver apps/ios/README.md).
+    required: false
+    default: "26.6"
+
+runs:
+  using: composite
+  steps:
+    - name: Seleccionar Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: ${{ inputs.xcode-version }}
+
+    - name: Instalar xcodegen
+      shell: bash
+      run: brew install xcodegen
+
+    - name: Stub Local.xcconfig para CI
+      # Local.xcconfig es gitignored (vive solo en máquinas de devs).
+      # XcodeGen exige que el archivo referenciado en configFiles exista.
+      # En CI usamos los placeholders del .example: code signing está desactivado
+      # y los tests no tocan el Supabase real.
+      shell: bash
+      working-directory: apps/ios
+      run: cp Local.xcconfig.example Local.xcconfig
+
+    - name: Generar proyecto Xcode
+      shell: bash
+      working-directory: apps/ios
+      run: xcodegen generate
+
+    - name: Cache SPM packages
+      uses: actions/cache@v5
+      with:
+        path: |
+          ~/Library/Developer/Xcode/DerivedData/**/SourcePackages
+          ~/Library/Caches/org.swift.swiftpm
+        key: spm-${{ runner.os }}-xcode${{ inputs.xcode-version }}-${{ hashFiles('apps/ios/project.yml') }}
+        restore-keys: |
+          spm-${{ runner.os }}-xcode${{ inputs.xcode-version }}-
+
+    - name: Pre-boot iPhone 17 simulator
+      shell: bash
+      run: xcrun simctl boot "iPhone 17" || true
