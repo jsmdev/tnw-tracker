@@ -2,17 +2,9 @@
 node_modules
 .pnpm-store
 
-# Build outputs
-.next
-dist
-.turbo
-out
-
 # Environment files
 .env
 .env*.local
-# Keep .env.example in git
-!.env.example
 
 # Supabase local state
 supabase/.branches
@@ -43,20 +35,12 @@ Icon
 *.sln
 
 # Testing
-playwright-report/
-test-results/
 coverage/
 
 # Logs
 *.log
 npm-debug.log*
 pnpm-debug.log*
-
-.vercel
-
-# TypeScript build
-*.tsbuildinfo
-apps/admin/next-env.d.ts
 
 .atl/
 .claude/*
