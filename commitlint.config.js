@@ -19,7 +19,7 @@ module.exports = {
         "revert",
       ],
     ],
-    "scope-enum": [2, "always", ["admin", "ios", "db", "shared", "ci", "deps", "release"]],
+    "scope-enum": [2, "always", ["ios", "db", "ci", "deps", "release"]],
     "subject-case": [0],
     "header-max-length": [2, "always", 100],
     "body-max-line-length": [1, "always", 200],

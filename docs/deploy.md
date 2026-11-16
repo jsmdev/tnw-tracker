@@ -6,10 +6,10 @@ This document explains how to manage deployments for tnw-tracker.
 
 ## Environments
 
-| Environment | Branch    | Supabase project   | Vercel                 |
-| ----------- | --------- | ------------------ | ---------------------- |
-| Development | `develop` | `tnw-tracker-dev`  | Auto-deploy via Vercel |
-| Production  | `main`    | `tnw-tracker-prod` | Auto-deploy via Vercel |
+| Environment | Branch    | Supabase project   |
+| ----------- | --------- | ------------------ |
+| Development | `develop` | `tnw-tracker-dev`  |
+| Production  | `main`    | `tnw-tracker-prod` |
 
 ---
 
@@ -65,12 +65,6 @@ Then create a new migration file that reflects the rolled-back state so the loca
 4. Add the name and value.
 5. Reference it in workflows as `${{ secrets.SECRET_NAME }}`.
 
-### Vercel environment variable
-
-1. Go to your Vercel project → **Settings → Environment Variables**.
-2. Add the variable for the target environment (Development / Preview / Production).
-3. Redeploy if needed: `vercel --prod` or trigger via a new push.
-
 ---
 
 ## How to link a new dev environment locally
@@ -90,34 +84,23 @@ supabase db pull
 
 # 5. Start local Supabase stack
 supabase start
-
-# 6. Copy the env template
-cp .env.example .env.local
-# Fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
-# with the local values printed by `supabase start`
-
-# 7. Install dependencies and run
-pnpm install
-pnpm --filter admin dev
 ```
 
 ---
 
 ## Secrets reference
 
-| Secret name             | Environment | Description                                                 |
-| ----------------------- | ----------- | ----------------------------------------------------------- |
-| `SUPABASE_ACCESS_TOKEN` | dev + prod  | Supabase personal access token                              |
-| `SUPABASE_PROJECT_REF`  | dev + prod  | Project reference ID (e.g. `abcdefghijklmno`)               |
-| `SUPABASE_DB_PASSWORD`  | dev + prod  | Database password                                           |
-| `GH_PAT_TYPEGEN`        | dev only    | GitHub PAT with `repo` scope — used to push generated types |
+| Secret name             | Environment | Description                                   |
+| ----------------------- | ----------- | --------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN` | dev + prod  | Supabase personal access token                |
+| `SUPABASE_PROJECT_REF`  | dev + prod  | Project reference ID (e.g. `abcdefghijklmno`) |
+| `SUPABASE_DB_PASSWORD`  | dev + prod  | Database password                             |
 
 ---
 
 ## Monitoring
 
 - **Supabase logs**: Dashboard → Logs → API/DB/Auth
-- **Vercel logs**: Dashboard → Deployments → Functions tab
 - **GitHub Actions**: Actions tab → filter by workflow name
 - **CodeQL alerts**: Security → Code scanning alerts
 
