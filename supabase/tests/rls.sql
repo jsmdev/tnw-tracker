@@ -4,7 +4,7 @@
 -- (user_id IS NULL) are readable by every signed-in user and writable by none.
 BEGIN;
 
-SELECT plan(90);
+SELECT plan(98);
 
 -- ---------------------------------------------------------------
 -- Fixtures (as postgres, RLS bypassed)
@@ -287,6 +287,35 @@ SELECT throws_ok(
      WHERE exercise_id = 'a2000000-0000-0000-0000-000000000001' $$,
   '42501', NULL, 'other user cannot hand a rest setting over to user one'
 );
+-- Upserts go through the same checks (user two already has a catalogue squat setting)
+SELECT throws_ok(
+  $$ INSERT INTO public.exercise_settings (user_id, exercise_id, rest_seconds)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 5)
+     ON CONFLICT (user_id, exercise_id) DO UPDATE SET rest_seconds = EXCLUDED.rest_seconds $$,
+  '42501', NULL, 'other user cannot upsert user one''s rest setting'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercise_settings (exercise_id, rest_seconds)
+     VALUES ('c0000000-0000-0000-0000-000000000001', 5)
+     ON CONFLICT (user_id, exercise_id) DO UPDATE SET exercise_id = 'a1000000-0000-0000-0000-000000000001' $$,
+  '42501', NULL, 'an upsert cannot move a rest setting onto user one''s private exercise'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercise_settings (exercise_id, rest_seconds)
+     VALUES ('c0000000-0000-0000-0000-000000000001', 5)
+     ON CONFLICT (user_id, exercise_id) DO UPDATE SET user_id = '00000000-0000-0000-0000-000000000001' $$,
+  '42501', NULL, 'an upsert cannot hand a rest setting over to user one'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercise_settings (exercise_id, rest_seconds)
+     VALUES ('c0000000-0000-0000-0000-000000000001', 5)
+     ON CONFLICT (user_id, exercise_id) DO UPDATE SET rest_seconds = -1 $$,
+  '23514', NULL, 'an upsert cannot set a negative rest'
+);
+SELECT is_empty(
+  $$ SELECT 1 FROM public.exercise_settings WHERE exercise_id = 'a1000000-0000-0000-0000-000000000001' $$,
+  'other user ends with no rest setting on user one''s private exercise'
+);
 
 -- Updates and deletes of user one's rows affect nothing
 SELECT is_empty($$ UPDATE public.exercises SET name = 'x' WHERE id = 'a1000000-0000-0000-0000-000000000001' RETURNING id $$, 'other user cannot update a private exercise');
@@ -307,12 +336,24 @@ SELECT throws_ok(
 
 RESET role;
 
+SELECT is(
+  (SELECT rest_seconds FROM public.exercise_settings
+    WHERE user_id = '00000000-0000-0000-0000-000000000001' AND exercise_id = 'a1000000-0000-0000-0000-000000000001'),
+  130, 'other user''s writes left user one''s rest setting unchanged'
+);
+
 -- ===============================================================
 -- Anonymous callers have no table access
 -- ===============================================================
 SET LOCAL role = anon;
 SELECT throws_ok($$ SELECT 1 FROM public.exercises $$, '42501', NULL, 'anon cannot read exercises');
 SELECT throws_ok($$ SELECT 1 FROM public.sessions $$, '42501', NULL, 'anon cannot read sessions');
+SELECT throws_ok($$ SELECT 1 FROM public.exercise_settings $$, '42501', NULL, 'anon cannot read rest settings');
+SELECT throws_ok(
+  $$ INSERT INTO public.exercise_settings (user_id, exercise_id)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'c0000000-0000-0000-0000-000000000001') $$,
+  '42501', NULL, 'anon cannot write rest settings'
+);
 RESET role;
 
 -- ===============================================================
