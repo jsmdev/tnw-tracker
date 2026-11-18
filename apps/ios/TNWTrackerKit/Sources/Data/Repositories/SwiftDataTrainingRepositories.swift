@@ -281,6 +281,19 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         try context.save()
     }
 
+    func updateManualSet(_ values: SetValues, setId: UUID) throws {
+        let descriptor = FetchDescriptor<ExerciseSetModel>(predicate: #Predicate { $0.id == setId })
+        guard let set = try context.fetch(descriptor).first, let exercise = set.entry?.exercise else {
+            throw TrainingDataError.notFound
+        }
+        guard set.sourceRaw == SetSource.manual.rawValue else {
+            throw TrainingDataError.invalidSet("only manual sets can be updated")
+        }
+        try Self.validate(values, for: exercise)
+        set.apply(values)
+        try context.save()
+    }
+
     func deleteManualSet(id: UUID) throws {
         let descriptor = FetchDescriptor<ExerciseSetModel>(predicate: #Predicate { $0.id == id })
         guard let set = try context.fetch(descriptor).first, let entry = set.entry else {

@@ -32,6 +32,12 @@ struct HomeScreen {
 
     // MARK: - Transitions
 
+    /// Taps the settings button and returns an already-validated SettingsScreen.
+    func tapSettings() -> SettingsScreen {
+        settingsButton.tap()
+        return SettingsScreen(app: app).waitUntilLoaded()
+    }
+
     /// Taps the quick-start button and returns an already-validated ActiveWorkoutScreen.
     func tapQuickStart() -> ActiveWorkoutScreen {
         quickStartButton.tap()

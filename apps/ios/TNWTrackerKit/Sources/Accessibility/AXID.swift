@@ -19,10 +19,25 @@ public enum AXID {
         public static let exerciseTitle = "activeWorkout.exerciseTitle"
         public static let progressIndicator = "activeWorkout.progressIndicator"
         public static let setWarmupToggle = "activeWorkout.setWarmupToggle"
+        public static let exerciseOptionsMenu = "activeWorkout.exerciseOptionsMenu"
+        public static let exerciseRestButton = "activeWorkout.exerciseRestButton"
+    }
+
+    /// "Descanso entre series" sheet of the current exercise.
+    public enum ExerciseRest {
+        public static let enabledToggle = "exerciseRest.enabledToggle"
+        public static let durationLabel = "exerciseRest.durationLabel"
+        public static let decreaseButton = "exerciseRest.decreaseButton"
+        public static let increaseButton = "exerciseRest.increaseButton"
+        public static let doneButton = "exerciseRest.doneButton"
     }
 
     public enum Settings {
         public static let rirMaximumStepper = "settings.rirMaximumStepper"
+        public static let changeExerciseRestToggle = "settings.changeExerciseRestToggle"
+        public static let changeExerciseRestDurationLabel = "settings.changeExerciseRestDurationLabel"
+        public static let changeExerciseRestDecreaseButton = "settings.changeExerciseRestDecreaseButton"
+        public static let changeExerciseRestIncreaseButton = "settings.changeExerciseRestIncreaseButton"
     }
 
     public enum SetLog {
@@ -36,6 +51,8 @@ public enum AXID {
     public enum RestTimer {
         public static let timerLabel = "restTimer.timerLabel"
         public static let skipButton = "restTimer.skipButton"
+        public static let decreaseButton = "restTimer.decreaseButton"
+        public static let increaseButton = "restTimer.increaseButton"
     }
 
     public enum Summary {

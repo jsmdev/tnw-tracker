@@ -113,4 +113,66 @@ struct WorkoutPhaseTransitionTests {
         )
         #expect(outcome.nextPhase == .restingBetweenExercises)
     }
+
+    // MARK: - Rest settings (T3)
+
+    @Test("AC3.4 the last set of a non-last exercise uses the change-exercise rest, not the rest between sets")
+    func changeExerciseRestIsUsedAfterLastSet() throws {
+        let outcome = try #require(
+            WorkoutPhaseTransition.evaluate(
+                set: .init(number: 3, isWarmup: false),
+                exercise: .init(target: 3, restBetweenSets: 45, restAfterExercise: 120, index: 0, total: 2),
+                triggerMode: .auto
+            )
+        )
+        #expect(outcome == .init(nextPhase: .restingBetweenExercises, restTimer: .init(type: .betweenExercises, durationSeconds: 120)))
+    }
+
+    @Test("AC3.4 with the change-exercise rest off, the last set of a non-last exercise starts no rest")
+    func changeExerciseRestOff() throws {
+        let outcome = try #require(
+            WorkoutPhaseTransition.evaluate(
+                set: .init(number: 3, isWarmup: false),
+                exercise: .init(target: 3, restBetweenSets: 45, restAfterExercise: nil, index: 0, total: 2),
+                triggerMode: .auto
+            )
+        )
+        #expect(outcome == .init(nextPhase: .restingBetweenExercises, restTimer: nil))
+    }
+
+    @Test("AC3.3 with the rest between sets off, a non-last set starts no rest and stays active")
+    func restBetweenSetsOff() throws {
+        let outcome = try #require(
+            WorkoutPhaseTransition.evaluate(
+                set: .init(number: 1, isWarmup: false),
+                exercise: .init(target: 3, restBetweenSets: nil, restAfterExercise: 120, index: 0, total: 2),
+                triggerMode: .auto
+            )
+        )
+        #expect(outcome == .init(nextPhase: .active, restTimer: nil))
+    }
+
+    @Test("AC3.1 a non-last set uses the rest between sets")
+    func restBetweenSetsUsed() throws {
+        let outcome = try #require(
+            WorkoutPhaseTransition.evaluate(
+                set: .init(number: 1, isWarmup: false),
+                exercise: .init(target: 3, restBetweenSets: 75, restAfterExercise: 120, index: 0, total: 2),
+                triggerMode: .auto
+            )
+        )
+        #expect(outcome == .init(nextPhase: .restingBetweenSets, restTimer: .init(type: .betweenSets, durationSeconds: 75)))
+    }
+
+    @Test("AC3.5 the last set of the last exercise starts no rest, whatever the settings")
+    func noRestAfterLastExercise() throws {
+        let outcome = try #require(
+            WorkoutPhaseTransition.evaluate(
+                set: .init(number: 2, isWarmup: false),
+                exercise: .init(target: 2, restBetweenSets: 60, restAfterExercise: 120, index: 1, total: 2),
+                triggerMode: .auto
+            )
+        )
+        #expect(outcome == .init(nextPhase: .finishing, restTimer: nil))
+    }
 }

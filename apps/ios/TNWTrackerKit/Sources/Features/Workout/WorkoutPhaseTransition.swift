@@ -14,6 +14,7 @@ import Foundation
 public enum WorkoutPhaseTransition {
     /// Resultado de evaluar la transición. `nil` significa "sin transición"
     /// (caso típico: set de calentamiento o modo manual de timer).
+    /// `.restingBetweenExercises` without a timer means "go to the next exercise now".
     public struct Outcome: Sendable, Equatable {
         public let nextPhase: WorkoutPhase
         public let restTimer: RestSpec?
@@ -49,15 +50,31 @@ public enum WorkoutPhaseTransition {
     /// Contexto del ejercicio actual dentro del workout.
     public struct ExerciseContext: Sendable, Equatable {
         public let target: Int
-        public let restSeconds: Int
+        /// Rest between working sets, or nil when "Descanso entre series" is off.
+        public let restBetweenSets: Int?
+        /// Rest after the exercise's last working set ("Descanso al cambiar de
+        /// ejercicio"), or nil when it is off.
+        public let restAfterExercise: Int?
         public let index: Int
         public let total: Int
 
-        public init(target: Int, restSeconds: Int, index: Int, total: Int) {
+        public init(target: Int, restBetweenSets: Int?, restAfterExercise: Int?, index: Int, total: Int) {
             self.target = target
-            self.restSeconds = restSeconds
+            self.restBetweenSets = restBetweenSets
+            self.restAfterExercise = restAfterExercise
             self.index = index
             self.total = total
+        }
+
+        /// The same rest between sets and after the exercise.
+        public init(target: Int, restSeconds: Int, index: Int, total: Int) {
+            self.init(
+                target: target,
+                restBetweenSets: restSeconds,
+                restAfterExercise: restSeconds,
+                index: index,
+                total: total
+            )
         }
     }
 
@@ -84,15 +101,19 @@ public enum WorkoutPhaseTransition {
         }
 
         if isLastSet {
+            // With the change-exercise rest off, the coordinator moves on at once.
             return Outcome(
                 nextPhase: .restingBetweenExercises,
-                restTimer: RestSpec(type: .betweenExercises, durationSeconds: exercise.restSeconds)
+                restTimer: exercise.restAfterExercise.map { RestSpec(type: .betweenExercises, durationSeconds: $0) }
             )
         }
 
+        guard let restBetweenSets = exercise.restBetweenSets else {
+            return Outcome(nextPhase: .active, restTimer: nil)
+        }
         return Outcome(
             nextPhase: .restingBetweenSets,
-            restTimer: RestSpec(type: .betweenSets, durationSeconds: exercise.restSeconds)
+            restTimer: RestSpec(type: .betweenSets, durationSeconds: restBetweenSets)
         )
     }
 }

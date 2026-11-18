@@ -27,6 +27,7 @@ public enum TrainingSchemaV1: VersionedSchema {
             SessionEntryModel.self,
             EntryExternalRefModel.self,
             ExerciseSetModel.self,
+            ExerciseSettingModel.self,
             WorkoutIntentEvent.self
         ]
     }
@@ -240,5 +241,22 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
         self.id = id
         self.order = order
         self.sourceRaw = sourceRaw
+    }
+}
+
+// MARK: - App-local settings
+
+/// The user's settings for one exercise (app-local, not in the training data
+/// format). Keyed by the exercise id; it outlives no exercise, see
+/// `TrainingStore.deleteAllTrainingData`.
+@Model final class ExerciseSettingModel {
+    @Attribute(.unique) var exerciseId: UUID
+    var restEnabled: Bool = true
+    var restSeconds: Int
+
+    init(exerciseId: UUID, restEnabled: Bool, restSeconds: Int) {
+        self.exerciseId = exerciseId
+        self.restEnabled = restEnabled
+        self.restSeconds = restSeconds
     }
 }

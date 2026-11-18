@@ -135,6 +135,22 @@
         }
       }
     },
+    "active-workout.exercise-options": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exercise options"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opciones del ejercicio"
+          }
+        }
+      }
+    },
     "active-workout.exercise-progress-label": {
       "localizations": {
         "en": {
@@ -217,6 +233,38 @@
     },
     "Contraseña": {},
     "Email": {},
+    "exercise-rest.footer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved for this exercise and used in every session."
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se guarda para este ejercicio y se usa en todas las sesiones."
+          }
+        }
+      }
+    },
+    "exercise-rest.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest between sets"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descanso entre series"
+          }
+        }
+      }
+    },
     "home.next-session.empty-message": {
       "localizations": {
         "en": {
@@ -433,6 +481,102 @@
           "stringUnit": {
             "state": "translated",
             "value": "Cargando sesiones…"
+          }
+        }
+      }
+    },
+    "rest-duration.decrease": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove 15 seconds"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar 15 segundos"
+          }
+        }
+      }
+    },
+    "rest-duration.increase": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add 15 seconds"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir 15 segundos"
+          }
+        }
+      }
+    },
+    "rest-duration.label": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duration"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duración"
+          }
+        }
+      }
+    },
+    "rest-duration.value %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld seconds"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld segundos"
+          }
+        }
+      }
+    },
+    "rest-timer.decrease-button": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "−15 s"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "−15 s"
+          }
+        }
+      }
+    },
+    "rest-timer.increase-button": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+15 s"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+15 s"
           }
         }
       }
@@ -1038,6 +1182,38 @@
         }
       }
     },
+    "settings.change-exercise-rest-footer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts after the last set of an exercise."
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arranca tras la última serie de un ejercicio."
+          }
+        }
+      }
+    },
+    "settings.change-exercise-rest-toggle": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest when changing exercise"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descanso al cambiar de ejercicio"
+          }
+        }
+      }
+    },
     "settings.effort-section": {
       "localizations": {
         "en": {
@@ -1050,6 +1226,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Esfuerzo"
+          }
+        }
+      }
+    },
+    "settings.rest-section": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descanso"
           }
         }
       }

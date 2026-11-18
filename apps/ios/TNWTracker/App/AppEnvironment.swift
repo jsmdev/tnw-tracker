@@ -22,6 +22,7 @@ public final class AppEnvironment {
     public let exerciseRepository: any ExerciseRepositoryProtocol
     public let routineRepository: any RoutineRepositoryProtocol
     public let sessionRepository: any SessionRepositoryProtocol
+    public let exerciseSettingRepository: any ExerciseSettingRepositoryProtocol
     public let authRepository: any AuthRepositoryProtocol
 
     /// Sync — no-op until the sync on the new schema exists (#135).
@@ -68,6 +69,7 @@ public final class AppEnvironment {
         exerciseRepository = store.exercises
         routineRepository = store.routines
         sessionRepository = store.sessions
+        exerciseSettingRepository = store.exerciseSettings
         authRepository = AuthRepository(supabase: supabase)
     }
 
@@ -88,6 +90,7 @@ public final class AppEnvironment {
         exerciseRepository = store.exercises
         routineRepository = store.routines
         sessionRepository = store.sessions
+        exerciseSettingRepository = store.exerciseSettings
         self.authRepository = authRepository
     }
 
@@ -242,6 +245,8 @@ public final class AppEnvironment {
         return ActiveWorkoutCoordinator(
             sessions: sessionRepository,
             routines: routineRepository,
+            exerciseSettings: exerciseSettingRepository,
+            changeExerciseRest: { ChangeExerciseRestPreference(defaults: .standard).restSeconds },
             syncEngine: syncEngine,
             timerService: makeRestTimerService(),
             liveActivity: liveActivity

@@ -38,6 +38,7 @@ struct HomeView: View {
                     Image(systemName: "gearshape")
                 }
                 .accessibilityLabel("a11y.settings-button")
+                .accessibilityIdentifier(AXID.Home.settingsButton)
             }
         }
     }

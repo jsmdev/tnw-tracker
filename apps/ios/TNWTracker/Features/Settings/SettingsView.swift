@@ -8,9 +8,28 @@ struct SettingsView: View {
         @State private var reseedError: String?
     #endif
     @AppStorage(RIRScale.storageKey) private var rirMaximum = RIRScale.defaultMaximum
+    @AppStorage(ChangeExerciseRestPreference.enabledKey)
+    private var changeExerciseRestEnabled = ChangeExerciseRestPreference.defaultEnabled
+    @AppStorage(ChangeExerciseRestPreference.secondsKey)
+    private var changeExerciseRestSeconds = ChangeExerciseRestPreference.defaultSeconds
 
     var body: some View {
         Form {
+            Section {
+                Toggle("settings.change-exercise-rest-toggle", isOn: $changeExerciseRestEnabled)
+                    .accessibilityIdentifier(AXID.Settings.changeExerciseRestToggle)
+                RestDurationControl(
+                    seconds: $changeExerciseRestSeconds,
+                    durationIdentifier: AXID.Settings.changeExerciseRestDurationLabel,
+                    decreaseIdentifier: AXID.Settings.changeExerciseRestDecreaseButton,
+                    increaseIdentifier: AXID.Settings.changeExerciseRestIncreaseButton
+                )
+                .disabled(!changeExerciseRestEnabled)
+            } header: {
+                Text("settings.rest-section")
+            } footer: {
+                Text("settings.change-exercise-rest-footer")
+            }
             Section {
                 Stepper(value: $rirMaximum, in: RIRScale.allowedMaximums) {
                     Text("settings.rir-maximum \(rirMaximum)")

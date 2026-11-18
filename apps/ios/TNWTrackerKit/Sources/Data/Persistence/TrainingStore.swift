@@ -11,6 +11,7 @@ public final class TrainingStore {
     public let routines: any RoutineRepositoryProtocol
     public let sessions: any SessionRepositoryProtocol
     public let importer: any TrainingImporterProtocol
+    public let exerciseSettings: any ExerciseSettingRepositoryProtocol
     public let intentInbox: IntentInbox
 
     let context: ModelContext
@@ -27,10 +28,12 @@ public final class TrainingStore {
         let sessionRepository = SwiftDataSessionRepository(context: context)
         sessions = sessionRepository
         importer = SwiftDataTrainingImporter(context: context, sessions: sessionRepository)
+        exerciseSettings = SwiftDataExerciseSettingRepository(context: context)
         intentInbox = IntentInbox(context: context)
     }
 
-    /// Deletes every exercise, routine and session. Intent events are kept.
+    /// Deletes every exercise, routine and session, and the exercises' settings.
+    /// Intent events are kept.
     /// Rows are deleted one by one: batch deletes do not support the `deny` rules.
     public func deleteAllTrainingData() throws {
         for session in try context.fetch(FetchDescriptor<SessionModel>()) {
@@ -42,6 +45,9 @@ public final class TrainingStore {
         try context.save()
         for exercise in try context.fetch(FetchDescriptor<ExerciseModel>()) {
             context.delete(exercise)
+        }
+        for setting in try context.fetch(FetchDescriptor<ExerciseSettingModel>()) {
+            context.delete(setting)
         }
         try context.save()
     }

@@ -85,6 +85,15 @@ struct ActiveWorkoutScreen {
 
     // MARK: - Transitions
 
+    /// Opens the exercise's options and then "Descanso entre series".
+    func openExerciseRest() -> ExerciseRestSheetScreen {
+        app.buttons[AXID.ActiveWorkout.exerciseOptionsMenu].tap()
+        let restButton = app.buttons[AXID.ActiveWorkout.exerciseRestButton]
+        XCTAssertTrue(restButton.waitForExistence(timeout: 2), "Exercise options did not show the rest item.")
+        restButton.tap()
+        return ExerciseRestSheetScreen(app: app).waitUntilLoaded()
+    }
+
     /// Taps the log-set button and returns an already-validated SetLogSheetScreen.
     func tapLogSet() -> SetLogSheetScreen {
         logSetButton.tap()

@@ -16,6 +16,7 @@ struct ActiveWorkoutView: View {
     let coordinator: ActiveWorkoutCoordinator
 
     @State private var setLogItem: SetLogSheetItem?
+    @State private var restItem: ExerciseRestSheetItem?
     @State private var exerciseNames: [UUID: String] = [:]
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -40,6 +41,11 @@ struct ActiveWorkoutView: View {
                 },
                 onCancel: { setLogItem = nil }
             )
+        }
+        .sheet(item: $restItem) { item in
+            ExerciseRestSheet(item: item) { setting in
+                try? coordinator.saveRestSetting(setting)
+            }
         }
         .task {
             await loadExerciseNames()
@@ -129,9 +135,11 @@ struct ActiveWorkoutView: View {
         switch coordinator.phase {
         case .restingBetweenSets, .restingBetweenExercises:
             if let timerState = coordinator.timerState {
-                RestTimerView(state: timerState) {
-                    Task { await coordinator.skipTimer() }
-                }
+                RestTimerView(
+                    state: timerState,
+                    onSkip: { Task { await coordinator.skipTimer() } },
+                    onAdjust: { seconds in Task { await coordinator.adjustTimer(by: seconds) } }
+                )
                 .transition(.asymmetric(
                     insertion: .scale(scale: 0.9).combined(with: .opacity),
                     removal: .opacity
@@ -198,10 +206,28 @@ struct ActiveWorkoutView: View {
                     .accessibilityIdentifier(AXID.ActiveWorkout.exerciseTitle)
             }
             Spacer()
+            exerciseOptionsMenu(exercise: exercise)
         }
         .padding(.horizontal, Spacing.md)
         .padding(.top, Spacing.lg)
         .padding(.bottom, Spacing.xs)
+    }
+
+    /// The exercise's options: "Descanso entre series".
+    private func exerciseOptionsMenu(exercise: SessionEntry) -> some View {
+        Menu {
+            Button {
+                restItem = ExerciseRestSheetItem(setting: coordinator.restSetting(for: exercise.exerciseId))
+            } label: {
+                Label("exercise-rest.title", systemImage: "timer")
+            }
+            .accessibilityIdentifier(AXID.ActiveWorkout.exerciseRestButton)
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.title3)
+        }
+        .accessibilityLabel(Text("active-workout.exercise-options"))
+        .accessibilityIdentifier(AXID.ActiveWorkout.exerciseOptionsMenu)
     }
 
     // MARK: - Exercise Name Loading
@@ -342,6 +368,8 @@ struct ActiveWorkoutView: View {
     let coordinator = ActiveWorkoutCoordinator(
         sessions: appEnv.sessionRepository,
         routines: appEnv.routineRepository,
+        exerciseSettings: appEnv.exerciseSettingRepository,
+        changeExerciseRest: { ChangeExerciseRestPreference.defaultSeconds },
         syncEngine: NoopSyncEngine(),
         timerService: appEnv.makeRestTimerService(),
         liveActivity: appEnv.liveActivity

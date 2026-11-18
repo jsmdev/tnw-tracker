@@ -19,7 +19,8 @@ struct TrainingSchemaTests {
         let names = Set(TrainingSchemaV1.models.map { String(describing: $0) })
         #expect(names == [
             "ExerciseModel", "MuscleGroupModel", "RoutineModel", "RoutineItemModel",
-            "SessionModel", "SessionEntryModel", "EntryExternalRefModel", "ExerciseSetModel", "WorkoutIntentEvent"
+            "SessionModel", "SessionEntryModel", "EntryExternalRefModel", "ExerciseSetModel",
+            "ExerciseSettingModel", "WorkoutIntentEvent"
         ])
     }
 

@@ -16,6 +16,14 @@ struct RestTimerScreen {
         app.buttons[AXID.RestTimer.skipButton]
     }
 
+    var decreaseButton: XCUIElement {
+        app.buttons[AXID.RestTimer.decreaseButton]
+    }
+
+    var increaseButton: XCUIElement {
+        app.buttons[AXID.RestTimer.increaseButton]
+    }
+
     // MARK: - Landing
 
     /// Waits for the timer label to confirm the rest timer sheet is fully presented.

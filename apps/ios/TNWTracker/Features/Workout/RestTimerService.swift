@@ -32,11 +32,17 @@ public final class RestTimerService {
     /// The workout name associated with the active timer; used by the Live Activity tick.
     public private(set) var workoutName: String = ""
 
+    /// Called when a rest ends (finished or skipped) with the seconds it really
+    /// ran, −15 s / +15 s included.
+    public var onEnded: (@MainActor (_ timer: RestTimerState, _ ranSeconds: Int) -> Void)?
+
     private var tickTask: Task<Void, Never>?
     private let liveActivity: LiveActivityController
+    private let now: () -> Date
 
-    public init(liveActivity: LiveActivityController) {
+    public init(liveActivity: LiveActivityController, now: @escaping () -> Date = Date.init) {
         self.liveActivity = liveActivity
+        self.now = now
     }
 
     // MARK: - Public API
@@ -53,7 +59,7 @@ public final class RestTimerService {
         await cancelTick()
 
         let timerId = UUID()
-        let startedAt = Date()
+        let startedAt = now()
         let endsAt = startedAt.addingTimeInterval(TimeInterval(durationSeconds))
 
         let timerState = RestTimerState(
@@ -81,13 +87,29 @@ public final class RestTimerService {
 
         state = nil
         liveActivity.end()
+        onEnded?(current, Self.seconds(from: current.startedAt, to: min(now(), current.endsAt)))
     }
 
+    /// Ends the rest when its time is up. The tick calls it every second.
+    public func expireIfDue() async {
+        guard let current = state, now() >= current.endsAt else { return }
+        logger.info("RestTimerService timer expired: \(current.id.uuidString, privacy: .public)")
+        await cancelTick()
+        state = nil
+        liveActivity.end()
+        onEnded?(current, Self.seconds(from: current.startedAt, to: current.endsAt))
+    }
+
+    private static func seconds(from start: Date, to end: Date) -> Int {
+        max(0, Int(end.timeIntervalSince(start).rounded()))
+    }
+
+    /// Adds (or, when negative, removes) time from the running rest. The rest
+    /// never ends before now.
     public func extend(by seconds: Int) async {
         guard var current = state else { return }
-        current.endsAt = current.endsAt.addingTimeInterval(TimeInterval(seconds))
+        current.endsAt = max(now(), current.endsAt.addingTimeInterval(TimeInterval(seconds)))
         state = current
-
     }
 
     // MARK: - Private
@@ -98,17 +120,18 @@ public final class RestTimerService {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 guard let self, let current = state else { break }
 
-                if current.isExpired {
-                    logger.info("RestTimerService timer expired: \(current.id.uuidString, privacy: .public)")
-                    await handleExpiry()
+                if now() >= current.endsAt {
+                    tickTask = nil
+                    await expireIfDue()
                     break
                 }
 
-                logger.debug("RestTimerService tick: \(max(0, Int(current.remaining)))s remaining")
+                let remaining = current.endsAt.timeIntervalSince(now())
+                logger.debug("RestTimerService tick: \(max(0, Int(remaining)))s remaining")
                 let timerState = ActiveWorkoutAttributes.ContentState(
                     workoutName: workoutName,
                     currentExerciseName: nil,
-                    restSecondsRemaining: max(0, Int(current.remaining)),
+                    restSecondsRemaining: max(0, Int(remaining)),
                     completedSets: 0,
                     totalSets: 0
                 )
@@ -122,9 +145,4 @@ public final class RestTimerService {
         tickTask = nil
     }
 
-    private func handleExpiry() async {
-        guard state != nil else { return }
-        state = nil
-        liveActivity.end()
-    }
 }

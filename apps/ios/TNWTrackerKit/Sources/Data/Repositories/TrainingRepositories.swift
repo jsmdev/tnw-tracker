@@ -50,6 +50,11 @@ public protocol SessionRepositoryProtocol: AnyObject {
     /// Re-imports keep it. Never changes reconciliation or `superseded`.
     func setWarmup(_ warmup: Bool, setId: UUID) throws
 
+    /// Replaces the values of a manual set, with the same rules as logging it.
+    /// Used for the rest taken after the set (`restSeconds`). Throws `notFound`
+    /// for an unknown set and `invalidSet` for an imported one.
+    func updateManualSet(_ values: SetValues, setId: UUID) throws
+
     /// Deletes a manual set (undo). A planned entry left without sets goes back to
     /// `skipped`; an unplanned one is removed from the session.
     func deleteManualSet(id: UUID) throws
@@ -91,6 +96,16 @@ public extension SessionRepositoryProtocol {
     func logManualSet(_ values: SetValues, exerciseId: UUID, sessionId: UUID, at date: Date) throws -> ExerciseSet {
         try logManualSet(values, warmup: false, exerciseId: exerciseId, sessionId: sessionId, at: date)
     }
+}
+
+/// The user's per-exercise settings (app-local; not imported or exported).
+@MainActor
+public protocol ExerciseSettingRepositoryProtocol: AnyObject {
+    /// The saved setting of the exercise, or nil when the user never changed it.
+    func setting(exerciseId: UUID) throws -> ExerciseSetting?
+    /// Inserts or replaces the exercise's setting. Throws `notFound` for an
+    /// exercise that does not exist and `invalidExercise` for a negative rest.
+    func save(_ setting: ExerciseSetting) throws
 }
 
 /// Imports an importer's bundle (format decision B: receivers own their keys).

@@ -31,6 +31,8 @@ struct ActiveWorkoutCoordinatorTests {
         return ActiveWorkoutCoordinator(
             sessions: fx.sessions,
             routines: fx.routines,
+            exerciseSettings: fx.store.exerciseSettings,
+            changeExerciseRest: { 120 },
             syncEngine: sync,
             timerService: RestTimerService(liveActivity: liveActivity),
             liveActivity: liveActivity,

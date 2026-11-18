@@ -47,10 +47,18 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
 
     private let sessions: any SessionRepositoryProtocol
     private let routines: any RoutineRepositoryProtocol
+    private let exerciseSettings: any ExerciseSettingRepositoryProtocol
+    /// "Descanso al cambiar de ejercicio" in seconds, or nil when it is off.
+    private let changeExerciseRest: @MainActor () -> Int?
     private let syncEngine: any SyncEngine
     private let timerService: RestTimerService
     private let liveActivity: LiveActivityController
     private let now: () -> Date
+
+    /// The set whose rest timer is running (AC3.8: its rest taken is recorded when the rest ends).
+    private var restingSet: (setId: UUID, timerId: UUID)?
+    /// The last set after which no timer ran; its rest is the time until the next set.
+    private var setWithoutTimer: (setId: UUID, completedAt: Date)?
 
     private var elapsedTask: Task<Void, Never>?
     private var undoLastSetId: UUID?
@@ -61,6 +69,8 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     public init(
         sessions: any SessionRepositoryProtocol,
         routines: any RoutineRepositoryProtocol,
+        exerciseSettings: any ExerciseSettingRepositoryProtocol,
+        changeExerciseRest: @escaping @MainActor () -> Int?,
         syncEngine: any SyncEngine,
         timerService: RestTimerService,
         liveActivity: LiveActivityController,
@@ -68,10 +78,15 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     ) {
         self.sessions = sessions
         self.routines = routines
+        self.exerciseSettings = exerciseSettings
+        self.changeExerciseRest = changeExerciseRest
         self.syncEngine = syncEngine
         self.timerService = timerService
         self.liveActivity = liveActivity
         self.now = now
+        timerService.onEnded = { [weak self] timer, ranSeconds in
+            self?.restEnded(timer, ranSeconds: ranSeconds)
+        }
     }
 
     // MARK: - Lifecycle
@@ -165,6 +180,8 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// A warm-up set is stored but does not count, and starts no phase transition.
     public func recordSet(reps: Int, weight: Weight?, rir: Int?, warmup: Bool = false) async throws {
         guard let current = session, let entry = currentEntry else { return }
+        // A rest still running ends with this set and records the time so far.
+        await timerService.skip()
         let logged = try sessions.logManualSet(
             SetValues(reps: reps, weight: weight, rir: rir),
             warmup: warmup,
@@ -173,6 +190,13 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
             at: now()
         )
         try refreshSession()
+        if let previous = setWithoutTimer {
+            setWithoutTimer = nil
+            let gap = (logged.completedAt ?? now()).timeIntervalSince(previous.completedAt)
+            recordRest(max(0, Int(gap.rounded())), setId: previous.setId)
+        }
+        // Until a timer starts after it, the time until the next set is its rest.
+        setWithoutTimer = (logged.id, logged.completedAt ?? now())
 
         // Ventana de undo de 5s
         undoLastSetId = logged.id
@@ -183,30 +207,83 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         }
 
         let item = target(for: entry)
-        let restSeconds = item?.restSeconds ?? 90
         guard let outcome = WorkoutPhaseTransition.evaluate(
             // Warm-ups do not count toward the target: number the working sets only.
             set: .init(number: currentEntry?.workingManualSets.count ?? logged.order, isWarmup: logged.warmup),
             exercise: .init(
                 target: item?.targetSets ?? Int.max,
-                restSeconds: restSeconds,
+                restBetweenSets: RestPolicy.restBetweenSets(restSetting(for: entry.exerciseId)),
+                restAfterExercise: changeExerciseRest(),
                 index: currentExerciseIndex,
                 total: entries.count
             ),
             triggerMode: timerTriggerMode
         ) else { return }
 
-        phase = outcome.nextPhase
         logger.info("Coordinator phase → \(String(describing: outcome.nextPhase)) (set \(logged.order))")
 
-        if let spec = outcome.restTimer {
-            await timerService.start(
-                workoutId: current.id,
-                workoutName: current.name ?? "",
-                type: spec.type,
-                durationSeconds: spec.durationSeconds
-            )
+        guard let spec = outcome.restTimer else {
+            phase = outcome.nextPhase
+            if outcome.nextPhase == .restingBetweenExercises {
+                // "Descanso al cambiar de ejercicio" is off: go straight to the next exercise.
+                advanceToNextExercise()
+            }
+            return
         }
+        phase = outcome.nextPhase
+        await timerService.start(
+            workoutId: current.id,
+            workoutName: current.name ?? "",
+            type: spec.type,
+            durationSeconds: spec.durationSeconds
+        )
+        if let timerId = timerService.state?.id {
+            setWithoutTimer = nil
+            restingSet = (logged.id, timerId)
+        }
+    }
+
+    // MARK: - Rest taken (AC3.8)
+
+    /// A rest ended (finished or skipped): the set before it gets the seconds it ran.
+    private func restEnded(_ timer: RestTimerState, ranSeconds: Int) {
+        guard let resting = restingSet, resting.timerId == timer.id else { return }
+        restingSet = nil
+        recordRest(ranSeconds, setId: resting.setId)
+    }
+
+    /// Writes the rest taken after a manual set through the repository's set update.
+    private func recordRest(_ seconds: Int, setId: UUID) {
+        let set = entries.lazy.flatMap(\.manualSets).first { $0.id == setId }
+        guard var values = set?.values else { return }
+        values.restSeconds = seconds
+        do {
+            try sessions.updateManualSet(values, setId: setId)
+            try refreshSession()
+        } catch {
+            logger.error("recordRest falló: \(error)")
+        }
+    }
+
+    // MARK: - Rest settings
+
+    /// The exercise's "Descanso entre series" in force: the saved setting, else
+    /// on with the routine item's rest, else 90 s.
+    public func restSetting(for exerciseId: UUID) -> ExerciseSetting {
+        let saved = try? exerciseSettings.setting(exerciseId: exerciseId)
+        let routineRest = targets[exerciseId]?.restSeconds
+            ?? entries.first { $0.exerciseId == exerciseId }.flatMap { target(for: $0)?.restSeconds }
+        return RestPolicy.setting(exerciseId: exerciseId, saved: saved, routineRestSeconds: routineRest)
+    }
+
+    /// Saves the exercise's "Descanso entre series" for this and every later session.
+    public func saveRestSetting(_ setting: ExerciseSetting) throws {
+        try exerciseSettings.save(setting)
+    }
+
+    /// −15 s / +15 s on the running rest, the same for both timers.
+    public func adjustTimer(by seconds: Int) async {
+        await timerService.extend(by: seconds)
     }
 
     /// The user's warm-up annotation on a logged set of the session.
@@ -220,6 +297,8 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         guard let setId = undoLastSetId else { return }
         undoTask?.cancel()
         undoLastSetId = nil
+        if restingSet?.setId == setId { restingSet = nil }
+        if setWithoutTimer?.setId == setId { setWithoutTimer = nil }
         try sessions.deleteManualSet(id: setId)
         try refreshSession()
         await timerService.skip()
@@ -271,6 +350,9 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     public func finish() async throws {
         guard let current = session else { return }
         elapsedTask?.cancel()
+        // The last set of the session gets no rest taken.
+        restingSet = nil
+        setWithoutTimer = nil
         await timerService.skip()
 
         // Cierre LOCAL: la sesión se completa en el store antes de sincronizar.
