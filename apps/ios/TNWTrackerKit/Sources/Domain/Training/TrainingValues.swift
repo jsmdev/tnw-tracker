@@ -131,19 +131,24 @@ public struct Routine: Identifiable, Hashable, Sendable {
     public var description: String?
     /// Sorted by `order`.
     public var items: [RoutineItem]
+    /// The user's favourite mark. App state, not a format field: `save` and
+    /// imports never write it; `RoutineRepositoryProtocol.setFavorite` does.
+    public var isFavorite: Bool
 
     public init(
         id: UUID = UUID(),
         externalRef: ExternalRef? = nil,
         name: String,
         description: String? = nil,
-        items: [RoutineItem]
+        items: [RoutineItem],
+        isFavorite: Bool = false
     ) {
         self.id = id
         self.externalRef = externalRef
         self.name = name
         self.description = description
         self.items = items
+        self.isFavorite = isFavorite
     }
 }
 
@@ -469,4 +474,15 @@ public struct ImportResult: Sendable, Equatable {
     public var sessionIds: [UUID: UUID] = [:]
 
     public init() {}
+}
+
+extension TrainingSession {
+    /// Whether the session has a working set (T6, D-T6a): a set of an entry that
+    /// was not removed, imported, or manual and not a warm-up (strength or
+    /// cardio). A session without one is never saved: ending it discards it.
+    public var hasWorkingSets: Bool {
+        entries.contains { entry in
+            entry.status != .removed && entry.sets.contains { $0.source == .imported || !$0.warmup }
+        }
+    }
 }

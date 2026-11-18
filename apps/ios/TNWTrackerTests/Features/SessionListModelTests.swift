@@ -56,6 +56,23 @@ struct SessionListModelTests {
         #expect(model.sessions.map(\.name) == ["Legs Day", "Pull Day"])
     }
 
+    @Test("AC5.1 AC5.4 marking a routine as favourite moves it first; unmarking moves it back")
+    func favouriteMovesFirst() async throws {
+        _ = try fx.makeRoutine(name: "Legs Day")
+        _ = try fx.makeRoutine(name: "Pull Day")
+        let model = SessionListModel(routines: fx.routines)
+        await model.loadFirstPage()
+        let pull = try #require(model.sessions.last)
+
+        await model.setFavorite(true, for: pull)
+        #expect(model.sessions.map(\.name) == ["Pull Day", "Legs Day"])
+        #expect(model.sessions.first?.isFavorite == true)
+
+        await model.setFavorite(false, for: try #require(model.sessions.first))
+        #expect(model.sessions.map(\.name) == ["Legs Day", "Pull Day"])
+        #expect(model.sessions.allSatisfy { !$0.isFavorite })
+    }
+
     @Test("filter .withWorkouts returns only routines with a completed session")
     func withWorkoutsFilter() async throws {
         let performed = try fx.makeRoutine(name: "Routine A")

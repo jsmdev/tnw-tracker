@@ -150,6 +150,7 @@ struct ActiveWorkoutCoordinatorTests {
         let coordinator = makeCoordinator(sync: sync)
         try await coordinator.start(routineId: routine.id)
         let id = try #require(coordinator.activeWorkoutId)
+        try await coordinator.recordSet(reps: 8, weight: nil, rir: nil)
 
         try await coordinator.finish()
 
@@ -160,17 +161,122 @@ struct ActiveWorkoutCoordinatorTests {
         #expect(try fx.sessions.activeSession() == nil)
     }
 
-    @Test("finish() discards a free session that has no entries (format: at least one entry)")
-    func finishDiscardsEmptyFreeSession() async throws {
+    // MARK: - T6 (D7): a session with no working sets is never saved
+
+    private func history() throws -> [TrainingSession] {
+        try fx.sessions.completedSessions(in: DateInterval(start: .distantPast, end: .distantFuture))
+    }
+
+    @Test("AC6.1 AC6.2 a routine session with no sets has no working sets, and finishing discards it")
+    func routineWithoutSetsIsDiscarded() async throws {
+        let routine = try fx.makeRoutine()
+        _ = try fx.makeRoutine(name: "Full Body B")
+        let proposedBefore = try fx.routines.nextRoutine()?.id
         let coordinator = makeCoordinator()
-        try await coordinator.startAdHoc(name: "Free")
+        try await coordinator.start(routineId: routine.id)
         let id = try #require(coordinator.activeWorkoutId)
+        #expect(!coordinator.hasWorkingSets)
 
         try await coordinator.finish()
 
+        #expect(coordinator.lastFinishOutcome == .discarded)
+        #expect(coordinator.phase == .idle)
+        #expect(coordinator.completedWorkoutId == nil, "no summary for a discarded session")
+        #expect(try fx.sessions.session(id: id) == nil)
+        #expect(try fx.sessions.activeSession() == nil)
+        #expect(try history().isEmpty)
+        #expect(try fx.routines.nextRoutine()?.id == proposedBefore, "no effect on Próxima sesión")
+    }
+
+    @Test("AC6.1 AC6.2 warm-up sets are not working sets: a warm-up-only session is discarded")
+    func warmupOnlyIsDiscarded() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try await coordinator.recordSet(reps: 10, weight: .kg(10), rir: nil, warmup: true)
+        await coordinator.skipTimer()
+        #expect(!coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .discarded)
+        #expect(try fx.sessions.session(id: id) == nil)
+        #expect(try history().isEmpty)
+    }
+
+    @Test("AC6.1 AC6.2 a free session with no entries is discarded by the same rule")
+    func emptyFreeSessionIsDiscarded() async throws {
+        let coordinator = makeCoordinator()
+        try await coordinator.startAdHoc(name: "Free")
+        let id = try #require(coordinator.activeWorkoutId)
+        #expect(!coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .discarded)
         #expect(coordinator.phase == .idle)
         #expect(try fx.sessions.session(id: id) == nil)
         #expect(try fx.sessions.activeSession() == nil)
+    }
+
+    @Test("AC6.3 checking for working sets changes nothing: the session stays in progress")
+    func keepTrainingKeepsSession() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let before = try #require(try fx.sessions.activeSession())
+        #expect(!coordinator.hasWorkingSets)
+
+        #expect(coordinator.phase == .active)
+        #expect(try fx.sessions.activeSession() == before)
+    }
+
+    @Test("AC6.4 a session with a working set is saved as before; exercises not done stay skipped")
+    func workingSetSaves() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try await coordinator.recordSet(reps: 10, weight: .kg(10), rir: nil, warmup: true)
+        await coordinator.skipTimer()
+        try await coordinator.recordSet(reps: 8, weight: .kg(20), rir: nil)
+        await coordinator.skipTimer()
+        #expect(coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .saved(id))
+        #expect(coordinator.completedWorkoutId == id)
+        let saved = try #require(try fx.sessions.session(id: id))
+        #expect(saved.isCompleted)
+        #expect(saved.entries.map(\.status) == [.done, .skipped])
+    }
+
+    @Test("D-T6a a cardio-only session is saved without the prompt")
+    func cardioOnlySaves() async throws {
+        let coordinator = makeCoordinator()
+        try await coordinator.startAdHoc(name: "Free")
+        let id = try #require(coordinator.activeWorkoutId)
+        try fx.sessions.logManualSet(
+            SetValues(durationSeconds: 1200, distanceMeters: 4000), exerciseId: fx.rower.id, sessionId: id,
+            at: TrainingFixtures.t0
+        )
+        #expect(coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .saved(id))
+        #expect(try fx.sessions.session(id: id)?.isCompleted == true)
+    }
+
+    @Test("D-T6a an imported set counts as a working set")
+    func importedSetSaves() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try fx.sessions.importEntry(fx.importedSets("e-1", reps: [10], weight: 40), into: id)
+        #expect(coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .saved(id))
     }
 
     @Test("pause and resume switch the phase")

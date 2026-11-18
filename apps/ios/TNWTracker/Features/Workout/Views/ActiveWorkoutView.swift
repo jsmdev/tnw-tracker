@@ -18,6 +18,8 @@ struct ActiveWorkoutView: View {
     @State private var setLogItem: SetLogSheetItem?
     @State private var restItem: ExerciseRestSheetItem?
     @State private var exerciseNames: [UUID: String] = [:]
+    /// "No has registrado ninguna serie" prompt (T6 AC6.1).
+    @State private var showDiscardPrompt = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -42,6 +44,16 @@ struct ActiveWorkoutView: View {
                 onCancel: { setLogItem = nil }
             )
         }
+        // An alert, not a confirmation dialog: on iOS 26 the dialog's popover
+        // hides the cancel button, and "Seguir entrenando" must be offered (AC6.1).
+        .alert("active-workout.discard.title", isPresented: $showDiscardPrompt) {
+            Button("active-workout.discard.confirm", role: .destructive) {
+                Task { try? await coordinator.finish() }
+            }
+            .accessibilityIdentifier(AXID.DiscardWorkout.discardButton)
+            Button("active-workout.discard.keep", role: .cancel) {}
+                .accessibilityIdentifier(AXID.DiscardWorkout.keepTrainingButton)
+        }
         .sheet(item: $restItem) { item in
             ExerciseRestSheet(item: item) { setting in
                 try? coordinator.saveRestSetting(setting)
@@ -52,6 +64,12 @@ struct ActiveWorkoutView: View {
         }
         .onChange(of: coordinator.entries.count) {
             Task { await loadExerciseNames() }
+        }
+        .onChange(of: coordinator.lastFinishOutcome) { _, outcome in
+            // A discarded workout has no summary: back to Home (T6 AC6.2).
+            if outcome == .discarded {
+                appEnv.router.presentedActiveWorkout = nil
+            }
         }
         .onChange(of: coordinator.completedWorkoutId) { _, newId in
             guard let id = newId else { return }
@@ -335,7 +353,12 @@ struct ActiveWorkoutView: View {
 
     private var endButton: some View {
         Button(role: .destructive) {
-            Task { try? await coordinator.finish() }
+            // T6: with no working set, ask before discarding; otherwise save as before.
+            if coordinator.hasWorkingSets {
+                Task { try? await coordinator.finish() }
+            } else {
+                showDiscardPrompt = true
+            }
         } label: {
             Label("active-workout.controls.end", systemImage: "stop.fill")
         }

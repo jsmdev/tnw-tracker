@@ -114,7 +114,8 @@
             try loadHistory(into: store.sessions, now: now)
         }
 
-        /// Two completed sessions two and four days ago:
+        /// Two completed sessions, Full Body A four days ago and Full Body B two days
+        /// ago, so "Próxima sesión" proposes Full Body A:
         /// - Full Body A: squats, a chest press logged by hand and also imported
         ///   (reconciled by default), and a skipped plank.
         /// - Full Body B: bench press, a row swapped for push-ups, removed cardio and an added timed plank.
@@ -122,7 +123,7 @@
             let zone = TimeZone(identifier: "Europe/Madrid") ?? .gmt
             let day: TimeInterval = 86400
 
-            let startA = now.addingTimeInterval(-2 * day)
+            let startA = now.addingTimeInterval(-4 * day)
             let first = try sessions.startSession(routineId: RoutineID.fullBodyA, name: "Full Body A", at: startA, timeZone: zone)
             for (index, reps) in [12, 10, 10].enumerated() {
                 try sessions.logManualSet(
@@ -153,7 +154,7 @@
             )
             try sessions.finishSession(id: first.id, at: startA.addingTimeInterval(3000), durationSeconds: 2700)
 
-            let startB = now.addingTimeInterval(-4 * day)
+            let startB = now.addingTimeInterval(-2 * day)
             let second = try sessions.startSession(routineId: RoutineID.fullBodyB, name: "Full Body B", at: startB, timeZone: zone)
             for reps in [8, 8, 7] {
                 try sessions.logManualSet(

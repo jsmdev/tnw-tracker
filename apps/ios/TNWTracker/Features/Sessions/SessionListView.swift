@@ -3,7 +3,8 @@ import TNWTrackerKit
 
 // MARK: - SessionListView
 
-/// Displays a paginated, filterable, searchable list of routines.
+/// Displays a paginated, filterable, searchable list of routines: favourites
+/// first with a star, marked or unmarked by swiping the row (T5 AC5.1, AC5.4).
 /// REQ-SESSLIST-01, REQ-SESSLIST-02, REQ-SESSLIST-03, REQ-SESSLIST-04, REQ-SESSLIST-05.
 struct SessionListView: View {
     @Environment(AppEnvironment.self) private var appEnv
@@ -60,18 +61,40 @@ struct SessionListView: View {
             appEnv.router.push(.sessionDetail(sessionID: session.id))
         } label: {
             Card {
-                VStack(alignment: .leading, spacing: Spacing.sm) {
-                    Text(verbatim: session.name)
-                        .font(.headline)
+                HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        Text(verbatim: session.name)
+                            .font(.headline)
 
-                    Text("session-list.row.exercises-count \(session.items.count)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        Text("session-list.row.exercises-count \(session.items.count)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if session.isFavorite {
+                        Image(systemName: "star.fill")
+                            .foregroundStyle(.orange)
+                            .accessibilityHidden(true)
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .buttonStyle(.plain)
+        .accessibilityValue(session.isFavorite ? Text("routine.favorite.value") : Text(verbatim: ""))
+        .accessibilityIdentifier(AXID.RoutineList.row(session.id))
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button {
+                Task { await model.setFavorite(!session.isFavorite, for: session) }
+            } label: {
+                Label(
+                    session.isFavorite ? "routine.favorite.unmark" : "routine.favorite.mark",
+                    systemImage: session.isFavorite ? "star.slash" : "star"
+                )
+            }
+            .tint(.orange)
+            .accessibilityIdentifier(AXID.RoutineList.favoriteAction)
+        }
     }
 
     private var loadMoreRow: some View {

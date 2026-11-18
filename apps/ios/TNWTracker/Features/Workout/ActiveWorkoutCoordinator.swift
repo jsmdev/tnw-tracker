@@ -377,6 +377,24 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
 
     // MARK: - Finish
 
+    /// What `finish()` did with the session.
+    public enum FinishOutcome: Equatable {
+        /// Completed and saved; the summary shows it.
+        case saved(UUID)
+        /// Deleted: it had no working sets (T6, D7).
+        case discarded
+    }
+
+    /// Whether the session in progress has a working set (T6, D-T6a). Without
+    /// one, "Terminar" asks first and `finish()` discards the session.
+    public var hasWorkingSets: Bool {
+        guard let current = session else { return false }
+        return ((try? sessions.session(id: current.id)) ?? current).hasWorkingSets
+    }
+
+    /// What the last `finish()` did (nil before any finish).
+    public private(set) var lastFinishOutcome: FinishOutcome?
+
     public func finish() async throws {
         guard let current = session else { return }
         elapsedTask?.cancel()
@@ -388,11 +406,11 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         // Cierre LOCAL: la sesión se completa en el store antes de sincronizar.
         // El sync remoto es best-effort — un fallo NO debe dejar la sesión en
         // curso ni colgar el coordinador (bug #88).
-        // El formato exige al menos una entrada: una sesión libre terminada sin
-        // ejercicios se descarta en vez de completarse.
-        let isEmpty = (try? sessions.session(id: current.id))?.entries.isEmpty ?? current.entries.isEmpty
+        // T6 (D7): una sesión sin series de trabajo (rutina o libre) nunca se
+        // guarda: se descarta, sin resumen.
+        let discard = !hasWorkingSets
         do {
-            if isEmpty {
+            if discard {
                 try sessions.discardSession(id: current.id)
             } else {
                 try sessions.finishSession(id: current.id, at: now(), durationSeconds: elapsedSeconds)
@@ -408,13 +426,14 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
 
         liveActivity.end()
 
-        completedWorkoutId = current.id
+        if !discard { completedWorkoutId = current.id }
         session = nil
         targets = [:]
         currentExerciseIndex = 0
         phase = .idle
         elapsedSeconds = 0
         logger.info("Coordinator phase → .idle (finished, summary ID: \(current.id))")
+        lastFinishOutcome = discard ? .discarded : .saved(current.id)
     }
 
     // MARK: - DrainCoordinatorProtocol conformance

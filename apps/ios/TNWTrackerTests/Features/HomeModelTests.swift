@@ -80,6 +80,31 @@ struct HomeModelTests {
         #expect(model.hasSessionToday)
     }
 
+    @Test("AC5.2 nextSession proposes the routine not done for the longest time")
+    func nextSessionOldest() async throws {
+        let alpha = try fx.makeRoutine(name: "Full Body A")
+        let bravo = try fx.makeRoutine(name: "Full Body B")
+        for (routine, date) in [(alpha, now.addingTimeInterval(-2 * 86400)), (bravo, now.addingTimeInterval(-4 * 86400))] {
+            let session = try fx.sessions.startSession(routineId: routine.id, name: nil, at: date, timeZone: .gmt)
+            try fx.sessions.logManualSet(SetValues(reps: 5), exerciseId: fx.squat.id, sessionId: session.id, at: date)
+            try fx.sessions.finishSession(id: session.id, at: date, durationSeconds: nil)
+        }
+        let model = makeModel()
+        await model.load()
+        #expect(model.nextSession?.name == "Full Body B")
+    }
+
+    @Test("AC5.3 nextSession proposes among favourites only")
+    func nextSessionFavourite() async throws {
+        _ = try fx.makeRoutine(name: "Full Body A")
+        let bravo = try fx.makeRoutine(name: "Full Body B")
+        try fx.routines.setFavorite(true, routineId: bravo.id)
+        let model = makeModel()
+        await model.load()
+        #expect(model.nextSession?.name == "Full Body B")
+        #expect(model.nextSession?.isFavorite == true)
+    }
+
     @Test("hasSessionToday is true while a session is in progress")
     func activeSessionCounts() async throws {
         _ = try fx.sessions.startSession(routineId: nil, name: nil, at: now, timeZone: .gmt)

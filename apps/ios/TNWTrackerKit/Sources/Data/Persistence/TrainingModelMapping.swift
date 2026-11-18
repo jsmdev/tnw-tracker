@@ -38,7 +38,8 @@ extension RoutineModel {
             externalRef: externalRef(provider: externalProvider, id: externalId),
             name: name,
             description: routineDescription,
-            items: items.sorted { $0.order < $1.order }.compactMap(\.snapshot)
+            items: items.sorted { $0.order < $1.order }.compactMap(\.snapshot),
+            isFavorite: isFavorite
         )
     }
 }

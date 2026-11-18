@@ -108,12 +108,25 @@ final class SwiftDataRoutineRepository: RoutineRepositoryProtocol {
         if query.onlyPerformed {
             models = models.filter { routine in routine.sessions.contains { $0.completedAt != nil } }
         }
+        // Favourites first, each group keeping the name order (AC5.1). A `Bool`
+        // is not a sort key for SwiftData, so the partition happens here, before paging.
+        models = models.filter(\.isFavorite) + models.filter { !$0.isFavorite }
         let page = models.dropFirst(query.offset).prefix(query.limit ?? Int.max)
         return page.map(\.snapshot)
     }
 
     func routine(id: UUID) throws -> Routine? {
         try context.fetchRoutine(id: id)?.snapshot
+    }
+
+    func nextRoutine() throws -> Routine? {
+        try context.nextRoutine()?.snapshot
+    }
+
+    func setFavorite(_ favorite: Bool, routineId: UUID) throws {
+        guard let model = try context.fetchRoutine(id: routineId) else { throw TrainingDataError.notFound }
+        model.isFavorite = favorite
+        try context.save()
     }
 
     func save(_ routine: Routine) throws {
@@ -539,6 +552,22 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
 // MARK: - Lookups
 
 extension ModelContext {
+    /// The routine "Próxima sesión" proposes (`NextRoutineRule`). Shared by the
+    /// routine repository (Home) and `NextSessionQuery` (widget).
+    func nextRoutine() throws -> RoutineModel? {
+        let models = try fetch(FetchDescriptor<RoutineModel>())
+        let candidates = models.map { model in
+            NextRoutineRule.Candidate(
+                id: model.id,
+                name: model.name,
+                isFavorite: model.isFavorite,
+                lastCompletedAt: model.sessions.compactMap(\.completedAt).max()
+            )
+        }
+        guard let id = NextRoutineRule.next(among: candidates) else { return nil }
+        return models.first { $0.id == id }
+    }
+
     func fetchExercise(id: UUID) throws -> ExerciseModel? {
         var descriptor = FetchDescriptor<ExerciseModel>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1

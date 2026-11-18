@@ -18,7 +18,8 @@ final class HomeModel {
     /// Superseded sets, warm-up sets and removed entries do not count.
     private(set) var weeklyVolume: Double = 0.0
 
-    /// The routine proposed next (nil if none exist).
+    /// The routine proposed next (nil if none exist): favourites if any, the one
+    /// never done or done longest ago (T5 AC5.2–AC5.3).
     private(set) var nextSession: Routine?
 
     /// True when a session is in progress or a routine exists to start.
@@ -64,7 +65,7 @@ final class HomeModel {
             weeklyVolume = 0
         }
 
-        nextSession = (try? routines.routines(RoutineQuery(limit: 1)))?.first
+        nextSession = try? routines.nextRoutine()
         let hasActive = ((try? sessions.activeSession()) ?? nil) != nil
         hasSessionToday = hasActive || nextSession != nil
     }

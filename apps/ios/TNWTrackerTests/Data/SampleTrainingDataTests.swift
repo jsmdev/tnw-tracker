@@ -22,6 +22,13 @@ struct SampleTrainingDataTests {
         #expect(try store.sessions.activeSession() == nil)
     }
 
+    @Test("T5 with the sample history, the next session is Full Body A (done longest ago), with no favourites")
+    func sampleProposesFullBodyA() throws {
+        try SampleTrainingData.loadIfEmpty(into: store, now: now)
+        #expect(try store.routines.nextRoutine()?.id == SampleTrainingData.RoutineID.fullBodyA)
+        #expect(try store.routines.routines(RoutineQuery()).allSatisfy { !$0.isFavorite })
+    }
+
     @Test("loading twice does not duplicate data")
     func idempotent() throws {
         try SampleTrainingData.loadIfEmpty(into: store, now: now)

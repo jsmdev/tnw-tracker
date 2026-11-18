@@ -103,6 +103,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: Spacing.sm) {
                 Text(verbatim: session.name)
                     .font(.headline)
+                    .accessibilityIdentifier(AXID.Home.nextSessionTitle)
 
                 Text("home.next-session.exercises-count \(session.items.count)")
                     .font(.subheadline)

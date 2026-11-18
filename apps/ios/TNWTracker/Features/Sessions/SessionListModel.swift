@@ -5,7 +5,7 @@ import TNWTrackerKit
 // MARK: - SessionListModel
 
 /// View model for SessionListView: the routines the user can start.
-/// Manages pagination (50 per page), filter (.all / .withWorkouts), ordering (by name),
+/// Manages pagination (50 per page), filter (.all / .withWorkouts), ordering (favourites first, then by name),
 /// and search-by-name. Covers REQ-SESSLIST-01, REQ-SESSLIST-02, REQ-SESSLIST-03.
 @Observable
 @MainActor
@@ -50,6 +50,13 @@ final class SessionListModel {
         currentPage = 0
         sessions = []
         await loadPage()
+    }
+
+    /// Marks or unmarks `routine` as a favourite and reloads the list, so it
+    /// moves into or out of the favourites group (AC5.1, AC5.4).
+    func setFavorite(_ favorite: Bool, for routine: Routine) async {
+        try? routines.setFavorite(favorite, routineId: routine.id)
+        await loadFirstPage()
     }
 
     func loadMore() async {

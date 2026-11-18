@@ -1,9 +1,8 @@
 import Foundation
 import SwiftData
 
-/// Name of the routine the widget proposes next.
-/// Today it is the first routine by name; choosing the next routine from the
-/// history is a later version (format O12).
+/// Name of the routine the widget proposes next, with the same rule as the
+/// Home card (`NextRoutineRule`, T5 AC5.2–AC5.3).
 public struct NextSessionQuery {
     private let container: ModelContainer
 
@@ -18,8 +17,6 @@ public struct NextSessionQuery {
     }
 
     public func nextSessionName() -> String? {
-        var descriptor = FetchDescriptor<RoutineModel>(sortBy: [SortDescriptor(\.name)])
-        descriptor.fetchLimit = 1
-        return (try? ModelContext(container).fetch(descriptor))?.first?.name
+        (try? ModelContext(container).nextRoutine())?.name
     }
 }

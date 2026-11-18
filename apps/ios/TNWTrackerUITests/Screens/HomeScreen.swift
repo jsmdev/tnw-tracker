@@ -13,6 +13,11 @@ struct HomeScreen {
         app.buttons[AXID.Home.quickStartButton]
     }
 
+    /// Name of the routine "Próxima sesión" proposes.
+    var nextSessionTitle: XCUIElement {
+        app.staticTexts[AXID.Home.nextSessionTitle]
+    }
+
     var settingsButton: XCUIElement {
         app.buttons[AXID.Home.settingsButton]
     }
@@ -36,6 +41,17 @@ struct HomeScreen {
     func tapSettings() -> SettingsScreen {
         settingsButton.tap()
         return SettingsScreen(app: app).waitUntilLoaded()
+    }
+
+    /// Opens the routine list. It has no in-app entry point yet, so this uses its
+    /// deep link `tnwtracker://session-history`.
+    func openRoutineList() -> RoutineListScreen {
+        RoutineListScreen.open(in: app)
+    }
+
+    /// Opens a routine's detail through its deep link `tnwtracker://session/<id>`.
+    func openRoutine(_ routineId: UUID) -> RoutineDetailScreen {
+        RoutineDetailScreen.open(routineId, in: app)
     }
 
     /// Taps the quick-start button and returns an already-validated ActiveWorkoutScreen.

@@ -3,7 +3,8 @@ import TNWTrackerKit
 
 // MARK: - SessionDetailView
 
-/// Shows a routine (name, description) + its exercises list.
+/// Shows a routine (name, description) + its exercises list, with a star
+/// toggle for the favourite mark (T5 AC5.4).
 /// Tapping an exercise navigates to `.exerciseDetail(exerciseID:)`.
 /// REQ-SESSLIST-04.
 struct SessionDetailView: View {
@@ -31,6 +32,13 @@ struct SessionDetailView: View {
         }
         .navigationTitle(session.map { Text(verbatim: $0.name) } ?? Text("session-detail.title"))
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            if let session {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    favoriteButton(session: session)
+                }
+            }
+        }
         .task {
             await load()
         }
@@ -70,6 +78,7 @@ struct SessionDetailView: View {
                 PrimaryButton(title: "session-detail.start-button") {
                     appEnv.router.presentedActiveWorkout = ActiveWorkoutPresentation(id: sessionID)
                 }
+                .accessibilityIdentifier(AXID.RoutineDetail.startButton)
                 .listRowInsets(EdgeInsets(
                     top: Spacing.sm,
                     leading: Spacing.md,
@@ -81,6 +90,22 @@ struct SessionDetailView: View {
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    /// Star toggle that marks or unmarks the routine as a favourite (T5 AC5.4).
+    private func favoriteButton(session: Routine) -> some View {
+        Button {
+            toggleFavorite(session)
+        } label: {
+            Image(systemName: session.isFavorite ? "star.fill" : "star")
+        }
+        .accessibilityLabel(session.isFavorite ? "routine.favorite.unmark" : "routine.favorite.mark")
+        .accessibilityIdentifier(AXID.RoutineDetail.favoriteButton)
+    }
+
+    private func toggleFavorite(_ routine: Routine) {
+        try? appEnv.routineRepository.setFavorite(!routine.isFavorite, routineId: routine.id)
+        session = (try? appEnv.routineRepository.routine(id: routine.id)) ?? session
     }
 
     private func exerciseRow(item: (item: RoutineItem, exercise: Exercise?)) -> some View {

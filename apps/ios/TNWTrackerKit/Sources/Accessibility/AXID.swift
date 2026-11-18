@@ -1,3 +1,5 @@
+import Foundation
+
 // MARK: - AXID
 
 /// Accessibility identifiers for UI test automation.
@@ -12,6 +14,22 @@ public enum AXID {
         public static let settingsButton = "home.settingsButton"
     }
 
+    /// Routine list (`SessionListView`).
+    public enum RoutineList {
+        /// Swipe action that marks or unmarks the row's routine as a favourite.
+        public static let favoriteAction = "routineList.favoriteAction"
+
+        public static func row(_ routineId: UUID) -> String {
+            "routineList.row.\(routineId.uuidString)"
+        }
+    }
+
+    /// Routine detail (`SessionDetailView`).
+    public enum RoutineDetail {
+        public static let favoriteButton = "routineDetail.favoriteButton"
+        public static let startButton = "routineDetail.startButton"
+    }
+
     public enum ActiveWorkout {
         public static let elapsedTimer = "activeWorkout.elapsedTimer"
         public static let endButton = "activeWorkout.endButton"
@@ -21,6 +39,12 @@ public enum AXID {
         public static let setWarmupToggle = "activeWorkout.setWarmupToggle"
         public static let exerciseOptionsMenu = "activeWorkout.exerciseOptionsMenu"
         public static let exerciseRestButton = "activeWorkout.exerciseRestButton"
+    }
+
+    /// "No has registrado ninguna serie" prompt when ending a workout (T6).
+    public enum DiscardWorkout {
+        public static let discardButton = "discardWorkout.discardButton"
+        public static let keepTrainingButton = "discardWorkout.keepTrainingButton"
     }
 
     /// "Descanso entre series" sheet of the current exercise.

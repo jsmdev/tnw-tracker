@@ -100,6 +100,13 @@ struct ActiveWorkoutScreen {
         return SetLogSheetScreen(app: app).waitUntilLoaded()
     }
 
+    /// Taps the end button of a workout with no working sets; returns the
+    /// validated discard prompt (T6 AC6.1).
+    func tapEndWithoutSets() -> DiscardWorkoutScreen {
+        endButton.tap()
+        return DiscardWorkoutScreen(app: app).waitUntilLoaded()
+    }
+
     /// Taps the end button and returns an already-validated WorkoutSummaryScreen.
     /// BUG-2 coverage: if the fullScreenCover chain is broken, waitUntilLoaded times out here.
     func tapEnd() -> WorkoutSummaryScreen {

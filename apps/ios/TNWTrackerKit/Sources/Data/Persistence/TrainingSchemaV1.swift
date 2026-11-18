@@ -108,6 +108,9 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     var name: String
     /// Format field `routine.description` (`description` is reserved in `@Model`).
     var routineDescription: String?
+    /// The user's favourite mark (app state, synced as `routines.is_favorite`).
+    /// Not part of the training data format: imports never change it.
+    var isFavorite: Bool = false
 
     @Relationship(deleteRule: .cascade, inverse: \RoutineItemModel.routine)
     var items: [RoutineItemModel] = []

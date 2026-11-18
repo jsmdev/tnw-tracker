@@ -17,10 +17,17 @@ public protocol ExerciseRepositoryProtocol: AnyObject {
 
 @MainActor
 public protocol RoutineRepositoryProtocol: AnyObject {
-    /// Routines sorted by name, filtered and paged by `query`.
+    /// Routines filtered and paged by `query`: favourites first, then the rest,
+    /// each group sorted by name.
     func routines(_ query: RoutineQuery) throws -> [Routine]
     func routine(id: UUID) throws -> Routine?
+    /// The routine proposed for the next session ("Próxima sesión"), or nil
+    /// without routines. Same rule as the widget's `NextSessionQuery`.
+    func nextRoutine() throws -> Routine?
+    /// Marks or unmarks the routine as a favourite. Throws `notFound`.
+    func setFavorite(_ favorite: Bool, routineId: UUID) throws
     /// Inserts or replaces the routine with the same `id`, items included.
+    /// Never changes `isFavorite`.
     /// Throws `invalidRoutine` without items, with repeated or non-positive
     /// `order`, or with an exercise that does not exist.
     func save(_ routine: Routine) throws
