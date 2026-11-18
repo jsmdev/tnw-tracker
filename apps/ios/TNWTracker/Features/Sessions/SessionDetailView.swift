@@ -121,16 +121,14 @@ struct SessionDetailView: View {
                         .font(.body)
                         .fontWeight(.medium)
 
-                    if let sets = se.targetSets, let reps = se.targetReps?.min {
-                        // Use verbatim + String(localized:) to avoid creating a literal
-                        // LocalizedStringKey like "session-detail.sets-reps %lld %lld".
-                        // The catalog key "session-detail.sets-reps" carries %lld format args.
-                        Text(verbatim: String(
-                            format: String(localized: "session-detail.sets-reps"),
-                            sets, reps
-                        ))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if let sets = se.targetSets,
+                       let target = TargetRepsFormat.setsReps(sets: sets, minReps: se.targetReps?.min, maxReps: se.targetReps?.max),
+                       let spoken = TargetRepsFormat.accessibilityLabel(sets: sets, minReps: se.targetReps?.min, maxReps: se.targetReps?.max) {
+                        // "3 × 8–12" (T8, D9); VoiceOver reads it in words.
+                        Text(verbatim: target)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel(Text(verbatim: spoken))
                     }
                 }
 

@@ -43,6 +43,10 @@ struct TnwTrackerApp: App {
                         appEnv = AppEnvironment.bootstrapForUITesting(store: store)
                         try? SampleTrainingData.loadIfEmpty(into: store)
                         appEnv?.startIntentObserver()
+                        // Live Activities left by an earlier run make the system
+                        // relaunch the app in the background, without `--uitesting`,
+                        // racing the next run's first launch (T11).
+                        await LiveActivityController.endAll()
                         return
                     }
                 #endif

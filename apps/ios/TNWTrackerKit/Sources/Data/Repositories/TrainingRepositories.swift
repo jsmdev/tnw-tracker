@@ -77,7 +77,9 @@ public protocol SessionRepositoryProtocol: AnyObject {
     /// (one entry per exercise), upserting each set on its `externalRef`.
     /// Never changes manual sets. The first time an entry mixes sources it gets
     /// the default reconciliation (keep imported); an existing reconciliation is
-    /// kept, and new imported sets follow it.
+    /// kept, and new imported sets follow it. A ref (entry or set) already in
+    /// another session moves here with its annotations; that session is removed
+    /// when it is left imported-only with no counted set (D8).
     func importEntry(_ imported: ImportedEntry, into sessionId: UUID) throws
 
     /// The user's reconciliation choice for an entry that mixes sources.
@@ -123,7 +125,9 @@ public protocol TrainingImporterProtocol: AnyObject {
     /// used to resolve the bundle's own references. Re-importing the same data,
     /// even with different bundle ids, updates in place and never duplicates.
     /// Imported sessions join the session completed on the same local date (O1),
-    /// or become a new completed session.
+    /// or become a new completed session. A provider ref already in another session
+    /// moves to the imported one (D8). Atomic per session (D13): an invalid session
+    /// is skipped and listed in `skippedSessions`; bundle-level errors still throw.
     @discardableResult
     func importBundle(_ bundle: TrainingBundle) throws -> ImportResult
 }

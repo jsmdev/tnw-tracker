@@ -467,13 +467,28 @@ public struct BundleSession: Sendable {
     }
 }
 
-/// Where each bundle item landed: bundle id → local id.
+/// Where each bundle item landed: bundle id → local id. Sessions that could not
+/// be imported are listed in `skippedSessions`, in bundle order (D13).
 public struct ImportResult: Sendable, Equatable {
     public var exerciseIds: [UUID: UUID] = [:]
     public var routineIds: [UUID: UUID] = [:]
     public var sessionIds: [UUID: UUID] = [:]
+    public var skippedSessions: [SkippedSession] = []
 
     public init() {}
+}
+
+/// A bundle session the import skipped, and why; nothing of it was written (D13).
+public struct SkippedSession: Sendable, Equatable {
+    public var bundleId: UUID
+    public var externalRef: ExternalRef
+    public var reason: TrainingDataError
+
+    public init(bundleId: UUID, externalRef: ExternalRef, reason: TrainingDataError) {
+        self.bundleId = bundleId
+        self.externalRef = externalRef
+        self.reason = reason
+    }
 }
 
 extension TrainingSession {

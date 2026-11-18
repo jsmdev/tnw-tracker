@@ -86,10 +86,15 @@ struct ActiveWorkoutScreen {
     // MARK: - Transitions
 
     /// Opens the exercise's options and then "Descanso entre series".
+    /// The menu item exists as soon as the menu starts to open; it is tapped only
+    /// once it is hittable (fully presented), else the tap may only close the menu.
     func openExerciseRest() -> ExerciseRestSheetScreen {
-        app.buttons[AXID.ActiveWorkout.exerciseOptionsMenu].tap()
+        let menu = app.buttons[AXID.ActiveWorkout.exerciseOptionsMenu]
+        menu.waitUntilHittable()
+        menu.tap()
         let restButton = app.buttons[AXID.ActiveWorkout.exerciseRestButton]
-        XCTAssertTrue(restButton.waitForExistence(timeout: 2), "Exercise options did not show the rest item.")
+        XCTAssertTrue(restButton.waitForExistence(timeout: 3), "Exercise options did not show the rest item.")
+        restButton.waitUntilHittable()
         restButton.tap()
         return ExerciseRestSheetScreen(app: app).waitUntilLoaded()
     }

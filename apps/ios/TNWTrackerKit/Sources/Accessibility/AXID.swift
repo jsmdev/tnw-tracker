@@ -12,6 +12,13 @@ public enum AXID {
         public static let quickStartButton = "home.quickStartButton"
         public static let nextSessionTitle = "home.nextSessionTitle"
         public static let settingsButton = "home.settingsButton"
+        /// "Ver todas" in "Otras rutinas": opens the routine list (T10).
+        public static let seeAllRoutinesButton = "home.seeAllRoutinesButton"
+
+        /// A row of "Otras rutinas" (T10).
+        public static func otherRoutine(_ routineId: UUID) -> String {
+            "home.otherRoutine.\(routineId.uuidString)"
+        }
     }
 
     /// Routine list (`SessionListView`).

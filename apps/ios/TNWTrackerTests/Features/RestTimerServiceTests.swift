@@ -23,7 +23,7 @@ struct RestTimerServiceTests {
     /// Verifies the new workoutName param compiles + state.workoutId is set correctly.
     @Test("start() accepts workoutName and state carries correct workoutId")
     func startAcceptsWorkoutName() async throws {
-        let service = RestTimerService(liveActivity: LiveActivityController())
+        let service = RestTimerService(liveActivity: LiveActivityController(requestsActivities: false))
 
         let workoutId = UUID()
         let workoutName = "Push Day — Test"
@@ -47,7 +47,7 @@ struct RestTimerServiceTests {
     /// After start(), the exposed workoutName property matches what was passed.
     @Test("workoutName property reflects the value passed to start()")
     func workoutNameIsStored() async throws {
-        let service = RestTimerService(liveActivity: LiveActivityController())
+        let service = RestTimerService(liveActivity: LiveActivityController(requestsActivities: false))
 
         let name = "Legs Day"
         await service.start(
@@ -65,7 +65,7 @@ struct RestTimerServiceTests {
     /// The timer is local: start() sets its state without any network dependency.
     @Test("start() works offline — local state is set without crashing")
     func startWorksOffline() async throws {
-        let service = RestTimerService(liveActivity: LiveActivityController())
+        let service = RestTimerService(liveActivity: LiveActivityController(requestsActivities: false))
 
         let workoutId = UUID()
         await service.start(
@@ -84,7 +84,7 @@ struct RestTimerServiceTests {
     /// After skip(), workoutName persists (stored on service, not cleared on skip).
     @Test("workoutName persists after skip()")
     func workoutNamePersistsAfterSkip() async throws {
-        let service = RestTimerService(liveActivity: LiveActivityController())
+        let service = RestTimerService(liveActivity: LiveActivityController(requestsActivities: false))
 
         let name = "Pull Day"
         await service.start(workoutId: UUID(), workoutName: name, type: .betweenSets, durationSeconds: 30)

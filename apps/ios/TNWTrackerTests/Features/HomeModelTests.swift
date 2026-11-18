@@ -105,6 +105,31 @@ struct HomeModelTests {
         #expect(model.nextSession?.isFavorite == true)
     }
 
+    @Test("AC10.1 otherRoutines lists every routine but the proposed one, favourites first, then by name")
+    func otherRoutinesSkipTheProposal() async throws {
+        let charlie = try fx.makeRoutine(name: "Charlie")
+        let alpha = try fx.makeRoutine(name: "Alpha")
+        let delta = try fx.makeRoutine(name: "Delta")
+        let bravo = try fx.makeRoutine(name: "Bravo")
+        try fx.routines.setFavorite(true, routineId: delta.id)
+        try fx.routines.setFavorite(true, routineId: bravo.id)
+        let model = makeModel()
+        await model.load()
+        // Proposal: among favourites, never done, by name → Bravo.
+        #expect(model.nextSession?.id == bravo.id)
+        #expect(model.otherRoutines.map(\.id) == [delta.id, alpha.id, charlie.id])
+        #expect(model.otherRoutines.map(\.isFavorite) == [true, false, false])
+    }
+
+    @Test("AC10.1 with a single routine, otherRoutines is empty")
+    func otherRoutinesEmptyWithOneRoutine() async throws {
+        _ = try fx.makeRoutine(name: "Alpha")
+        let model = makeModel()
+        await model.load()
+        #expect(model.nextSession != nil)
+        #expect(model.otherRoutines.isEmpty)
+    }
+
     @Test("hasSessionToday is true while a session is in progress")
     func activeSessionCounts() async throws {
         _ = try fx.sessions.startSession(routineId: nil, name: nil, at: now, timeZone: .gmt)

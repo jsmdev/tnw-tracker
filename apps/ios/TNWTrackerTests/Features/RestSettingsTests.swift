@@ -17,7 +17,7 @@ struct RestSettingsTests {
     }
 
     private func makeCoordinator(changeExerciseRest: Int? = 120) -> ActiveWorkoutCoordinator {
-        let liveActivity = LiveActivityController()
+        let liveActivity = LiveActivityController(requestsActivities: false)
         return ActiveWorkoutCoordinator(
             sessions: fx.sessions,
             routines: fx.routines,

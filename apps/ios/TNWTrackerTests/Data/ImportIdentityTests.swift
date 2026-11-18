@@ -200,16 +200,18 @@ struct ImportIdentityTests {
         #expect(try allSessions.isEmpty)
     }
 
-    @Test("a bundle reference that the bundle does not contain is rejected")
-    func unresolvedReferenceRejected() {
+    @Test("a session naming an exercise the bundle does not contain is skipped and reported (D13)")
+    func unresolvedReferenceRejected() throws {
         var broken = bundle()
         broken.sessions[0].entries[0].exerciseId = UUID()
-        #expect(throws: TrainingDataError.self) { try store.importer.importBundle(broken) }
+        let result = try store.importer.importBundle(broken)
+        #expect(result.skippedSessions.map(\.reason) == [.invalidSession("entry names an exercise outside the bundle")])
+        #expect(try allSessions.isEmpty)
     }
 
     // MARK: - Verifier regressions (B3, B4)
 
-    @Test("B3: a failing import writes nothing, even after an unrelated save, and a corrected retry imports cleanly")
+    @Test("B3: a failing session writes nothing, even after an unrelated save, and a corrected retry imports cleanly (D13: per session)")
     func failingImportIsAtomic() throws {
         let strengthId = UUID(), cardioId = UUID()
         let strength = Exercise(id: strengthId, externalRef: ref("st"), name: "Row", type: .strength)
@@ -228,10 +230,11 @@ struct ImportIdentityTests {
         )
         let invalid = TrainingBundle(exercises: [strength, cardio], sessions: [good, bad])
 
-        #expect(throws: TrainingDataError.self) { try store.importer.importBundle(invalid) }
+        let skipped = try store.importer.importBundle(invalid)
+        #expect(skipped.skippedSessions.map(\.bundleId) == [bad.id])
         try store.exercises.save(Exercise(name: "Unrelated", type: .bodyweight))
-        #expect(try allSessions.isEmpty)
-        #expect(try store.exercises.exercises().map(\.name) == ["Unrelated"])
+        #expect(try allSessions.map(\.externalRef) == [ref("day1")], "only the valid session")
+        #expect(try store.exercises.exercises().map(\.name).sorted() == ["Bike", "Row", "Unrelated"])
 
         var fixed = invalid
         fixed.sessions[1].entries[0].sets[0].values = SetValues(durationSeconds: 300)

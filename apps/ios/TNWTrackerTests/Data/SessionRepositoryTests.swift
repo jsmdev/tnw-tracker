@@ -402,15 +402,16 @@ struct SessionRepositoryTests {
         #expect(try fx.sessions.bestWeights(completedBefore: t0).isEmpty)
     }
 
-    @Test("an externalRef set is never stored twice, even across sessions")
+    @Test("an externalRef set is never stored twice, even across sessions: it moves (D8)")
     func importedSetUniqueAcrossSessions() throws {
         let first = try start()
         try fx.sessions.importEntry(fx.importedSets("e-7", reps: [10], weight: 40), into: first.id)
         try fx.sessions.finishSession(id: first.id, at: t0.addingTimeInterval(600), durationSeconds: nil)
         let second = try fx.sessions.startSession(routineId: nil, name: nil, at: t0.addingTimeInterval(700), timeZone: TrainingFixtures.zone)
-        #expect(throws: TrainingDataError.duplicateExternalRef) {
-            try fx.sessions.importEntry(fx.importedSets("e-7", reps: [10], weight: 40), into: second.id)
-        }
+        try fx.sessions.importEntry(fx.importedSets("e-7", reps: [10], weight: 40), into: second.id)
+        let sets = try reload(second.id).entries.flatMap(\.sets)
+        #expect(sets.map(\.externalRef) == [fx.ref("e-7#1")])
+        #expect(try fx.sessions.session(id: first.id) == nil, "the imported-only first session had nothing left")
     }
 
     @Test("an imported entry never ends after its completed session (rule range)")

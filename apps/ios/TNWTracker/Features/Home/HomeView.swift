@@ -18,6 +18,7 @@ struct HomeView: View {
             VStack(alignment: .leading) {
                 weeklyProgressSection
                 nextSessionSection
+                otherRoutinesSection
             }
             .padding(.horizontal, Spacing.md)
             .padding(.bottom, Spacing.lg)
@@ -118,6 +119,75 @@ struct HomeView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Other Routines Section
+
+extension HomeView {
+    /// "Otras rutinas" (T10 AC10.1): the routines "Próxima sesión" does not
+    /// propose, favourites first with a star, and "Ver todas" to the routine list.
+    /// Shown whenever there is a routine, so the list is always reachable.
+    @ViewBuilder
+    private var otherRoutinesSection: some View {
+        if model.nextSession != nil || !model.otherRoutines.isEmpty {
+            VStack(alignment: .leading) {
+                SectionHeader(title: "home.other-routines.title") {
+                    Button {
+                        appEnv.router.push(.sessionHistory)
+                    } label: {
+                        // Primary colour with a chevron: the default tint does not
+                        // reach the contrast minimum on this background. The 44 pt
+                        // frame is the minimum hit area.
+                        HStack(spacing: Spacing.xs) {
+                            Text("home.other-routines.see-all")
+                            Image(systemName: "chevron.right")
+                                .imageScale(.small)
+                                .accessibilityHidden(true)
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .frame(minWidth: 44, minHeight: 44)
+                        .contentShape(.rect)
+                    }
+                    .accessibilityIdentifier(AXID.Home.seeAllRoutinesButton)
+                }
+
+                VStack(spacing: Spacing.sm) {
+                    ForEach(model.otherRoutines) { routine in
+                        otherRoutineRow(routine)
+                    }
+                }
+            }
+        }
+    }
+
+    private func otherRoutineRow(_ routine: Routine) -> some View {
+        Button {
+            appEnv.router.push(.sessionDetail(sessionID: routine.id))
+        } label: {
+            Card {
+                HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text(verbatim: routine.name)
+                            .font(.headline)
+                        Text("session-list.row.exercises-count \(routine.items.count)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if routine.isFavorite {
+                        Image(systemName: "star.fill")
+                            .foregroundStyle(.orange)
+                            .accessibilityHidden(true)
+                    }
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityValue(routine.isFavorite ? Text("routine.favorite.value") : Text(verbatim: ""))
+        .accessibilityIdentifier(AXID.Home.otherRoutine(routine.id))
     }
 }
 

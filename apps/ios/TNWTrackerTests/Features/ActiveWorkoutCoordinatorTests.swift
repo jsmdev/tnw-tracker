@@ -27,7 +27,7 @@ struct ActiveWorkoutCoordinatorTests {
     }
 
     private func makeCoordinator(sync: any SyncEngine = NoopSyncEngine()) -> ActiveWorkoutCoordinator {
-        let liveActivity = LiveActivityController()
+        let liveActivity = LiveActivityController(requestsActivities: false)
         return ActiveWorkoutCoordinator(
             sessions: fx.sessions,
             routines: fx.routines,

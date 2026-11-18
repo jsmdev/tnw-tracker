@@ -16,13 +16,13 @@ struct RoutineDetailScreen {
         app.buttons[AXID.RoutineDetail.startButton]
     }
 
-    // MARK: - Landing
-
-    /// Opens the detail through its deep link `tnwtracker://session/<id>`.
-    static func open(_ routineId: UUID, in app: XCUIApplication) -> Self {
-        app.openDeepLink("tnwtracker://session/\(routineId.uuidString)")
-        return RoutineDetailScreen(app: app).waitUntilLoaded()
+    /// A routine item's target ("3 × 6–8", T8), found by what VoiceOver reads,
+    /// in either language.
+    func target(spokenAs labels: [String]) -> XCUIElement {
+        app.staticTexts.matching(NSPredicate(format: "label IN %@", labels)).firstMatch
     }
+
+    // MARK: - Landing
 
     @discardableResult
     func waitUntilLoaded(timeout: TimeInterval = 5) -> Self {
@@ -44,6 +44,12 @@ struct RoutineDetailScreen {
     func tapStart() -> ActiveWorkoutScreen {
         startButton.tap()
         return ActiveWorkoutScreen(app: app).waitUntilLoaded()
+    }
+
+    /// Back to Home, when the detail was opened from "Otras rutinas".
+    func backToHome() -> HomeScreen {
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        return HomeScreen(app: app).waitUntilLoaded()
     }
 
     /// Back to the routine list.

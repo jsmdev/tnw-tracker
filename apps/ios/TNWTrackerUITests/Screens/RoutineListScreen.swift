@@ -18,12 +18,6 @@ struct RoutineListScreen {
 
     // MARK: - Landing
 
-    /// Opens the list through its deep link (no in-app entry point yet).
-    static func open(in app: XCUIApplication) -> Self {
-        app.openDeepLink("tnwtracker://session-history")
-        return RoutineListScreen(app: app).waitUntilLoaded()
-    }
-
     @discardableResult
     func waitUntilLoaded(timeout: TimeInterval = 5) -> Self {
         XCTAssertTrue(

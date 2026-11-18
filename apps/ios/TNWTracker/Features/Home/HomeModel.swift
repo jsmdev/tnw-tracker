@@ -22,6 +22,10 @@ final class HomeModel {
     /// never done or done longest ago (T5 AC5.2–AC5.3).
     private(set) var nextSession: Routine?
 
+    /// "Otras rutinas" (T10 AC10.1): every routine but `nextSession`, in the
+    /// routine list's order (favourites first, then by name).
+    private(set) var otherRoutines: [Routine] = []
+
     /// True when a session is in progress or a routine exists to start.
     /// Drives the Quick Start button visibility (REQ-HOME-03).
     private(set) var hasSessionToday: Bool = false
@@ -66,6 +70,9 @@ final class HomeModel {
         }
 
         nextSession = try? routines.nextRoutine()
+        // The routine list's own order (favourites first, then by name).
+        let all = (try? routines.routines(RoutineQuery())) ?? []
+        otherRoutines = all.filter { $0.id != nextSession?.id }
         let hasActive = ((try? sessions.activeSession()) ?? nil) != nil
         hasSessionToday = hasActive || nextSession != nil
     }

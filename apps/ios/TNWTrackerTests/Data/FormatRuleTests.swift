@@ -53,7 +53,7 @@ struct FormatRuleTests {
         #expect(again.map { $0.values.reps } == [10, 9, 6, 5])
     }
 
-    @Test("B2: the merged second ref is still detected as a duplicate in another session (D8)")
+    @Test("B2: the merged second ref is still found in another session, and moves from it (D8)")
     func mergedRefDetectedAcrossSessions() throws {
         let first = try start()
         try fx.sessions.importEntry(fx.importedSets("a", reps: [10], weight: 40), into: first.id)
@@ -64,7 +64,14 @@ struct FormatRuleTests {
             exerciseId: fx.press.id, externalRef: fx.ref("b"),
             sets: [ImportedSet(externalRef: fx.ref("b#9"), order: 1, values: SetValues(reps: 1, weight: .kg(40)))]
         )
-        #expect(throws: TrainingDataError.duplicateExternalRef) { try fx.sessions.importEntry(reshaped, into: second.id) }
+        try fx.sessions.importEntry(reshaped, into: second.id)
+
+        let moved = try #require(try reload(second.id).entries.first)
+        #expect(moved.externalRef == fx.ref("b"))
+        #expect(moved.sets.map(\.externalRef) == [fx.ref("b#9")], "only the incoming set; b#1 stays behind")
+        let kept = try #require(try reload(first.id).entries.first)
+        #expect(kept.externalRef == fx.ref("a"), "the first session keeps ref a")
+        #expect(kept.sets.map(\.externalRef) == [fx.ref("a#1"), fx.ref("b#1")])
     }
 
     @Test("imported set order starts at 1 and rest is not negative")

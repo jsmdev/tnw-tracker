@@ -22,6 +22,21 @@ struct HomeScreen {
         app.buttons[AXID.Home.settingsButton]
     }
 
+    /// "Ver todas" in "Otras rutinas" (T10).
+    var seeAllRoutinesButton: XCUIElement {
+        app.buttons[AXID.Home.seeAllRoutinesButton]
+    }
+
+    /// A row of "Otras rutinas" (T10).
+    func otherRoutine(_ routineId: UUID) -> XCUIElement {
+        app.buttons[AXID.Home.otherRoutine(routineId)]
+    }
+
+    /// True when the "Otras rutinas" row shows the favourite star.
+    func isFavorite(_ routineId: UUID) -> Bool {
+        (otherRoutine(routineId).value as? String)?.isEmpty == false
+    }
+
     // MARK: - Landing
 
     /// Waits for the Home landing element. Fails the test with a descriptive message if it times out.
@@ -43,15 +58,27 @@ struct HomeScreen {
         return SettingsScreen(app: app).waitUntilLoaded()
     }
 
-    /// Opens the routine list. It has no in-app entry point yet, so this uses its
-    /// deep link `tnwtracker://session-history`.
+    /// Opens the routine list with "Ver todas" in "Otras rutinas" (T10).
     func openRoutineList() -> RoutineListScreen {
-        RoutineListScreen.open(in: app)
+        tapWhenHittable(seeAllRoutinesButton)
+        return RoutineListScreen(app: app).waitUntilLoaded()
     }
 
-    /// Opens a routine's detail through its deep link `tnwtracker://session/<id>`.
-    func openRoutine(_ routineId: UUID) -> RoutineDetailScreen {
-        RoutineDetailScreen.open(routineId, in: app)
+    /// Opens a routine of "Otras rutinas" in its detail (T10).
+    func openOtherRoutine(_ routineId: UUID) -> RoutineDetailScreen {
+        tapWhenHittable(otherRoutine(routineId))
+        return RoutineDetailScreen(app: app).waitUntilLoaded()
+    }
+
+    /// Home may sit below the navigation bar's large title or a returning push:
+    /// scroll the element in and wait until a tap can reach it.
+    private func tapWhenHittable(_ element: XCUIElement) {
+        XCTAssertTrue(element.waitForExistence(timeout: 5), "\(element) is not on Home.")
+        if !element.isHittable {
+            app.swipeUp()
+        }
+        element.waitUntilHittable()
+        element.tap()
     }
 
     /// Taps the quick-start button and returns an already-validated ActiveWorkoutScreen.

@@ -422,6 +422,40 @@
         }
       }
     },
+    "home.other-routines.see-all": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See all"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver todas"
+          }
+        }
+      }
+    },
+    "home.other-routines.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other routines"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otras rutinas"
+          }
+        }
+      }
+    },
     "home.quick-start.button": {
       "localizations": {
         "en": {
@@ -875,13 +909,30 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld sets × %lld reps"
+            "value": "%lld sets of %lld reps"
           }
         },
         "es-ES": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld series × %lld repeticiones"
+            "value": "%lld series de %lld repeticiones"
+          }
+        }
+      }
+    },
+    "session-detail.sets-reps-range": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld sets of %2$lld to %3$lld reps"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld series de %2$lld a %3$lld repeticiones"
           }
         }
       }

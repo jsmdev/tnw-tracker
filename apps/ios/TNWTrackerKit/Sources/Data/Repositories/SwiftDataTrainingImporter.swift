@@ -20,27 +20,45 @@ final class SwiftDataTrainingImporter: TrainingImporterProtocol {
         routines = SwiftDataRoutineRepository(context: context)
     }
 
-    /// Atomic: the whole bundle is validated before any write, nothing is saved
-    /// until every item is written, and any error rolls the context back.
+    /// Atomic per session (D13). Bundle-level rules (exercises, routines and their
+    /// references) are checked before any write and reject the whole bundle.
+    /// Exercises and routines are then saved, and each session is validated and
+    /// written on its own: an invalid session is rolled back, skipped and listed in
+    /// `ImportResult.skippedSessions` with its reason; every valid one is saved.
     func importBundle(_ bundle: TrainingBundle) throws -> ImportResult {
-        try validate(bundle)
+        try validateBundleLevel(bundle)
+        var result = ImportResult()
         do {
-            var result = ImportResult()
             for exercise in bundle.exercises {
                 result.exerciseIds[exercise.id] = try importExercise(exercise)
             }
             for routine in bundle.routines {
                 result.routineIds[routine.id] = try importRoutine(routine, exerciseIds: result.exerciseIds)
             }
-            for session in bundle.sessions {
-                result.sessionIds[session.id] = try importSession(session, result: result)
-            }
             try context.save()
-            return result
         } catch {
             context.rollback()
             throw error
         }
+        let types = Dictionary(bundle.exercises.map { ($0.id, $0.type.rawValue) }, uniquingKeysWith: { first, _ in first })
+        let bundleRoutineIds = Set(bundle.routines.map(\.id))
+        for session in bundle.sessions {
+            do {
+                try validate(session, types: types, routineIds: bundleRoutineIds)
+                let localId = try importSession(session, result: result)
+                try context.save()
+                result.sessionIds[session.id] = localId
+            } catch let error as TrainingDataError {
+                context.rollback()
+                result.skippedSessions.append(SkippedSession(bundleId: session.id, externalRef: session.externalRef, reason: error))
+            } catch {
+                // Not a rule of the format (a storage failure): stop the import.
+                // Sessions already saved stay saved.
+                context.rollback()
+                throw error
+            }
+        }
+        return result
     }
 
     // MARK: - Items
@@ -107,11 +125,14 @@ final class SwiftDataTrainingImporter: TrainingImporterProtocol {
                 session.routine = try context.fetchRoutine(id: resolve(routineId, in: result.routineIds))
             }
         }
+        var vacated: [SessionModel] = []
         for entry in incoming.entries {
             let exerciseId = try resolve(entry.exerciseId, in: result.exerciseIds)
             guard let exercise = try context.fetchExercise(id: exerciseId) else { throw TrainingDataError.notFound }
-            try sessions.merge(entry, exercise: exercise, into: session)
+            vacated += try sessions.merge(entry, exercise: exercise, into: session)
         }
+        // D8: a session whose refs all moved here is removed once every entry is in.
+        sessions.removeEmptiedImportedSessions(vacated.filter { $0.id != session.id })
         return session.id
     }
 
@@ -159,54 +180,49 @@ final class SwiftDataTrainingImporter: TrainingImporterProtocol {
         return local
     }
 
-    /// Every rule a bundle item can break, checked before any write.
-    private func validate(_ bundle: TrainingBundle) throws {
+    /// Bundle-level rules, checked before any write: a failure rejects the whole
+    /// bundle (exercises, routines and the routines' exercise references).
+    private func validateBundleLevel(_ bundle: TrainingBundle) throws {
         for exercise in bundle.exercises {
             try SwiftDataExerciseRepository.validate(exercise)
         }
-        let types = Dictionary(bundle.exercises.map { ($0.id, $0.type.rawValue) }, uniquingKeysWith: { first, _ in first })
         for routine in bundle.routines where routine.externalRef?.isValid != true {
             throw TrainingDataError.invalidRoutine("an imported routine needs a valid externalRef")
         }
-        for session in bundle.sessions {
-            guard session.externalRef.isValid else { throw TrainingDataError.invalidExternalRef }
-            if let startedAt = session.startedAt, startedAt > session.completedAt {
-                throw TrainingDataError.invalidSession("a session cannot end before it started")
-            }
-            guard TimeZone(identifier: session.timeZone) != nil || session.timeZone == "UTC" else {
-                throw TrainingDataError.invalidSession("unknown time zone \(session.timeZone)")
-            }
-            for entry in session.entries {
-                guard entry.externalRef.isValid else { throw TrainingDataError.invalidExternalRef }
-                guard !entry.sets.isEmpty else { throw TrainingDataError.invalidSet("an imported entry needs at least one set") }
-                for set in entry.sets {
-                    guard set.externalRef.isValid else { throw TrainingDataError.invalidExternalRef }
-                    guard set.order >= 1 else { throw TrainingDataError.invalidSet("set order starts at 1") }
-                    if let type = types[entry.exerciseId] {
-                        try SwiftDataSessionRepository.validate(set.values, typeRaw: type)
-                    }
-                }
-            }
-        }
-        try validateReferences(bundle)
-    }
-
-    /// Rules `exercise-reference` and `routine-reference`.
-    private func validateReferences(_ bundle: TrainingBundle) throws {
         let exerciseIds = Set(bundle.exercises.map(\.id))
-        let routineIds = Set(bundle.routines.map(\.id))
         for routine in bundle.routines where routine.items.contains(where: { !exerciseIds.contains($0.exerciseId) }) {
             throw TrainingDataError.invalidRoutine("routine \(routine.name) names an exercise outside the bundle")
         }
-        for session in bundle.sessions {
-            if let routineId = session.routineId, !routineIds.contains(routineId) {
-                throw TrainingDataError.invalidSession("session names a routine outside the bundle")
-            }
-            if session.entries.contains(where: { !exerciseIds.contains($0.exerciseId) }) {
-                throw TrainingDataError.invalidSession("entry names an exercise outside the bundle")
-            }
-            guard !session.entries.isEmpty else {
-                throw TrainingDataError.invalidSession("a session needs at least one entry")
+    }
+
+    /// Every rule one bundle session can break (rules `exercise-reference`,
+    /// `routine-reference`, `range`, `exercise-type`), checked before it is written.
+    private func validate(_ session: BundleSession, types: [UUID: String], routineIds: Set<UUID>) throws {
+        guard session.externalRef.isValid else { throw TrainingDataError.invalidExternalRef }
+        if let startedAt = session.startedAt, startedAt > session.completedAt {
+            throw TrainingDataError.invalidSession("a session cannot end before it started")
+        }
+        guard TimeZone(identifier: session.timeZone) != nil || session.timeZone == "UTC" else {
+            throw TrainingDataError.invalidSession("unknown time zone \(session.timeZone)")
+        }
+        if let routineId = session.routineId, !routineIds.contains(routineId) {
+            throw TrainingDataError.invalidSession("session names a routine outside the bundle")
+        }
+        if session.entries.contains(where: { types[$0.exerciseId] == nil }) {
+            throw TrainingDataError.invalidSession("entry names an exercise outside the bundle")
+        }
+        guard !session.entries.isEmpty else {
+            throw TrainingDataError.invalidSession("a session needs at least one entry")
+        }
+        for entry in session.entries {
+            guard entry.externalRef.isValid else { throw TrainingDataError.invalidExternalRef }
+            guard !entry.sets.isEmpty else { throw TrainingDataError.invalidSet("an imported entry needs at least one set") }
+            for set in entry.sets {
+                guard set.externalRef.isValid else { throw TrainingDataError.invalidExternalRef }
+                guard set.order >= 1 else { throw TrainingDataError.invalidSet("set order starts at 1") }
+                if let type = types[entry.exerciseId] {
+                    try SwiftDataSessionRepository.validate(set.values, typeRaw: type)
+                }
             }
         }
     }

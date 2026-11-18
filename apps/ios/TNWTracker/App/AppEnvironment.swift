@@ -56,7 +56,7 @@ public final class AppEnvironment {
         AppEnvironment(store: store)
     }
 
-    private init(store: TrainingStore) {
+    private init(store: TrainingStore, liveActivity: LiveActivityController = LiveActivityController()) {
         self.store = store
         let supabaseProvider = SupabaseClientProvider.shared
         let supabase = supabaseProvider.client
@@ -64,7 +64,7 @@ public final class AppEnvironment {
 
         networkMonitor = NetworkMonitor()
         syncEngine = NoopSyncEngine()
-        liveActivity = LiveActivityController()
+        self.liveActivity = liveActivity
 
         exerciseRepository = store.exercises
         routineRepository = store.routines
@@ -272,7 +272,9 @@ public final class AppEnvironment {
         /// Skips: startAuthListener(), authRepository.currentSession().
         /// Keeps: startIntentObserver(), sample data (llamados por TnwTrackerApp.task).
         static func bootstrapForUITesting(store: TrainingStore) -> AppEnvironment {
-            let env = AppEnvironment(store: store)
+            // No Live Activities: one left by a test that stops mid-workout makes the
+            // system relaunch the app in the background without `--uitesting` (T11).
+            let env = AppEnvironment(store: store, liveActivity: LiveActivityController(requestsActivities: false))
             env.isAuthenticated = true
             env.currentUserId = uiTestingUserId
             return env
