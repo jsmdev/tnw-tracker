@@ -137,6 +137,8 @@ A routine item has no `id` in the format; `routine_items.id` exists for sync onl
 
 ## User settings
 
+`routines.is_favorite` marks the routines the user is following now (default `false`). The app lists them first and proposes the next session among them. It is a user preference, not part of the training data format.
+
 `exercise_settings` holds a user's settings for one exercise, catalogue or their own. It is a user setting, not part of the training data format, so it is never exported or imported.
 
 | Column         | Meaning                                                                      |

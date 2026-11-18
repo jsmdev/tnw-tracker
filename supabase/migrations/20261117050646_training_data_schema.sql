@@ -121,6 +121,7 @@ CREATE TABLE public.routines (
   user_id           uuid                 NOT NULL REFERENCES public.users (id) ON DELETE CASCADE,
   name              text                 NOT NULL CHECK (char_length(name) > 0),
   description       text,
+  is_favorite       boolean              NOT NULL DEFAULT false, -- user preference, not part of the format
   external_provider public.provider_slug,
   external_id       text                 CHECK (char_length(external_id) BETWEEN 1 AND 200),
   created_at        timestamptz          NOT NULL DEFAULT now(),

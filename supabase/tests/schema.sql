@@ -3,7 +3,7 @@
 -- and the API roles have exactly the privileges they need.
 BEGIN;
 
-SELECT plan(70);
+SELECT plan(74);
 
 -- ---------------------------------------------------------------
 -- Old schema removed (S5)
@@ -182,6 +182,10 @@ SELECT col_is_null('public', 'sessions', 'started_at', 'sessions.started_at is o
 SELECT col_not_null('public', 'sets', 'source', 'sets.source is required');
 SELECT col_default_is('public', 'sets', 'superseded', 'false', 'sets.superseded defaults to false');
 SELECT col_not_null('public', 'sets', 'superseded', 'sets.superseded is never null');
+SELECT has_column('public', 'routines', 'is_favorite', 'routines.is_favorite exists');
+SELECT col_type_is('public', 'routines', 'is_favorite', 'boolean', 'routines.is_favorite is a boolean');
+SELECT col_default_is('public', 'routines', 'is_favorite', 'false', 'routines.is_favorite defaults to false');
+SELECT col_not_null('public', 'routines', 'is_favorite', 'routines.is_favorite is never null');
 SELECT has_column('public', 'sets', 'warmup', 'sets.warmup exists');
 SELECT col_type_is('public', 'sets', 'warmup', 'boolean', 'sets.warmup is a boolean');
 SELECT col_default_is('public', 'sets', 'warmup', 'false', 'sets.warmup defaults to false');
