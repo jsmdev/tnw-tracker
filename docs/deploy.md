@@ -55,6 +55,25 @@ Then create a new migration file that reflects the rolled-back state so the loca
 
 ---
 
+## Destructive migrations
+
+`20261117050645_drop_legacy_schema.sql` drops every table of the previous workout schema and the next migration creates the training-data schema ([database-schema.md](database-schema.md)). `Deploy Dev` runs `supabase db push` on every push to `develop`, so merging it applies the drop to dev without a prompt; prod waits for the approval gate.
+
+Before merging, and again before approving prod, check that the target project holds no data worth keeping. In the dashboard SQL editor, run read-only counts on the old tables, for example:
+
+```sql
+select
+  (select count(*) from public.workouts)      as workouts,
+  (select count(*) from public.exercise_sets) as exercise_sets,
+  (select count(*) from public.exercises where user_id is not null) as user_exercises;
+```
+
+Rows that are only seed data can go. Anything else must be exported first.
+
+Deleting a folder under `supabase/functions/` does not remove the deployed function. After the migration is live, remove the retired functions (`calc_personal_records`, `aggregate_metrics`, `get_exercise_alternatives`) from each project in the dashboard, or with `supabase functions delete <name>` against that project.
+
+---
+
 ## How to add a new secret
 
 ### GitHub Actions secret (per environment)
