@@ -58,6 +58,17 @@ Every acceptance criterion has at least one automated test that proves it, and t
 - **Evidence.** UI tests attach screenshots of the final state of each flow, so the owner can see the result before opening the app.
 - **Green before the owner tests.** All CI checks pass on the branch before the owner is asked to try anything.
 
+## Test quality
+
+A test is only worth keeping if it fails when the behaviour it covers breaks.
+
+- **Real over fake.** Use the real implementation whenever it runs in a test: the SwiftData store in memory with the real repositories, and the local Supabase stack for the database.
+- **Test doubles only at boundaries** the test cannot control: network, clock, authentication, system services (Live Activities, notifications, HealthKit). Never replace the app's own code with a double; if a unit is hard to test without one, change its design instead.
+- **Assert outcomes, not calls.** Check the resulting state, output or stored data, not which functions a double received, unless the call itself is the observable effect (for example, a request sent to the network).
+- **Strong assertions.** Each test checks every observable effect of its rule (value, persisted data, error), not just that something is not nil.
+- **Mutation testing.** At each checkpoint, run mutation testing (Muter for Swift) on the files the change touched. Every surviving mutant gets a new or stronger test, or a written reason why it is equivalent.
+- **Review.** The independent review includes the tests: for each criterion, would the test fail if the behaviour broke, and is every double justified?
+
 ## Definition of Done
 
 A change is done when:
@@ -65,9 +76,10 @@ A change is done when:
 1. every acceptance criterion has a passing automated test (table above);
 2. CI is green: commit messages, formatting, SwiftLint, iOS unit and UI tests, `supabase test db`, format examples, secret scan (gitleaks), CodeQL;
 3. a new table has row-level security tests for its owner and for another user;
-4. an independent reviewer (an agent that did not write the change) has checked the diff against the criteria and its findings are fixed or listed for the owner;
-5. docs that describe the behaviour are updated in the same change;
-6. the decisions taken without asking are listed for the owner.
+4. an independent reviewer (an agent that did not write the change) has checked the diff and its tests against the criteria and its findings are fixed or listed for the owner;
+5. mutation testing on the changed files leaves no unexplained surviving mutant;
+6. docs that describe the behaviour are updated in the same change;
+7. the decisions taken without asking are listed for the owner.
 
 ## Commands
 
