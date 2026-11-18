@@ -7,22 +7,22 @@ The Supabase schema stores the [training data format](training-data-format.md) (
 
 ## Tables
 
-| Table                    | Holds                                        | Owner                                           |
-| ------------------------ | -------------------------------------------- | ----------------------------------------------- |
-| `users`                  | Profile and preferences, one row per account | `id` = `auth.uid()`                             |
+| Table                    | Holds                                        | Owner                                            |
+| ------------------------ | -------------------------------------------- | ------------------------------------------------ |
+| `users`                  | Profile and preferences, one row per account | `id` = `auth.uid()`                              |
 | `exercises`              | Format `exercise`                            | `user_id`; `NULL` = curated catalogue, read-only |
-| `exercise_muscle_groups` | `exercise.muscleGroups[]`                    | Through its exercise                            |
-| `routines`               | Format `routine`                             | `user_id`                                       |
-| `routine_items`          | `routine.items[]`                            | `user_id`                                       |
-| `sessions`               | Format `session`                             | `user_id`                                       |
-| `entries`                | `session.entries[]`                          | `user_id`                                       |
-| `sets`                   | `entry.sets[]`                               | `user_id`                                       |
-| `rest_timers`            | Running rest timer, shared through Realtime  | `user_id` (defaults to the caller)              |
+| `exercise_muscle_groups` | `exercise.muscleGroups[]`                    | Through its exercise                             |
+| `routines`               | Format `routine`                             | `user_id`                                        |
+| `routine_items`          | `routine.items[]`                            | `user_id`                                        |
+| `sessions`               | Format `session`                             | `user_id`                                        |
+| `entries`                | `session.entries[]`                          | `user_id`                                        |
+| `sets`                   | `entry.sets[]`                               | `user_id`                                        |
+| `exercise_settings`      | User settings per exercise, outside format   | `user_id` (defaults to the caller)               |
 
 ### Access
 
 - Every table has row level security. A signed-in user reads and writes only their own rows; catalogue exercises and their muscle groups are readable by everyone signed in and writable only with the service role.
-- Child rows reference their parent through `(parent_id, user_id)`, so they cannot point at another user's routine, session or entry. Routine items and entries may only name exercises the user can read.
+- Child rows reference their parent through `(parent_id, user_id)`, so they cannot point at another user's routine, session or entry. Routine items, entries and exercise settings may only name exercises the user can read.
 - Deleting an account (`auth.users`) removes all of its rows. An exercise that a routine or session uses cannot be deleted on its own; deleting a routine keeps the sessions started from it and clears their `routine_id`.
 - `anon` has no table privileges. `authenticated` and `service_role` have `SELECT`, `INSERT`, `UPDATE` and `DELETE`.
 
@@ -128,15 +128,25 @@ A routine item has no `id` in the format; `routine_items.id` exists for sync onl
 
 ### Columns outside the format
 
-| Column                                          | Purpose                                                                                                                                                    |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `user_id` on every owned table                  | Owner, used by row level security                                                                                                                          |
-| `created_at`, `updated_at` on every table       | Audit; the app pulls changes by `updated_at`                                                                                                               |
-| `exercise_muscle_groups.id`, `routine_items.id` | Row identity for sync                                                                                                                                      |
-| `users.*`                                       | Profile: `email`, `weight_unit`, `timer_trigger_mode`                                                                                                      |
-| `rest_timers.*`                                 | `session_id`, `timer_type` (`between_sets`, `between_exercises`, `custom`, as Swift `TimerType`), `duration_seconds`, `started_at`, `ends_at`, `is_active` |
+| Column                                          | Purpose                                               |
+| ----------------------------------------------- | ----------------------------------------------------- |
+| `user_id` on every owned table                  | Owner, used by row level security                     |
+| `created_at`, `updated_at` on every table       | Audit; the app pulls changes by `updated_at`          |
+| `exercise_muscle_groups.id`, `routine_items.id` | Row identity for sync                                 |
+| `users.*`                                       | Profile: `email`, `weight_unit`, `timer_trigger_mode` |
 
-`rest_timers.session_id` has no foreign key: a session row is written once it is completed, while its timer runs during it. Each user has at most one active timer per session.
+## User settings
+
+`exercise_settings` holds a user's settings for one exercise, catalogue or their own. It is a user setting, not part of the training data format, so it is never exported or imported.
+
+| Column         | Meaning                                                                      |
+| -------------- | ---------------------------------------------------------------------------- |
+| `user_id`      | Owner; defaults to the caller                                                |
+| `exercise_id`  | The exercise; deleting it deletes its settings                               |
+| `rest_enabled` | Rest timer between sets of this exercise is on (default `true`)              |
+| `rest_seconds` | Rest between sets, 0–3600 seconds (default 90); kept when rest is turned off |
+
+The key is `(user_id, exercise_id)`, which is also the upsert key: saving a setting again updates it. The setting applies in every session that uses the exercise. The running timer lives on the device; the database stores no timer.
 
 ## Rules enforced by the database
 

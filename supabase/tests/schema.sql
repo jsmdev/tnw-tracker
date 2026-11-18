@@ -3,7 +3,7 @@
 -- and the API roles have exactly the privileges they need.
 BEGIN;
 
-SELECT plan(58);
+SELECT plan(70);
 
 -- ---------------------------------------------------------------
 -- Old schema removed (S5)
@@ -41,7 +41,7 @@ SELECT tables_are(
   'public',
   ARRAY[
     'users', 'exercises', 'exercise_muscle_groups', 'routines', 'routine_items',
-    'sessions', 'entries', 'sets', 'rest_timers'
+    'sessions', 'entries', 'sets', 'exercise_settings'
   ],
   'public holds exactly the new tables'
 );
@@ -63,20 +63,17 @@ SELECT enum_has_labels('public', 'entry_status', ARRAY['done', 'skipped', 'remov
 SELECT enum_has_labels('public', 'set_source', ARRAY['manual', 'imported'], 'set_source labels');
 SELECT enum_has_labels('public', 'reconciliation_decider', ARRAY['default', 'user'], 'reconciliation_decider labels');
 SELECT enum_has_labels('public', 'weight_unit', ARRAY['kg', 'lb'], 'weight_unit labels');
-SELECT enum_has_labels(
-  'public', 'timer_type',
-  ARRAY['between_sets', 'between_exercises', 'custom'],
-  'timer_type matches Swift TimerType, custom included'
-);
 SELECT enum_has_labels('public', 'timer_trigger_mode', ARRAY['auto', 'manual'], 'timer_trigger_mode labels');
 
--- rest_timers stays in the realtime publication the app subscribes to
+-- No remote rest timer (L17): the running timer lives on the device.
+SELECT hasnt_table('public', 'rest_timers', 'rest_timers dropped');
+SELECT hasnt_type('public', 'timer_type', 'timer_type dropped');
 SELECT ok(
-  EXISTS (
+  NOT EXISTS (
     SELECT 1 FROM pg_publication_tables
     WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = 'rest_timers'
   ),
-  'rest_timers is published to supabase_realtime'
+  'rest_timers is not published to supabase_realtime'
 );
 
 -- ---------------------------------------------------------------
@@ -99,7 +96,7 @@ SELECT is_empty(
   $$
     SELECT t FROM unnest(ARRAY[
       'users', 'exercises', 'exercise_muscle_groups', 'routines', 'routine_items',
-      'sessions', 'entries', 'sets', 'rest_timers'
+      'sessions', 'entries', 'sets', 'exercise_settings'
     ]) AS t
     WHERE has_table_privilege('anon', 'public.' || t, 'SELECT')
        OR has_table_privilege('anon', 'public.' || t, 'INSERT')
@@ -113,7 +110,7 @@ SELECT is_empty(
   $$
     SELECT t FROM unnest(ARRAY[
       'users', 'exercises', 'exercise_muscle_groups', 'routines', 'routine_items',
-      'sessions', 'entries', 'sets', 'rest_timers'
+      'sessions', 'entries', 'sets', 'exercise_settings'
     ]) AS t
     WHERE NOT (
       has_table_privilege('authenticated', 'public.' || t, 'SELECT')
@@ -129,7 +126,7 @@ SELECT is_empty(
   $$
     SELECT t FROM unnest(ARRAY[
       'users', 'exercises', 'exercise_muscle_groups', 'routines', 'routine_items',
-      'sessions', 'entries', 'sets', 'rest_timers'
+      'sessions', 'entries', 'sets', 'exercise_settings'
     ]) AS t
     WHERE NOT (
       has_table_privilege('service_role', 'public.' || t, 'SELECT')
@@ -190,8 +187,21 @@ SELECT col_type_is('public', 'sets', 'warmup', 'boolean', 'sets.warmup is a bool
 SELECT col_default_is('public', 'sets', 'warmup', 'false', 'sets.warmup defaults to false');
 SELECT col_not_null('public', 'sets', 'warmup', 'sets.warmup is never null');
 SELECT col_type_is('public', 'exercises', 'setup_steps', 'text[]', 'instruction steps are text arrays');
-SELECT has_column('public', 'rest_timers', 'session_id', 'rest_timers.session_id');
-SELECT col_has_default('public', 'rest_timers', 'user_id', 'rest_timers.user_id defaults to the caller');
+
+-- exercise_settings: per-user rest between sets (L15, AC7.1, AC7.2)
+SELECT col_is_pk('public', 'exercise_settings', ARRAY['user_id', 'exercise_id'], 'exercise_settings key is (user_id, exercise_id)');
+SELECT col_default_is('public', 'exercise_settings', 'user_id', 'auth.uid()', 'exercise_settings.user_id defaults to the caller');
+SELECT fk_ok('public', 'exercise_settings', 'user_id', 'public', 'users', 'id', 'exercise_settings.user_id references users');
+SELECT fk_ok('public', 'exercise_settings', 'exercise_id', 'public', 'exercises', 'id', 'exercise_settings.exercise_id references exercises');
+SELECT col_type_is('public', 'exercise_settings', 'rest_enabled', 'boolean', 'exercise_settings.rest_enabled is a boolean');
+SELECT col_not_null('public', 'exercise_settings', 'rest_enabled', 'exercise_settings.rest_enabled is never null');
+SELECT col_default_is('public', 'exercise_settings', 'rest_enabled', 'true', 'exercise_settings.rest_enabled defaults to true');
+SELECT col_type_is('public', 'exercise_settings', 'rest_seconds', 'integer', 'exercise_settings.rest_seconds is an integer');
+SELECT col_not_null('public', 'exercise_settings', 'rest_seconds', 'exercise_settings.rest_seconds is never null');
+SELECT col_default_is('public', 'exercise_settings', 'rest_seconds', '90', 'exercise_settings.rest_seconds defaults to 90');
+SELECT col_not_null('public', 'exercise_settings', 'updated_at', 'exercise_settings.updated_at is never null');
+SELECT has_trigger('public', 'exercise_settings', 'set_updated_at', 'exercise_settings bumps updated_at on update');
+SELECT has_index('public', 'exercise_settings', 'exercise_settings_exercise_id_idx', 'exercise_settings.exercise_id is indexed for the cascade');
 
 SELECT * FROM finish();
 ROLLBACK;

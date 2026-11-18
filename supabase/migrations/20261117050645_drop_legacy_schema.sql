@@ -45,8 +45,8 @@ DROP TABLE IF EXISTS public.motivational_quotes;
 -- Trigger function of the dropped exercise_sets table
 DROP FUNCTION IF EXISTS public.tg_immutable_completed_at();
 
--- Types only the old tables used. timer_type is recreated with the app's
--- full set of cases in the next migration.
+-- Types only the old tables used. The running rest timer now lives on the
+-- device, so timer_type is not recreated.
 DROP TYPE IF EXISTS public.exercise_category;
 DROP TYPE IF EXISTS public.video_source;
 DROP TYPE IF EXISTS public.workout_status;

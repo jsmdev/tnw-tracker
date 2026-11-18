@@ -2,7 +2,7 @@
 -- Each block names the format rule it covers (docs/training-data-format.md).
 BEGIN;
 
-SELECT plan(79);
+SELECT plan(89);
 
 INSERT INTO auth.users (
   id, instance_id, email, encrypted_password, email_confirmed_at,
@@ -406,10 +406,65 @@ SELECT throws_ok(
      VALUES ('a1000000-0000-0000-0000-000000000001', 'chest', 'primary') $$,
   '23505', NULL, 'a muscle group appears once per role'
 );
+
+-- ---------------------------------------------------------------
+-- exercise_settings: rest between sets per user and exercise (L15)
+-- ---------------------------------------------------------------
+INSERT INTO public.exercises (id, user_id, name, type) VALUES
+  ('a1000000-0000-0000-0000-000000000090', '00000000-0000-0000-0000-000000000001', 'Settings Curl', 'strength');
+SELECT results_eq(
+  $$ INSERT INTO public.exercise_settings (user_id, exercise_id)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000090')
+     RETURNING rest_enabled, rest_seconds $$,
+  $$ VALUES (true, 90) $$,
+  'a new rest setting is enabled with 90 seconds by default'
+);
+SELECT results_eq(
+  $$ INSERT INTO public.exercise_settings (user_id, exercise_id, rest_enabled, rest_seconds)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000090', false, 120)
+     ON CONFLICT (user_id, exercise_id)
+     DO UPDATE SET rest_enabled = EXCLUDED.rest_enabled, rest_seconds = EXCLUDED.rest_seconds
+     RETURNING rest_enabled, rest_seconds $$,
+  $$ VALUES (false, 120) $$,
+  'saving a rest setting again updates it (upsert on user_id, exercise_id)'
+);
+SELECT is(
+  (SELECT count(*)::int FROM public.exercise_settings WHERE exercise_id = 'a1000000-0000-0000-0000-000000000090'),
+  1, 'one rest setting per user and exercise'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercise_settings (user_id, exercise_id)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000090') $$,
+  '23505', NULL, 'a second rest setting for the same user and exercise is a duplicate'
+);
 SELECT lives_ok(
-  $$ INSERT INTO public.rest_timers (user_id, session_id, timer_type, duration_seconds, ends_at)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'd1000000-0000-0000-0000-000000000001', 'custom', 45, now()) $$,
-  'a custom rest timer is accepted'
+  $$ UPDATE public.exercise_settings SET rest_seconds = 0 WHERE exercise_id = 'a1000000-0000-0000-0000-000000000090' $$,
+  'rest_seconds accepts 0'
+);
+SELECT lives_ok(
+  $$ UPDATE public.exercise_settings SET rest_seconds = 3600 WHERE exercise_id = 'a1000000-0000-0000-0000-000000000090' $$,
+  'rest_seconds accepts 3600'
+);
+SELECT throws_ok(
+  $$ UPDATE public.exercise_settings SET rest_seconds = -1 WHERE exercise_id = 'a1000000-0000-0000-0000-000000000090' $$,
+  '23514', NULL, 'rest_seconds is never negative'
+);
+SELECT throws_ok(
+  $$ UPDATE public.exercise_settings SET rest_seconds = 3601 WHERE exercise_id = 'a1000000-0000-0000-0000-000000000090' $$,
+  '23514', NULL, 'rest_seconds is at most 3600'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercise_settings (user_id, exercise_id)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-0000000000ff') $$,
+  '23503', NULL, 'a rest setting needs an existing exercise'
+);
+SELECT lives_ok(
+  $$ DELETE FROM public.exercises WHERE id = 'a1000000-0000-0000-0000-000000000090' $$,
+  'an exercise with rest settings can be deleted'
+);
+SELECT is(
+  (SELECT count(*)::int FROM public.exercise_settings WHERE exercise_id = 'a1000000-0000-0000-0000-000000000090'),
+  0, 'deleting an exercise deletes its rest settings'
 );
 
 -- ---------------------------------------------------------------

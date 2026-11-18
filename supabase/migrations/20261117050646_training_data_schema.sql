@@ -41,9 +41,6 @@ CREATE TYPE public.set_source AS ENUM ('manual', 'imported');
 
 CREATE TYPE public.reconciliation_decider AS ENUM ('default', 'user');
 
--- Same cases as the app's Swift TimerType.
-CREATE TYPE public.timer_type AS ENUM ('between_sets', 'between_exercises', 'custom');
-
 -- externalRef.provider: an opaque lower-case slug, for example machines-atlas.
 CREATE DOMAIN public.provider_slug AS text
   CHECK (VALUE ~ '^[a-z0-9]+(-[a-z0-9]+)*$');
@@ -97,6 +94,24 @@ CREATE TABLE public.exercise_muscle_groups (
   updated_at  timestamptz         NOT NULL DEFAULT now(),
   CONSTRAINT exercise_muscle_groups_key UNIQUE (exercise_id, muscle, role)
 );
+
+-- ===============================================================
+-- exercise_settings (per-user settings for an exercise, not training data)
+-- ===============================================================
+-- Rest between sets of the same exercise, used in every session. Catalogue
+-- exercises are shared, so the setting cannot live on exercises. Turning rest
+-- off keeps its duration.
+CREATE TABLE public.exercise_settings (
+  user_id      uuid        NOT NULL DEFAULT auth.uid() REFERENCES public.users (id) ON DELETE CASCADE,
+  exercise_id  uuid        NOT NULL REFERENCES public.exercises (id) ON DELETE CASCADE,
+  rest_enabled boolean     NOT NULL DEFAULT true,
+  rest_seconds integer     NOT NULL DEFAULT 90 CHECK (rest_seconds BETWEEN 0 AND 3600),
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, exercise_id)
+);
+
+CREATE INDEX exercise_settings_exercise_id_idx ON public.exercise_settings (exercise_id);
 
 -- ===============================================================
 -- routines and routine_items
@@ -263,32 +278,6 @@ CREATE TABLE public.sets (
 CREATE INDEX sets_entry_user_idx ON public.sets (entry_id, user_id);
 
 -- ===============================================================
--- rest_timers (cross-device rest timer, read through Realtime)
--- ===============================================================
--- session_id has no foreign key on purpose: a session row exists only once it
--- is completed (completed_at is required), while a timer runs during it.
-CREATE TABLE public.rest_timers (
-  id               uuid              PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id          uuid              NOT NULL DEFAULT auth.uid() REFERENCES public.users (id) ON DELETE CASCADE,
-  session_id       uuid              NOT NULL,
-  timer_type       public.timer_type NOT NULL,
-  duration_seconds integer           NOT NULL CHECK (duration_seconds >= 0),
-  started_at       timestamptz       NOT NULL DEFAULT now(),
-  ends_at          timestamptz       NOT NULL,
-  is_active        boolean           NOT NULL DEFAULT true,
-  created_at       timestamptz       NOT NULL DEFAULT now(),
-  updated_at       timestamptz       NOT NULL DEFAULT now(),
-  CONSTRAINT rest_timers_ends_after_start CHECK (ends_at >= started_at)
-);
-
--- Scoped per user: session_id has no FK, so it must not let one user block another.
-CREATE UNIQUE INDEX rest_timers_one_active_per_session
-  ON public.rest_timers (user_id, session_id)
-  WHERE is_active;
-
-ALTER PUBLICATION supabase_realtime ADD TABLE public.rest_timers;
-
--- ===============================================================
 -- Validation triggers: rules that span tables
 -- ===============================================================
 
@@ -437,7 +426,7 @@ DECLARE
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'exercises', 'exercise_muscle_groups', 'routines', 'routine_items',
-    'sessions', 'entries', 'sets', 'rest_timers'
+    'sessions', 'entries', 'sets', 'exercise_settings'
   ] LOOP
     EXECUTE format(
       'CREATE TRIGGER set_updated_at BEFORE UPDATE ON public.%I
@@ -456,7 +445,7 @@ ALTER TABLE public.routine_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.entries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.rest_timers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.exercise_settings ENABLE ROW LEVEL SECURITY;
 
 -- users (kept table): same rules as before, with auth.uid() evaluated once
 -- per statement and limited to signed-in callers.
@@ -511,12 +500,12 @@ CREATE POLICY "exercise_muscle_groups: delete via own exercise" ON public.exerci
     SELECT 1 FROM public.exercises e WHERE e.id = exercise_id AND e.user_id = (SELECT auth.uid())
   ));
 
--- routines, sessions, sets, rest_timers: own rows only
+-- routines, sessions, sets: own rows only
 DO $$
 DECLARE
   t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['routines', 'sessions', 'sets', 'rest_timers'] LOOP
+  FOREACH t IN ARRAY ARRAY['routines', 'sessions', 'sets'] LOOP
     EXECUTE format(
       'CREATE POLICY "%1$s: select own" ON public.%1$I FOR SELECT TO authenticated
          USING (user_id = (SELECT auth.uid()));', t);
@@ -533,7 +522,8 @@ BEGIN
 END
 $$;
 
--- routine_items and entries: own rows that only name exercises the user can see
+-- routine_items, exercise_settings and entries: own rows that only name
+-- exercises the user can see (the subquery applies exercises' RLS)
 CREATE POLICY "routine_items: select own" ON public.routine_items
   FOR SELECT TO authenticated
   USING (user_id = (SELECT auth.uid()));
@@ -551,6 +541,26 @@ CREATE POLICY "routine_items: update own" ON public.routine_items
     AND EXISTS (SELECT 1 FROM public.exercises e WHERE e.id = exercise_id)
   );
 CREATE POLICY "routine_items: delete own" ON public.routine_items
+  FOR DELETE TO authenticated
+  USING (user_id = (SELECT auth.uid()));
+
+CREATE POLICY "exercise_settings: select own" ON public.exercise_settings
+  FOR SELECT TO authenticated
+  USING (user_id = (SELECT auth.uid()));
+CREATE POLICY "exercise_settings: insert own" ON public.exercise_settings
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    user_id = (SELECT auth.uid())
+    AND EXISTS (SELECT 1 FROM public.exercises e WHERE e.id = exercise_id)
+  );
+CREATE POLICY "exercise_settings: update own" ON public.exercise_settings
+  FOR UPDATE TO authenticated
+  USING (user_id = (SELECT auth.uid()))
+  WITH CHECK (
+    user_id = (SELECT auth.uid())
+    AND EXISTS (SELECT 1 FROM public.exercises e WHERE e.id = exercise_id)
+  );
+CREATE POLICY "exercise_settings: delete own" ON public.exercise_settings
   FOR DELETE TO authenticated
   USING (user_id = (SELECT auth.uid()));
 
@@ -591,7 +601,7 @@ DECLARE
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'users', 'exercises', 'exercise_muscle_groups', 'routines', 'routine_items',
-    'sessions', 'entries', 'sets', 'rest_timers'
+    'sessions', 'entries', 'sets', 'exercise_settings'
   ] LOOP
     EXECUTE format('REVOKE ALL ON TABLE public.%I FROM PUBLIC, anon, authenticated, service_role;', t);
     EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO authenticated, service_role;', t);
