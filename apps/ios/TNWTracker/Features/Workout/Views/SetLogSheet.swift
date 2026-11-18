@@ -5,17 +5,20 @@ import TNWTrackerKit
 
 /// Local form state for the set logging sheet.
 /// Inline — no separate file needed (anti-overengineering rule).
+///
+/// Effort is asked and stored as reps in reserve (format field `rir`, 0–10),
+/// with no conversion (D2). The selector offers 0 … N−1 and "N+" (`RIRScale`).
 struct SetLogFormState {
     var reps: Int = 0
     var weight: Double = 0.0
-    var rpe: Int?
-    var isWarmup: Bool = false
+    var rir: Int?
+    var warmup = false
 
-    /// Valid when reps > 0 and, if RPE is set, it's in range 1–10.
+    /// Valid when reps > 0 and, if RIR is set, it's in range 0–10.
     var isValid: Bool {
         guard reps > 0 else { return false }
-        if let rpe {
-            return rpe >= 1 && rpe <= 10
+        if let rir {
+            return (0 ... 10).contains(rir)
         }
         return true
     }
@@ -26,20 +29,21 @@ struct SetLogFormState {
 /// Identifiable wrapper driving `.sheet(item:)`.
 struct SetLogSheetItem: Identifiable {
     let id: UUID
-    let exercise: WorkoutExercise
+    let exerciseId: UUID
     let nextSetNumber: Int
 }
 
 // MARK: - SetLogSheet
 
-/// Sheet for logging a single set: reps + weight + RPE + warmup toggle.
-/// REQ-AWV-02 (numeric keyboard), REQ-AWV-03 (RPE selector).
+/// Sheet for logging a single set: reps + weight + warm-up toggle + RIR.
+/// REQ-AWV-02 (numeric keyboard), REQ-AWV-03 (effort selector, as RIR).
 struct SetLogSheet: View {
     let item: SetLogSheetItem
     let onSave: (SetLogFormState) -> Void
     let onCancel: () -> Void
 
     @State private var formState = SetLogFormState()
+    @AppStorage(RIRScale.storageKey) private var rirMaximum = RIRScale.defaultMaximum
     @FocusState private var focusedField: Field?
 
     private enum Field: Hashable {
@@ -50,8 +54,7 @@ struct SetLogSheet: View {
         NavigationStack {
             Form {
                 setInfoSection
-                rpeSection
-                optionsSection
+                rirSection
             }
             .navigationTitle(Text("set-log.title"))
             .navigationBarTitleDisplayMode(.inline)
@@ -105,30 +108,25 @@ struct SetLogSheet: View {
                     .foregroundStyle(.secondary)
                     .font(.caption)
             }
+
+            Toggle("set-log.warmup-toggle", isOn: $formState.warmup)
+                .accessibilityIdentifier(AXID.SetLog.warmupToggle)
         } header: {
             Text("set-log.set-section-header \(item.nextSetNumber)")
         }
     }
 
-    private var rpeSection: some View {
+    private var rirSection: some View {
         Section {
             VStack(alignment: .leading) {
-                Text("set-log.rpe-label")
+                Text("set-log.rir-label")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                RPESelector(selection: $formState.rpe)
+                RIRSelector(selection: $formState.rir, scale: RIRScale(maximum: rirMaximum))
                     .padding(.vertical, Spacing.xs)
             }
         } header: {
-            Text("set-log.rpe-section-header")
-        }
-    }
-
-    private var optionsSection: some View {
-        Section {
-            Toggle(isOn: $formState.isWarmup) {
-                Text("set-log.warmup-toggle")
-            }
+            Text("set-log.rir-section-header")
         }
     }
 }
@@ -138,7 +136,7 @@ struct SetLogSheet: View {
 #Preview("SetLogSheet") {
     @Previewable @State var item: SetLogSheetItem? = SetLogSheetItem(
         id: UUID(),
-        exercise: WorkoutExercise(workoutId: UUID(), exerciseId: UUID(), orderIndex: 0),
+        exerciseId: UUID(),
         nextSetNumber: 1
     )
 

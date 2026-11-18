@@ -1,8 +1,6 @@
 import Foundation
 import Observation
 import os.log
-import Supabase
-import SwiftData
 import TNWTrackerKit
 
 private let logger = Logger(subsystem: "com.tnwtracker", category: "coordinator")
@@ -24,8 +22,9 @@ public struct RestTimerState: Sendable, Equatable {
     }
 }
 
-/// Gestiona el timer de descanso: Supabase como fuente de verdad,
-/// fallback local si offline, countdown tick a 1 Hz.
+/// Gestiona el timer de descanso en memoria: countdown tick a 1 Hz y Live Activity.
+/// El timer no forma parte del formato de datos de entrenamiento, así que no se
+/// persiste ni se sincroniza.
 @MainActor
 @Observable
 public final class RestTimerService {
@@ -34,25 +33,10 @@ public final class RestTimerService {
     public private(set) var workoutName: String = ""
 
     private var tickTask: Task<Void, Never>?
-    private let supabase: SupabaseClient
-    private let modelContext: ModelContext
     private let liveActivity: LiveActivityController
-    private let networkMonitor: any NetworkMonitoring
 
-    private var isOnline: Bool {
-        networkMonitor.isOnline
-    }
-
-    public init(
-        supabase: SupabaseClient,
-        modelContext: ModelContext,
-        liveActivity: LiveActivityController,
-        networkMonitor: any NetworkMonitoring
-    ) {
-        self.supabase = supabase
-        self.modelContext = modelContext
+    public init(liveActivity: LiveActivityController) {
         self.liveActivity = liveActivity
-        self.networkMonitor = networkMonitor
     }
 
     // MARK: - Public API
@@ -81,25 +65,6 @@ public final class RestTimerService {
         )
         state = timerState
 
-        // Persiste localmente
-        let localTimer = RestTimer(workoutId: workoutId, type: type, durationSeconds: durationSeconds)
-        modelContext.insert(localTimer)
-        try? modelContext.save()
-
-        // Intenta subir a Supabase (fuente de verdad cross-device)
-        if isOnline {
-            let row: [String: AnyJSON] = [
-                "id": .string(timerId.uuidString),
-                "workout_id": .string(workoutId.uuidString),
-                "timer_type": .string(type.rawValue),
-                "duration_seconds": .integer(durationSeconds),
-                "started_at": .string(startedAt.ISO8601Format()),
-                "ends_at": .string(endsAt.ISO8601Format()),
-                "is_active": .bool(true)
-            ]
-            try? await supabase.from("rest_timers").insert(row).execute()
-        }
-
         logger.info(
             """
             RestTimerService started: workout=\(workoutId.uuidString, privacy: .public) \
@@ -114,25 +79,6 @@ public final class RestTimerService {
         logger.info("RestTimerService skip: timer \(current.id.uuidString, privacy: .public)")
         await cancelTick()
 
-        // Marcar inactivo localmente
-        let currentId = current.id
-        let descriptor = FetchDescriptor<RestTimer>(
-            predicate: #Predicate { $0.id == currentId }
-        )
-        if let timer = try? modelContext.fetch(descriptor).first {
-            timer.isActive = false
-            timer.pendingSyncOp = "update"
-            try? modelContext.save()
-        }
-
-        if isOnline {
-            try? await supabase
-                .from("rest_timers")
-                .update(["is_active": false])
-                .eq("id", value: current.id.uuidString)
-                .execute()
-        }
-
         state = nil
         liveActivity.end()
     }
@@ -142,23 +88,6 @@ public final class RestTimerService {
         current.endsAt = current.endsAt.addingTimeInterval(TimeInterval(seconds))
         state = current
 
-        let currentId = current.id
-        let descriptor = FetchDescriptor<RestTimer>(
-            predicate: #Predicate { $0.id == currentId }
-        )
-        if let timer = try? modelContext.fetch(descriptor).first {
-            timer.endsAt = current.endsAt
-            timer.pendingSyncOp = "update"
-            try? modelContext.save()
-        }
-
-        if isOnline {
-            try? await supabase
-                .from("rest_timers")
-                .update(["ends_at": current.endsAt.ISO8601Format()])
-                .eq("id", value: current.id.uuidString)
-                .execute()
-        }
     }
 
     // MARK: - Private
@@ -194,18 +123,7 @@ public final class RestTimerService {
     }
 
     private func handleExpiry() async {
-        guard let current = state else { return }
-
-        let currentId = current.id
-        let descriptor = FetchDescriptor<RestTimer>(
-            predicate: #Predicate { $0.id == currentId }
-        )
-        if let timer = try? modelContext.fetch(descriptor).first {
-            timer.isActive = false
-            timer.pendingSyncOp = "update"
-            try? modelContext.save()
-        }
-
+        guard state != nil else { return }
         state = nil
         liveActivity.end()
     }

@@ -1,19 +1,18 @@
-import SwiftData
 import SwiftUI
 import TNWTrackerKit
 
 @main
 struct TnwTrackerApp: App {
-    private let container: ModelContainer = {
+    private let store: TrainingStore = {
         do {
             #if DEBUG
                 let isUITesting = ProcessInfo.processInfo.arguments.contains("--uitesting")
-                return try ModelContainerFactory.makeContainer(inMemory: isUITesting)
+                return try TrainingStore(inMemory: isUITesting)
             #else
-                return try ModelContainerFactory.makeContainer()
+                return try TrainingStore()
             #endif
         } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+            fatalError("Failed to open the training store: \(error)")
         }
     }()
 
@@ -35,22 +34,21 @@ struct TnwTrackerApp: App {
                     ProgressView()
                 }
             }
-            .modelContainer(container)
             .task {
                 #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("--uitesting") {
-                        // UI test bypass: pre-authenticated, in-memory container, no real auth.
-                        // SeedService runs to populate the empty in-memory store.
+                        // UI test bypass: pre-authenticated, in-memory store, no real auth.
+                        // The invented sample data populates the empty in-memory store.
                         // startAuthListener and currentSession are NOT called.
-                        appEnv = AppEnvironment.bootstrapForUITesting(modelContext: container.mainContext)
-                        try? await SeedService(container: container).seedIfNeeded()
+                        appEnv = AppEnvironment.bootstrapForUITesting(store: store)
+                        try? SampleTrainingData.loadIfEmpty(into: store)
                         appEnv?.startIntentObserver()
                         return
                     }
                 #endif
-                appEnv = AppEnvironment.bootstrap(modelContext: container.mainContext)
+                appEnv = AppEnvironment.bootstrap(store: store)
                 #if DEBUG
-                    try? await SeedService(container: container).seedIfNeeded()
+                    try? SampleTrainingData.loadIfEmpty(into: store)
                 #endif
                 // El auth listener maneja la restauración: al suscribirse, Supabase
                 // emite `.initialSession` con la sesión persistida (o nil). `handle`

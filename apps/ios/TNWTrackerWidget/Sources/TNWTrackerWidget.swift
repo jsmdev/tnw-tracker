@@ -1,4 +1,3 @@
-import SwiftData
 import SwiftUI
 import TNWTrackerKit
 import WidgetKit
@@ -29,11 +28,7 @@ struct NextSessionProvider: TimelineProvider {
     }
 
     private func queryNextSession() -> String? {
-        guard
-            let container = try? ModelContainerFactory.makeContainer(),
-            let context = Optional(ModelContext(container))
-        else { return nil }
-        return NextSessionQuery(modelContext: context).nextSessionName()
+        NextSessionQuery.live()?.nextSessionName()
     }
 }
 

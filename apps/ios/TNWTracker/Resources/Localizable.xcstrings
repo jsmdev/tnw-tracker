@@ -469,7 +469,38 @@
         }
       }
     },
-    "rpe.value %lld": {},
+    "rir.at-least %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld or more reps in reserve"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld o más repeticiones en reserva"
+          }
+        }
+      }
+    },
+    "rir.value %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld reps in reserve"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld repeticiones en reserva"
+          }
+        }
+      }
+    },
     "session-detail.exercises-section": {
       "localizations": {
         "en": {
@@ -827,23 +858,23 @@
         }
       }
     },
-    "set-log.rpe-label": {
+    "set-log.rir-label": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rate of Perceived Exertion"
+            "value": "Reps in reserve"
           }
         },
         "es-ES": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esfuerzo percibido (RPE)"
+            "value": "Repeticiones en reserva"
           }
         }
       }
     },
-    "set-log.rpe-section-header": {
+    "set-log.rir-section-header": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -914,13 +945,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Warmup set"
+            "value": "Warm-up"
           }
         },
         "es-ES": {
           "stringUnit": {
             "state": "translated",
-            "value": "Serie de calentamiento"
+            "value": "Calentamiento"
           }
         }
       }
@@ -958,7 +989,103 @@
       }
     },
     "set.reps %lld": {},
-    "set.rpe": {},
+    "set.rir": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RIR"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RIR"
+          }
+        }
+      }
+    },
+    "set.warmup-badge": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warm-up"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calentamiento"
+          }
+        }
+      }
+    },
+    "set.warmup-short": {
+      "comment": "Short warm-up mark shown instead of the set number.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C"
+          }
+        }
+      }
+    },
+    "settings.effort-section": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effort"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esfuerzo"
+          }
+        }
+      }
+    },
+    "settings.rir-maximum %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max RIR: %lld"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Máximo de RIR: %lld"
+          }
+        }
+      }
+    },
+    "settings.rir-maximum-footer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The effort selector offers 0 up to this value, the last option meaning this value or more."
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El selector de esfuerzo ofrece de 0 a este valor; la última opción significa este valor o más."
+          }
+        }
+      }
+    },
     "settings.title": {
       "localizations": {
         "en": {

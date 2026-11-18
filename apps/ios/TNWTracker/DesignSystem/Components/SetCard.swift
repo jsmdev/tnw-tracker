@@ -9,19 +9,26 @@ struct SetDisplayData: Identifiable {
     let setNumber: Int
     let reps: Int
     let weight: Double
-    let rpe: Int?
+    let rir: Int?
+    var warmup = false
 }
 
 // MARK: - SetCard
 
-/// Card displaying a single logged set (reps, weight, RPE).
+/// Card displaying a single logged set (reps, weight, RIR, warm-up mark).
 /// NO glass, no fixed height — grows with Dynamic Type.
 struct SetCard: View {
     let set: SetDisplayData
 
     var body: some View {
         HStack(spacing: Spacing.md) {
-            Text(verbatim: "\(set.setNumber)")
+            Group {
+                if set.warmup {
+                    Text("set.warmup-short")
+                } else {
+                    Text(verbatim: "\(set.setNumber)")
+                }
+            }
                 .font(.headline)
                 .foregroundStyle(.secondary)
                 .frame(minWidth: 28, alignment: .center)
@@ -41,16 +48,21 @@ struct SetCard: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                if set.warmup {
+                    Text("set.warmup-badge")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Spacer()
 
-            if let rpe = set.rpe {
+            if let rir = set.rir {
                 VStack(spacing: 2) {
-                    Text("set.rpe")
+                    Text("set.rir")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Text(verbatim: "\(rpe)")
+                    Text(verbatim: "\(rir)")
                         .font(.headline)
                         .foregroundStyle(.primary)
                 }
@@ -66,9 +78,9 @@ struct SetCard: View {
 
 #Preview("SetCard") {
     VStack(spacing: Spacing.sm) {
-        SetCard(set: SetDisplayData(id: UUID(), setNumber: 1, reps: 5, weight: 100, rpe: 8))
-        SetCard(set: SetDisplayData(id: UUID(), setNumber: 2, reps: 5, weight: 102.5, rpe: 9))
-        SetCard(set: SetDisplayData(id: UUID(), setNumber: 3, reps: 3, weight: 105, rpe: nil))
+        SetCard(set: SetDisplayData(id: UUID(), setNumber: 1, reps: 5, weight: 100, rir: 2, warmup: true))
+        SetCard(set: SetDisplayData(id: UUID(), setNumber: 2, reps: 5, weight: 102.5, rir: 1))
+        SetCard(set: SetDisplayData(id: UUID(), setNumber: 3, reps: 3, weight: 105, rir: nil))
     }
     .padding()
 }

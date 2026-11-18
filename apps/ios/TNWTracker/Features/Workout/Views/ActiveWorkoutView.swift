@@ -1,18 +1,16 @@
-import SwiftData
 import SwiftUI
 import TNWTrackerKit
 
 // MARK: - ActiveWorkoutView
 
 /// Full-screen workout view driven by `ActiveWorkoutCoordinator`.
-/// REQ-AWV-01 (tab bar hidden), REQ-AWV-02 (set logging), REQ-AWV-03 (RPE),
+/// REQ-AWV-01 (tab bar hidden), REQ-AWV-02 (set logging), REQ-AWV-03 (RIR),
 /// REQ-AWV-04 (timer sync), REQ-AWV-05 (undo), REQ-AWV-06 (pause/resume).
 ///
 /// Phase transitions animate via PhaseAnimator.
-/// RPESelector + SetCard are consumed from DesignSystem.
+/// RIRSelector + SetCard are consumed from DesignSystem.
 struct ActiveWorkoutView: View {
     @Environment(AppEnvironment.self) private var appEnv
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     let coordinator: ActiveWorkoutCoordinator
@@ -34,10 +32,9 @@ struct ActiveWorkoutView: View {
                     Task {
                         try? await coordinator.recordSet(
                             reps: formState.reps,
-                            weight: formState.weight > 0 ? formState.weight : nil,
-                            weightUnit: .kg,
-                            rpe: formState.rpe,
-                            isWarmup: formState.isWarmup
+                            weight: formState.weight > 0 ? .kg(formState.weight) : nil,
+                            rir: formState.rir,
+                            warmup: formState.warmup
                         )
                     }
                 },
@@ -47,7 +44,7 @@ struct ActiveWorkoutView: View {
         .task {
             await loadExerciseNames()
         }
-        .onChange(of: coordinator.workoutExercises.count) {
+        .onChange(of: coordinator.entries.count) {
             Task { await loadExerciseNames() }
         }
         .onChange(of: coordinator.completedWorkoutId) { _, newId in
@@ -77,7 +74,7 @@ struct ActiveWorkoutView: View {
             VStack(alignment: .leading, spacing: Spacing.lg) {
                 headerSection
                 phaseSection
-                if let exercise = coordinator.currentExercise {
+                if let exercise = coordinator.currentEntry {
                     exerciseSection(exercise: exercise)
                 }
                 controlsSection
@@ -85,7 +82,7 @@ struct ActiveWorkoutView: View {
             .padding(.horizontal, Spacing.md)
             .padding(.bottom, Spacing.xl)
         }
-        .navigationTitle(Text(verbatim: coordinator.workout?.name ?? ""))
+        .navigationTitle(Text(verbatim: coordinator.session?.name ?? ""))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
     }
@@ -110,13 +107,13 @@ struct ActiveWorkoutView: View {
             Spacer()
 
             // Exercise progress
-            if !coordinator.workoutExercises.isEmpty {
+            if !coordinator.entries.isEmpty {
                 VStack(alignment: .trailing, spacing: Spacing.xs) {
                     Text("active-workout.exercise-progress-label")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     // audit: progress "N / M" uses verbatim — "/" separator is not localizable
-                    Text(verbatim: "\(coordinator.currentExerciseIndex + 1) / \(coordinator.workoutExercises.count)")
+                    Text(verbatim: "\(coordinator.currentExerciseIndex + 1) / \(coordinator.entries.count)")
                         .font(.title3)
                         .fontWeight(.semibold)
                 }
@@ -174,7 +171,7 @@ struct ActiveWorkoutView: View {
 
     // MARK: - Exercise Section
 
-    private func exerciseSection(exercise: WorkoutExercise) -> some View {
+    private func exerciseSection(exercise: SessionEntry) -> some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             exerciseHeader(exercise: exercise)
             loggedSetsSection(exercise: exercise)
@@ -185,9 +182,8 @@ struct ActiveWorkoutView: View {
         .animation(reduceMotion ? nil : .smooth, value: coordinator.currentExerciseIndex)
     }
 
-    private func exerciseHeader(exercise: WorkoutExercise) -> some View {
-        // Exercise name resolved via FK lookup against Exercise model.
-        // Pattern: FetchDescriptor<Exercise> by exerciseId — same as SessionDetailView.
+    private func exerciseHeader(exercise: SessionEntry) -> some View {
+        // Exercise name resolved through the exercise repository.
         // Exercise names are domain data (not localization keys) → Text(verbatim:).
         HStack(alignment: .firstTextBaseline) {
             if let name = exerciseNames[exercise.exerciseId] {
@@ -212,24 +208,33 @@ struct ActiveWorkoutView: View {
 
     @MainActor
     private func loadExerciseNames() async {
-        guard !coordinator.workoutExercises.isEmpty else { return }
-        let context = ModelContext(modelContext.container)
-        let allExercises = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
+        guard !coordinator.entries.isEmpty else { return }
+        let allExercises = (try? appEnv.exerciseRepository.exercises()) ?? []
         let map = Dictionary(uniqueKeysWithValues: allExercises.map { ($0.id, $0.name) })
         exerciseNames = map
     }
 
-    private func loggedSetsSection(exercise: WorkoutExercise) -> some View {
-        let sets = exercise.exerciseSets.sorted { $0.setNumber < $1.setNumber }
+    private func loggedSetsSection(exercise: SessionEntry) -> some View {
+        let sets = exercise.manualSets
         return VStack(spacing: Spacing.sm) {
             ForEach(sets) { set in
                 SetCard(set: SetDisplayData(
                     id: set.id,
-                    setNumber: set.setNumber,
-                    reps: set.reps ?? 0,
-                    weight: set.weight ?? 0,
-                    rpe: set.rpe
+                    // Warm-ups show "C" and are not numbered: number the working sets only.
+                    setNumber: sets.filter { !$0.warmup && $0.order <= set.order }.count,
+                    reps: set.values.reps ?? 0,
+                    weight: set.values.weight?.value ?? 0,
+                    rir: set.values.rir,
+                    warmup: set.warmup
                 ))
+                .contextMenu {
+                    // The user's warm-up annotation, editable after logging.
+                    Toggle("set-log.warmup-toggle", isOn: Binding(
+                        get: { set.warmup },
+                        set: { try? coordinator.setWarmup($0, setId: set.id) }
+                    ))
+                    .accessibilityIdentifier(AXID.ActiveWorkout.setWarmupToggle)
+                }
                 .transition(.asymmetric(
                     insertion: .move(edge: .bottom).combined(with: .opacity),
                     removal: .scale(scale: 0.95).combined(with: .opacity)
@@ -239,21 +244,21 @@ struct ActiveWorkoutView: View {
         .animation(reduceMotion ? nil : .smooth, value: sets.count)
     }
 
-    private func logSetButton(exercise: WorkoutExercise) -> some View {
+    private func logSetButton(exercise: SessionEntry) -> some View {
         PrimaryButton(title: "active-workout.set.log-button") {
             setLogItem = SetLogSheetItem(
                 id: UUID(),
-                exercise: exercise,
-                nextSetNumber: exercise.exerciseSets.count + 1
+                exerciseId: exercise.exerciseId,
+                nextSetNumber: exercise.manualSets.count + 1
             )
         }
         .accessibilityIdentifier(AXID.ActiveWorkout.logSetButton)
     }
 
-    private func undoButton(exercise: WorkoutExercise) -> some View {
+    private func undoButton(exercise: SessionEntry) -> some View {
         Group {
             // REQ-AWV-05: visible only when at least one set logged
-            if !exercise.exerciseSets.isEmpty {
+            if !exercise.manualSets.isEmpty {
                 Button {
                     Task { try? await coordinator.undoLastSet() }
                 } label: {
@@ -331,13 +336,20 @@ struct ActiveWorkoutView: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview("ActiveWorkoutView — active") {
-    let container = ModelContainerFactory.previewContainer()
-    let context = ModelContext(container)
-    let appEnv = AppEnvironment.bootstrap(modelContext: context)
-    // Preview with a stubbed coordinator state is not trivial because
-    // coordinator requires SupabaseClient. Use a Text placeholder instead.
-    Text("ActiveWorkoutView (preview requires full AppEnvironment)")
-        .environment(appEnv)
-        .modelContainer(container)
+    let appEnv = AppEnvironment.preview()
+    let coordinator = ActiveWorkoutCoordinator(
+        sessions: appEnv.sessionRepository,
+        routines: appEnv.routineRepository,
+        syncEngine: NoopSyncEngine(),
+        timerService: appEnv.makeRestTimerService(),
+        liveActivity: appEnv.liveActivity
+    )
+    NavigationStack {
+        ActiveWorkoutView(coordinator: coordinator)
+    }
+    .environment(appEnv)
+    .task { try? await coordinator.start(routineId: SampleTrainingData.RoutineID.fullBodyA) }
 }
+#endif

@@ -18,6 +18,11 @@ public enum AXID {
         public static let logSetButton = "activeWorkout.logSetButton"
         public static let exerciseTitle = "activeWorkout.exerciseTitle"
         public static let progressIndicator = "activeWorkout.progressIndicator"
+        public static let setWarmupToggle = "activeWorkout.setWarmupToggle"
+    }
+
+    public enum Settings {
+        public static let rirMaximumStepper = "settings.rirMaximumStepper"
     }
 
     public enum SetLog {
@@ -25,6 +30,7 @@ public enum AXID {
         public static let weightField = "setLog.weightField"
         public static let saveButton = "setLog.saveButton"
         public static let cancelButton = "setLog.cancelButton"
+        public static let warmupToggle = "setLog.warmupToggle"
     }
 
     public enum RestTimer {

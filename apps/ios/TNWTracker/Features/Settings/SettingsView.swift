@@ -1,17 +1,26 @@
-import SwiftData
 import SwiftUI
 import TNWTrackerKit
 
 struct SettingsView: View {
-    @Environment(\.modelContext) private var context
-
     #if DEBUG
+        @Environment(AppEnvironment.self) private var appEnv
         @State private var showReseedConfirmation = false
         @State private var reseedError: String?
     #endif
+    @AppStorage(RIRScale.storageKey) private var rirMaximum = RIRScale.defaultMaximum
 
     var body: some View {
         Form {
+            Section {
+                Stepper(value: $rirMaximum, in: RIRScale.allowedMaximums) {
+                    Text("settings.rir-maximum \(rirMaximum)")
+                }
+                .accessibilityIdentifier(AXID.Settings.rirMaximumStepper)
+            } header: {
+                Text("settings.effort-section")
+            } footer: {
+                Text("settings.rir-maximum-footer")
+            }
             #if DEBUG
                 Section("Developer") {
                     Button("Reset & seed", role: .destructive) {
@@ -23,20 +32,16 @@ struct SettingsView: View {
                         titleVisibility: .visible
                     ) {
                         Button("Reset & seed", role: .destructive) {
-                            let container = context.container
-                            Task {
-                                do {
-                                    try await SeedService(container: container).reseed()
-                                } catch {
-                                    reseedError = error.localizedDescription
-                                }
+                            do {
+                                try appEnv.replaceWithSampleData()
+                            } catch {
+                                reseedError = error.localizedDescription
                             }
                         }
                         Button("Cancel", role: .cancel) {}
                     } message: {
-                        Text("This will delete all local data and re-insert canonical seed data.")
+                        Text("This will delete all local data and re-insert the invented sample data.")
                     }
-
                     if let err = reseedError {
                         Text(verbatim: err)
                             .foregroundStyle(.red)
@@ -49,9 +54,11 @@ struct SettingsView: View {
     }
 }
 
+#if DEBUG
 #Preview {
     NavigationStack {
         SettingsView()
     }
-    .modelContainer(ModelContainerFactory.previewContainer())
+    .environment(AppEnvironment.preview())
 }
+#endif

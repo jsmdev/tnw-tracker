@@ -1,4 +1,3 @@
-import SwiftData
 import SwiftUI
 import TNWTrackerKit
 
@@ -8,11 +7,10 @@ import TNWTrackerKit
 /// REQ-HOME-01, REQ-HOME-02, REQ-HOME-03, REQ-HOME-04.
 struct HomeView: View {
     @Environment(AppEnvironment.self) private var appEnv
-    @Environment(\.modelContext) private var modelContext
     @State private var model: HomeModel
 
-    init(container: ModelContainer) {
-        _model = State(initialValue: HomeModel(container: container))
+    init(sessionRepository: any SessionRepositoryProtocol, routineRepository: any RoutineRepositoryProtocol) {
+        _model = State(initialValue: HomeModel(sessions: sessionRepository, routines: routineRepository))
     }
 
     var body: some View {
@@ -99,13 +97,13 @@ struct HomeView: View {
         }
     }
 
-    private func nextSessionCard(session: Session) -> some View {
+    private func nextSessionCard(session: Routine) -> some View {
         Card {
             VStack(alignment: .leading, spacing: Spacing.sm) {
                 Text(verbatim: session.name)
                     .font(.headline)
 
-                Text("home.next-session.exercises-count \(session.sessionExercises.count)")
+                Text("home.next-session.exercises-count \(session.items.count)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
@@ -123,28 +121,20 @@ struct HomeView: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview("HomeView — with data") {
-    let container = ModelContainerFactory.previewContainer()
-    let context = ModelContext(container)
-    let userId = UUID()
-    let session = Session(userId: userId, name: "Push Day")
-    context.insert(session)
-    let se = SessionExercise(sessionId: session.id, exerciseId: UUID(), orderIndex: 0)
-    context.insert(se)
-    try? context.save()
-
-    return NavigationStack {
-        HomeView(container: container)
+    let appEnv = AppEnvironment.preview()
+    NavigationStack {
+        HomeView(sessionRepository: appEnv.sessionRepository, routineRepository: appEnv.routineRepository)
     }
-    .environment(AppEnvironment.bootstrap(modelContext: container.mainContext))
-    .modelContainer(container)
+    .environment(appEnv)
 }
 
 #Preview("HomeView — empty") {
-    let container = ModelContainerFactory.previewContainer()
-    return NavigationStack {
-        HomeView(container: container)
+    let appEnv = AppEnvironment.preview(withSampleData: false)
+    NavigationStack {
+        HomeView(sessionRepository: appEnv.sessionRepository, routineRepository: appEnv.routineRepository)
     }
-    .environment(AppEnvironment.bootstrap(modelContext: container.mainContext))
-    .modelContainer(container)
+    .environment(appEnv)
 }
+#endif

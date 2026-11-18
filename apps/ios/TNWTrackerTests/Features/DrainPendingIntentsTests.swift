@@ -54,7 +54,11 @@ struct DrainPendingIntentsTests {
     // MARK: - Helper
 
     private func makeContext() -> ModelContext {
-        ModelContext(container)
+        container.mainContext
+    }
+
+    private var inbox: IntentInbox {
+        IntentInbox(container: container)
     }
 
     private func insertEvent(
@@ -81,7 +85,7 @@ struct DrainPendingIntentsTests {
         _ = try insertEvent(context: context, workoutId: workoutId, kind: "pause")
 
         try await AppEnvironment.drainPendingIntents(
-            context: context,
+            inbox: inbox,
             coordinator: spy,
             coordinatorWorkoutId: workoutId
         )
@@ -107,7 +111,7 @@ struct DrainPendingIntentsTests {
         _ = try insertEvent(context: context, workoutId: workoutId, kind: "pause")
 
         try await AppEnvironment.drainPendingIntents(
-            context: context,
+            inbox: inbox,
             coordinator: spy,
             coordinatorWorkoutId: workoutId
         )
@@ -128,7 +132,7 @@ struct DrainPendingIntentsTests {
         _ = try insertEvent(context: context, workoutId: workoutId, kind: "pause")
 
         try await AppEnvironment.drainPendingIntents(
-            context: context,
+            inbox: inbox,
             coordinator: spy,
             coordinatorWorkoutId: workoutId
         )
@@ -151,7 +155,7 @@ struct DrainPendingIntentsTests {
 
         let spy1 = CoordinatorSpy(workoutId: workoutId)
         try await AppEnvironment.drainPendingIntents(
-            context: context,
+            inbox: inbox,
             coordinator: spy1,
             coordinatorWorkoutId: workoutId
         )
@@ -160,7 +164,7 @@ struct DrainPendingIntentsTests {
         // Second drain — event is already consumed
         let spy2 = CoordinatorSpy(workoutId: workoutId)
         try await AppEnvironment.drainPendingIntents(
-            context: context,
+            inbox: inbox,
             coordinator: spy2,
             coordinatorWorkoutId: workoutId
         )

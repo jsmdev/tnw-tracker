@@ -3,7 +3,6 @@ import notify
 import Observation
 import os.log
 import Supabase
-import SwiftData
 import TNWTrackerKit
 
 private let logger = Logger(subsystem: "com.tnwtracker", category: "auth")
@@ -20,15 +19,13 @@ public final class AppEnvironment {
     public var currentUserId: UUID?
 
     // Repositories
-    public let exerciseRepository: ExerciseRepository
-    public let planRepository: PlanRepository
-    public let routineRepository: RoutineRepository
-    public let sessionRepository: SessionRepository
-    public let workoutRepository: WorkoutRepository
+    public let exerciseRepository: any ExerciseRepositoryProtocol
+    public let routineRepository: any RoutineRepositoryProtocol
+    public let sessionRepository: any SessionRepositoryProtocol
     public let authRepository: any AuthRepositoryProtocol
 
-    /// Sync
-    public let syncEngine: SyncEngineImpl
+    /// Sync — no-op until the sync on the new schema exists (#135).
+    public let syncEngine: any SyncEngine
 
     /// Live Activity
     public let liveActivity: LiveActivityController
@@ -38,7 +35,7 @@ public final class AppEnvironment {
     public let networkMonitor: any NetworkMonitoring
 
     private let supabase: SupabaseClient
-    private let modelContext: ModelContext
+    private let store: TrainingStore
 
     // MARK: - Auth listener Task (cancelable)
 
@@ -54,50 +51,43 @@ public final class AppEnvironment {
 
     // MARK: - Bootstrap (production)
 
-    public static func bootstrap(modelContext: ModelContext) -> AppEnvironment {
-        AppEnvironment(modelContext: modelContext)
+    public static func bootstrap(store: TrainingStore) -> AppEnvironment {
+        AppEnvironment(store: store)
     }
 
-    private init(modelContext: ModelContext) {
-        self.modelContext = modelContext
+    private init(store: TrainingStore) {
+        self.store = store
         let supabaseProvider = SupabaseClientProvider.shared
         let supabase = supabaseProvider.client
         self.supabase = supabase
 
-        let monitor = NetworkMonitor()
-        networkMonitor = monitor
-        let engine = SyncEngineImpl(modelContext: modelContext, supabase: supabase, networkMonitor: monitor)
-        syncEngine = engine
+        networkMonitor = NetworkMonitor()
+        syncEngine = NoopSyncEngine()
         liveActivity = LiveActivityController()
 
-        exerciseRepository = ExerciseRepository(modelContext: modelContext, syncEngine: engine)
-        planRepository = PlanRepository(modelContext: modelContext, syncEngine: engine)
-        routineRepository = RoutineRepository(modelContext: modelContext, syncEngine: engine)
-        sessionRepository = SessionRepository(modelContext: modelContext, syncEngine: engine)
-        workoutRepository = WorkoutRepository(modelContext: modelContext, syncEngine: engine)
+        exerciseRepository = store.exercises
+        routineRepository = store.routines
+        sessionRepository = store.sessions
         authRepository = AuthRepository(supabase: supabase)
     }
 
     /// Init interno para inyección de dependencias (tests y variantes controladas).
     private init(
-        modelContext: ModelContext,
+        store: TrainingStore,
         supabase: SupabaseClient,
         authRepository: any AuthRepositoryProtocol,
         networkMonitor: any NetworkMonitoring
     ) {
-        self.modelContext = modelContext
+        self.store = store
         self.supabase = supabase
         self.networkMonitor = networkMonitor
 
-        let engine = SyncEngineImpl(modelContext: modelContext, supabase: supabase, networkMonitor: networkMonitor)
-        syncEngine = engine
+        syncEngine = NoopSyncEngine()
         liveActivity = LiveActivityController()
 
-        exerciseRepository = ExerciseRepository(modelContext: modelContext, syncEngine: engine)
-        planRepository = PlanRepository(modelContext: modelContext, syncEngine: engine)
-        routineRepository = RoutineRepository(modelContext: modelContext, syncEngine: engine)
-        sessionRepository = SessionRepository(modelContext: modelContext, syncEngine: engine)
-        workoutRepository = WorkoutRepository(modelContext: modelContext, syncEngine: engine)
+        exerciseRepository = store.exercises
+        routineRepository = store.routines
+        sessionRepository = store.sessions
         self.authRepository = authRepository
     }
 
@@ -199,7 +189,7 @@ public final class AppEnvironment {
 
         do {
             try await AppEnvironment.drainPendingIntents(
-                context: modelContext,
+                inbox: store.intentInbox,
                 coordinator: coordinator,
                 coordinatorWorkoutId: workoutId
             )
@@ -213,28 +203,13 @@ public final class AppEnvironment {
     /// Marks consumedAt on each processed event. Safe to call multiple times (idempotent).
     @MainActor
     public static func drainPendingIntents(
-        context: ModelContext,
+        inbox: IntentInbox,
         coordinator: any DrainCoordinatorProtocol,
         coordinatorWorkoutId: UUID
     ) async throws {
-        var descriptor = FetchDescriptor<WorkoutIntentEvent>(
-            sortBy: [SortDescriptor(\.createdAt, order: .forward)]
-        )
-        descriptor.predicate = #Predicate { $0.consumedAt == nil }
-
-        let events = try context.fetch(descriptor)
-        drainLogger.debug("drainPendingIntents — \(events.count) unconsumed events")
-
-        for event in events {
-            guard event.workoutId == coordinatorWorkoutId else { continue }
-
-            drainLogger.info(
-                """
-                Dispatching intent \(event.kind, privacy: .public) \
-                for workout \(event.workoutId, privacy: .private)
-                """
-            )
-            switch event.kind {
+        try await inbox.drain(workoutId: coordinatorWorkoutId) { kind in
+            drainLogger.info("Dispatching intent \(kind, privacy: .public)")
+            switch kind {
             case "skip":
                 await coordinator.skipTimer()
             case "pause":
@@ -244,43 +219,32 @@ public final class AppEnvironment {
             case "end":
                 try await coordinator.finish()
             default:
-                drainLogger.warning("Unknown intent kind: \(event.kind, privacy: .public)")
+                drainLogger.warning("Unknown intent kind: \(kind, privacy: .public)")
             }
-
-            event.consumedAt = Date()
         }
-
-        try context.save()
     }
 
     // MARK: - Factories
 
     /// Crea un `RestTimerService` vinculado al `LiveActivityController` compartido.
     public func makeRestTimerService() -> RestTimerService {
-        RestTimerService(
-            supabase: supabase,
-            modelContext: modelContext,
-            liveActivity: liveActivity,
-            networkMonitor: networkMonitor
-        )
+        RestTimerService(liveActivity: liveActivity)
     }
 
     /// Factory para el coordinator del workout activo.
     /// Devuelve `nil` si no hay userId resuelto — el callsite degrada cerrando el
     /// cover en vez de crashear (antes hacía `fatalError`).
     public func makeActiveWorkoutCoordinator() -> ActiveWorkoutCoordinator? {
-        guard let uid = currentUserId else {
+        guard currentUserId != nil else {
             logger.error("makeActiveWorkoutCoordinator sin userId — sesión no resuelta")
             return nil
         }
         return ActiveWorkoutCoordinator(
-            userId: uid,
-            workoutRepository: workoutRepository,
+            sessions: sessionRepository,
+            routines: routineRepository,
             syncEngine: syncEngine,
             timerService: makeRestTimerService(),
-            liveActivity: liveActivity,
-            supabase: supabase,
-            modelContext: modelContext
+            liveActivity: liveActivity
         )
     }
 }
@@ -290,7 +254,7 @@ public final class AppEnvironment {
 #if DEBUG
     extension AppEnvironment {
         /// UUID estable para UI testing — usado por bootstrapForUITesting.
-        /// Coincide con el userId implícito en el seed de SeedService.
+        /// UUID fijo del usuario de UI testing.
         static let uiTestingUserId: UUID = {
             guard let uid = UUID(uuidString: "00000000-0000-0000-0000-000000000001") else {
                 preconditionFailure("Invalid UUID literal for uiTestingUserId")
@@ -301,9 +265,9 @@ public final class AppEnvironment {
         /// Bootstrap para UI tests: retorna instancia pre-autenticada con userId fijo.
         /// NO arranca authListener, NO consulta currentSession.
         /// Skips: startAuthListener(), authRepository.currentSession().
-        /// Keeps: startIntentObserver(), SeedService (llamados por TnwTrackerApp.task).
-        static func bootstrapForUITesting(modelContext: ModelContext) -> AppEnvironment {
-            let env = AppEnvironment(modelContext: modelContext)
+        /// Keeps: startIntentObserver(), sample data (llamados por TnwTrackerApp.task).
+        static func bootstrapForUITesting(store: TrainingStore) -> AppEnvironment {
+            let env = AppEnvironment(store: store)
             env.isAuthenticated = true
             env.currentUserId = uiTestingUserId
             return env
@@ -312,11 +276,11 @@ public final class AppEnvironment {
         /// Crea una instancia mínima de `AppEnvironment` con un `authRepository` inyectable.
         /// Exclusivo para tests — usa un `ModelContainer` in-memory y un `SupabaseClient` stub.
         static func makeForTesting(authRepository: any AuthRepositoryProtocol) -> AppEnvironment {
-            let container: ModelContainer
+            let store: TrainingStore
             do {
-                container = try ModelContainerFactory.makeContainer(inMemory: true)
+                store = try TrainingStore(inMemory: true)
             } catch {
-                fatalError("makeForTesting: no se pudo crear ModelContainer in-memory: \(error)")
+                fatalError("makeForTesting: no se pudo crear TrainingStore in-memory: \(error)")
             }
             guard let stubURL = URL(string: "https://test.supabase.co") else {
                 preconditionFailure("Invalid stub Supabase URL")
@@ -326,11 +290,16 @@ public final class AppEnvironment {
                 supabaseKey: "test-anon-key"
             )
             return AppEnvironment(
-                modelContext: ModelContext(container),
+                store: store,
                 supabase: stubSupabase,
                 authRepository: authRepository,
                 networkMonitor: StubNetworkMonitor(isOnline: true)
             )
+        }
+
+        /// Replaces the local training data with the invented sample data.
+        func replaceWithSampleData() throws {
+            try SampleTrainingData.replaceAll(in: store)
         }
 
         /// Cancela el auth listener activo.
