@@ -279,6 +279,34 @@ struct ActiveWorkoutCoordinatorTests {
         #expect(coordinator.lastFinishOutcome == .saved(id))
     }
 
+    @Test("M14 a session whose only set is an imported warm-up has no working sets: finishing discards it")
+    func importedWarmupOnlyDiscards() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try fx.sessions.importEntry(fx.importedSets("e-1", reps: [10], weight: 40), into: id)
+        let imported = try #require(try fx.sessions.session(id: id)?.entries.flatMap(\.sets).first)
+        try fx.sessions.setWarmup(true, setId: imported.id)
+        #expect(!coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .discarded)
+        #expect(try fx.sessions.session(id: id) == nil)
+    }
+
+    @Test("M15 the sets of a removed entry are not working sets")
+    func removedEntrySetsDoNotCount() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try fx.sessions.importEntry(fx.importedSets("e-1", reps: [10], weight: 40), into: id)
+        let entry = try #require(try fx.sessions.session(id: id)?.entries.first { $0.exerciseId == fx.press.id })
+        try fx.sessions.removeEntry(id: entry.id)
+        #expect(!coordinator.hasWorkingSets)
+    }
+
     @Test("pause and resume switch the phase")
     func pauseResume() async throws {
         let routine = try fx.makeRoutine()

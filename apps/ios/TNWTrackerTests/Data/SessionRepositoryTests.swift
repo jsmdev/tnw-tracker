@@ -411,7 +411,7 @@ struct SessionRepositoryTests {
         try fx.sessions.importEntry(fx.importedSets("e-7", reps: [10], weight: 40), into: second.id)
         let sets = try reload(second.id).entries.flatMap(\.sets)
         #expect(sets.map(\.externalRef) == [fx.ref("e-7#1")])
-        #expect(try fx.sessions.session(id: first.id) == nil, "the imported-only first session had nothing left")
+        #expect(try fx.sessions.session(id: first.id) != nil, "D-T7f: a session the user logged is never removed by an import")
     }
 
     @Test("an imported entry never ends after its completed session (rule range)")

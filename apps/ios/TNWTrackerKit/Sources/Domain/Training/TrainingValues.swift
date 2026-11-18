@@ -492,12 +492,13 @@ public struct SkippedSession: Sendable, Equatable {
 }
 
 extension TrainingSession {
-    /// Whether the session has a working set (T6, D-T6a): a set of an entry that
-    /// was not removed, imported, or manual and not a warm-up (strength or
-    /// cardio). A session without one is never saved: ending it discards it.
+    /// Whether the session has a working set (T6, D-T6a, M14): a set that is not
+    /// a warm-up, imported or manual, strength or cardio, of an entry that was not
+    /// removed. Warm-ups never count, an imported warm-up included. A session
+    /// without one is never saved: ending it discards it.
     public var hasWorkingSets: Bool {
         entries.contains { entry in
-            entry.status != .removed && entry.sets.contains { $0.source == .imported || !$0.warmup }
+            entry.status != .removed && entry.sets.contains { !$0.warmup }
         }
     }
 }

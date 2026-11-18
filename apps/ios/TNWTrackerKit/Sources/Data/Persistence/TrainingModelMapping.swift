@@ -85,15 +85,6 @@ extension SessionModel {
 extension SessionEntryModel {
     var snapshot: SessionEntry? {
         guard let exerciseId = exercise?.id else { return nil }
-        let reconciliation: Reconciliation? = if let keep = reconciliationKeepRaw.flatMap(SetSource.init(rawValue:)) {
-            Reconciliation(
-                keep: keep,
-                decidedBy: reconciliationDecidedByRaw.flatMap(ReconciliationDecider.init(rawValue:)) ?? .default,
-                decidedAt: reconciliationDecidedAt
-            )
-        } else {
-            nil
-        }
         let ordered = sets.sorted { lhs, rhs in
             lhs.sourceRaw == rhs.sourceRaw ? lhs.order < rhs.order : lhs.sourceRaw == SetSource.manual.rawValue
         }
@@ -108,6 +99,16 @@ extension SessionEntryModel {
             sets: ordered.map(\.snapshot),
             reconciliation: reconciliation,
             notes: notes
+        )
+    }
+
+    /// The stored reconciliation decision, if any.
+    var reconciliation: Reconciliation? {
+        guard let keep = reconciliationKeepRaw.flatMap(SetSource.init(rawValue:)) else { return nil }
+        return Reconciliation(
+            keep: keep,
+            decidedBy: reconciliationDecidedByRaw.flatMap(ReconciliationDecider.init(rawValue:)) ?? .default,
+            decidedAt: reconciliationDecidedAt
         )
     }
 

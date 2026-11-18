@@ -380,8 +380,9 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
 
         // One entry per exercise: a second provider entry merges into the same entry.
         let entry = known ?? doneEntry(in: session, for: exercise)
+        var movedChoice: Reconciliation?
         if let found, known == nil {
-            moveRef(imported.externalRef, from: found, to: entry)
+            movedChoice = moveRef(imported.externalRef, from: found, to: entry)
             vacatedEntries.append(found)
         }
         if entry.externalId == nil {
@@ -427,16 +428,13 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
                 entry.sets.append(set)
             }
         }
-        if !entry.hasBothSources {
-            entry.clearReconciliation()
-        }
-        applyReconciliationOnMerge(entry, at: Date())
+        reconcileAfterMerge(entry, movedChoice: movedChoice, at: Date())
         return tidyVacated(vacatedEntries, keeping: entry).filter { $0.id != session.id }
     }
 
     /// D8: moves the entry ref `ref` from `source` (in another session) to `entry`.
-    /// The user's reconciliation choice moves with it when `entry` has none.
-    private func moveRef(_ ref: ExternalRef, from source: SessionEntryModel, to entry: SessionEntryModel) {
+    /// Returns the source's reconciliation choice, which moves with the ref.
+    private func moveRef(_ ref: ExternalRef, from source: SessionEntryModel, to entry: SessionEntryModel) -> Reconciliation? {
         if let alias = source.mergedRefs.first(where: { $0.provider == ref.provider && $0.externalId == ref.id }) {
             source.mergedRefs.removeAll { $0.persistentModelID == alias.persistentModelID }
             entry.mergedRefs.append(alias)
@@ -446,10 +444,22 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
             source.externalProvider = next?.provider
             source.externalId = next?.externalId
         }
-        if entry.reconciliationKeepRaw == nil, let keep = source.reconciliationKeepRaw {
-            entry.reconciliationKeepRaw = keep
-            entry.reconciliationDecidedByRaw = source.reconciliationDecidedByRaw
-            entry.reconciliationDecidedAt = source.reconciliationDecidedAt
+        return source.reconciliation
+    }
+
+    /// Reconciliation rules 4 and 5 after a merge (D-T7e): every set's `superseded`
+    /// in `entry` is derived from the entry's choice. The target's own choice wins,
+    /// else the choice that moved with the ref, else the default (keep imported)
+    /// when the entry starts mixing sources. A single-source entry has no choice.
+    private func reconcileAfterMerge(_ entry: SessionEntryModel, movedChoice: Reconciliation?, at date: Date) {
+        guard entry.hasBothSources else {
+            entry.clearReconciliation()
+            return
+        }
+        if let choice = entry.reconciliation ?? movedChoice {
+            entry.setReconciliation(keep: choice.keep, decidedBy: choice.decidedBy, at: choice.decidedAt ?? date)
+        } else {
+            applyReconciliationOnMerge(entry, at: date)
         }
     }
 
@@ -481,9 +491,11 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
 
     /// D8: a completed session that lost its data to another session is removed
     /// when it was imported-only (no manual set) and has no counted set left.
-    /// A session with a manual set, or one in progress, is always kept.
+    /// D-T7f: only a session an import created (it carries the import's session
+    /// `externalRef`) can be removed; a session the user logged, or one in
+    /// progress, is always kept.
     func removeEmptiedImportedSessions(_ sessions: [SessionModel]) {
-        for session in sessions where session.completedAt != nil {
+        for session in sessions where session.completedAt != nil && session.externalId != nil {
             let sets = session.entries.flatMap(\.sets)
             let hasManual = sets.contains { $0.sourceRaw == SetSource.manual.rawValue }
             let hasCounted = session.entries.contains { entry in
