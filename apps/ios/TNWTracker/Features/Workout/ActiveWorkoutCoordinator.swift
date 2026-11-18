@@ -62,6 +62,9 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
 
     private var elapsedTask: Task<Void, Never>?
     private var undoLastSetId: UUID?
+    /// The set whose rest the last set ended, and its `completedAt`: undo clears
+    /// that rest and measures it again from there (D-T3k).
+    private var undoRestore: (setId: UUID, completedAt: Date)?
     private var undoTask: Task<Void, Never>?
 
     // MARK: - Init
@@ -181,6 +184,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     public func recordSet(reps: Int, weight: Weight?, rir: Int?, warmup: Bool = false) async throws {
         guard let current = session, let entry = currentEntry else { return }
         // A rest still running ends with this set and records the time so far.
+        let cutShort = restingSet
         await timerService.skip()
         let logged = try sessions.logManualSet(
             SetValues(reps: reps, weight: weight, rir: rir),
@@ -190,8 +194,12 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
             at: now()
         )
         try refreshSession()
+        undoRestore = cutShort.flatMap { cut in
+            manualSet(cut.setId)?.completedAt.map { (cut.setId, $0) }
+        }
         if let previous = setWithoutTimer {
             setWithoutTimer = nil
+            undoRestore = previous
             let gap = (logged.completedAt ?? now()).timeIntervalSince(previous.completedAt)
             recordRest(max(0, Int(gap.rounded())), setId: previous.setId)
         }
@@ -203,7 +211,9 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         undoTask?.cancel()
         undoTask = Task {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { return }
             self.undoLastSetId = nil
+            self.undoRestore = nil
         }
 
         let item = target(for: entry)
@@ -252,10 +262,10 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         recordRest(ranSeconds, setId: resting.setId)
     }
 
-    /// Writes the rest taken after a manual set through the repository's set update.
-    private func recordRest(_ seconds: Int, setId: UUID) {
-        let set = entries.lazy.flatMap(\.manualSets).first { $0.id == setId }
-        guard var values = set?.values else { return }
+    /// Writes the rest taken after a manual set (nil clears it) through the
+    /// repository's set update.
+    private func recordRest(_ seconds: Int?, setId: UUID) {
+        guard var values = manualSet(setId)?.values else { return }
         values.restSeconds = seconds
         do {
             try sessions.updateManualSet(values, setId: setId)
@@ -263,6 +273,10 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         } catch {
             logger.error("recordRest falló: \(error)")
         }
+    }
+
+    private func manualSet(_ id: UUID) -> ExerciseSet? {
+        entries.lazy.flatMap(\.manualSets).first { $0.id == id }
     }
 
     // MARK: - Rest settings
@@ -297,12 +311,28 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         guard let setId = undoLastSetId else { return }
         undoTask?.cancel()
         undoLastSetId = nil
+        let restore = undoRestore
+        undoRestore = nil
         if restingSet?.setId == setId { restingSet = nil }
         if setWithoutTimer?.setId == setId { setWithoutTimer = nil }
+        let exerciseId = entries.first { $0.sets.contains { $0.id == setId } }?.exerciseId
         try sessions.deleteManualSet(id: setId)
         try refreshSession()
+        // The undone set's own rest stops; a rest it cut short is not resumed (D-T3k).
         await timerService.skip()
-        if phase == .restingBetweenSets || phase == .restingBetweenExercises {
+        if let restore {
+            // As if the undone set was never logged: the previous set's rest is
+            // measured again until the next real set.
+            recordRest(nil, setId: restore.setId)
+            restingSet = nil
+            setWithoutTimer = restore
+        }
+        // Back to the exercise of the undone set, for example after an auto-advance (D-T3d).
+        let previousIndex = currentExerciseIndex
+        if let exerciseId, let index = entries.firstIndex(where: { $0.exerciseId == exerciseId }) {
+            currentExerciseIndex = index
+        }
+        if phase == .restingBetweenSets || phase == .restingBetweenExercises || currentExerciseIndex != previousIndex {
             phase = .active
             logger.info("Coordinator phase → .active (undoLastSet)")
         }

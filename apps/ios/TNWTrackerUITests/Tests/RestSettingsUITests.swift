@@ -60,9 +60,12 @@ final class RestSettingsUITests: XCTestCase {
         try app.performAccessibilityAudit { issue in
             let element = issue.element
             let label = element?.label ?? ""
+            // System form headers and footers are reported as "nearly passed";
+            // after a simulator reboot the audit may not identify the element.
+            // A real contrast failure ("Contrast failed") still fails the test.
             let systemFormText = issue.auditType == .contrast
                 && issue.compactDescription == "Contrast nearly passed"
-                && element?.elementType == .staticText
+                && (element == nil || element?.elementType == .staticText)
             let outOfScope = only.map { !$0.contains(element?.identifier ?? "") } ?? false
             let ignored = systemFormText || preExisting.contains(label) || outOfScope
             if ignored {

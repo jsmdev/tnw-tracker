@@ -166,6 +166,114 @@ struct RestTakenTests {
         #expect(try rests(sessionId, fx.squat) == [nil])
     }
 
+    // MARK: Verifier probes (B1, B2)
+
+    @Test("AC3.8 undoing the next set: the previous set's rest is the time until the set that stays (no timer)")
+    func undoNoTimer() async throws {
+        let coordinator = try await start()
+        try coordinator.saveRestSetting(ExerciseSetting(exerciseId: fx.squat.id, restEnabled: false, restSeconds: 90))
+        try await logSet(coordinator) // set 1
+        clock.advance(30)
+        try await logSet(coordinator) // set 2 by mistake
+        try await coordinator.undoLastSet()
+        clock.advance(60)
+        try await logSet(coordinator) // real set 2, 90 s after set 1
+
+        #expect(try rests(coordinator.activeWorkoutId, fx.squat) == [90, nil])
+    }
+
+    @Test("AC3.8 D-T3k undoing a set that cut a rest short: the previous set is measured to the next real set")
+    func undoWithTimer() async throws {
+        let coordinator = try await start()
+        try await logSet(coordinator) // set 1, 90 s rest
+        clock.advance(30)
+        try await logSet(coordinator) // set 2 by mistake, cuts set 1's rest at 30 s
+        try await coordinator.undoLastSet()
+        #expect(timer.state == nil, "the cut rest is not resumed")
+        clock.advance(60)
+        try await logSet(coordinator) // real set 2
+
+        #expect(try rests(coordinator.activeWorkoutId, fx.squat) == [90, nil])
+        await coordinator.skipTimer()
+    }
+
+    @Test("AC3.8 undo keeps a rest that ended before the undone set was logged")
+    func undoKeepsFinishedRest() async throws {
+        let coordinator = try await start()
+        try await logSet(coordinator)
+        clock.advance(90)
+        await timer.expireIfDue() // set 1: 90 s
+        clock.advance(20)
+        try await logSet(coordinator)
+        try await coordinator.undoLastSet()
+
+        #expect(try rests(coordinator.activeWorkoutId, fx.squat) == [90])
+    }
+
+    @Test("D-T3d undoing the last working set with the change-exercise rest off returns to that exercise")
+    func undoAfterAutoAdvance() async throws {
+        let coordinator = try await start(changeExerciseRest: nil)
+        for _ in 0 ..< 3 {
+            try await logSet(coordinator)
+            await coordinator.skipTimer()
+        }
+        #expect(coordinator.currentEntry?.exerciseId == fx.press.id)
+
+        try await coordinator.undoLastSet()
+
+        #expect(coordinator.currentEntry?.exerciseId == fx.squat.id)
+        #expect(coordinator.currentEntry?.workingManualSets.count == 2)
+        #expect(coordinator.phase == .active)
+    }
+
+    @Test("AC3.4 the change-exercise rest uses its own duration and type")
+    func changeExerciseDuration() async throws {
+        let coordinator = try await start(changeExerciseRest: 45)
+        try coordinator.saveRestSetting(ExerciseSetting(exerciseId: fx.squat.id, restEnabled: true, restSeconds: 200))
+        for _ in 0 ..< 2 {
+            try await logSet(coordinator)
+            await coordinator.skipTimer()
+        }
+        try await logSet(coordinator)
+
+        let state = try #require(timer.state)
+        #expect(state.type == .betweenExercises)
+        #expect(state.endsAt.timeIntervalSince(state.startedAt) == 45)
+        await coordinator.skipTimer()
+        #expect(coordinator.currentEntry?.exerciseId == fx.press.id)
+    }
+
+    @Test("AC3.3 a saved setting beats the routine rest, and off keeps the duration")
+    func precedence() async throws {
+        let coordinator = try await start()
+        #expect(coordinator.restSetting(for: fx.squat.id).restSeconds == 90)
+        #expect(coordinator.restSetting(for: fx.press.id).restSeconds == 60)
+        try coordinator.saveRestSetting(ExerciseSetting(exerciseId: fx.press.id, restEnabled: false, restSeconds: 75))
+        #expect(coordinator.restSetting(for: fx.press.id)
+            == ExerciseSetting(exerciseId: fx.press.id, restEnabled: false, restSeconds: 75))
+        try coordinator.saveRestSetting(ExerciseSetting(exerciseId: fx.press.id, restEnabled: true, restSeconds: 75))
+        coordinator.advanceToNextExercise()
+        try await logSet(coordinator)
+
+        let state = try #require(timer.state)
+        #expect(state.endsAt.timeIntervalSince(state.startedAt) == 75)
+        await coordinator.skipTimer()
+    }
+
+    @Test("AC3.8 −15 s past the start never records a negative rest, and the rest is recorded once")
+    func negativeAndOnce() async throws {
+        let coordinator = try await start()
+        try await logSet(coordinator)
+        clock.advance(10)
+        for _ in 0 ..< 10 {
+            await coordinator.adjustTimer(by: -15)
+        }
+        await timer.expireIfDue()
+        await coordinator.skipTimer()
+
+        #expect(try rests(coordinator.activeWorkoutId, fx.squat) == [10])
+    }
+
     @Test("AC3.8 the repository updates the values of a manual set only, with the set rules")
     func repositoryUpdatesManualSetsOnly() throws {
         let session = try fx.sessions.startSession(routineId: nil, name: "Free", at: TrainingFixtures.t0, timeZone: .gmt)
