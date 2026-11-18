@@ -7,9 +7,9 @@
   "locale": "en",
   "exercises": [
     {
-      "id": "766bb2d9-a0fe-5bab-a8ac-b5239930867e",
+      "id": "1b9e0aaf-73da-5d00-986b-dfefccbdd624",
       "externalRef": {
-        "provider": "gym-machines",
+        "provider": "machines-atlas",
         "id": "1001"
       },
       "name": "Leg press",
@@ -46,9 +46,9 @@
       }
     },
     {
-      "id": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+      "id": "c3ecc239-b598-5333-89e0-95053069facf",
       "externalRef": {
-        "provider": "gym-machines",
+        "provider": "machines-atlas",
         "id": "1002"
       },
       "name": "Chest press",
@@ -76,10 +76,10 @@
         {
           "id": "f9e627d1-1538-4078-b0dc-d97f990c8aca",
           "externalRef": {
-            "provider": "gym-machines",
+            "provider": "machines-atlas",
             "id": "8001"
           },
-          "exerciseId": "766bb2d9-a0fe-5bab-a8ac-b5239930867e",
+          "exerciseId": "1b9e0aaf-73da-5d00-986b-dfefccbdd624",
           "order": 1,
           "status": "done",
           "reconciliation": {
@@ -113,9 +113,9 @@
               "superseded": true
             },
             {
-              "id": "d96681bc-af98-550d-a952-23aaa02b7948",
+              "id": "7efc3d92-c528-5a13-a4db-1138ef2e449e",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "8001#1"
               },
               "order": 1,
@@ -128,9 +128,9 @@
               "durationSeconds": 40
             },
             {
-              "id": "32d4728a-4b1a-5f99-81eb-6dfb1a7ca2f6",
+              "id": "cbf880af-ddef-5189-af00-5ce6be48a652",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "8001#2"
               },
               "order": 2,
@@ -147,10 +147,10 @@
         {
           "id": "23cbefb0-3422-4d19-92a5-1f0727fc40c0",
           "externalRef": {
-            "provider": "gym-machines",
+            "provider": "machines-atlas",
             "id": "8002"
           },
-          "exerciseId": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+          "exerciseId": "c3ecc239-b598-5333-89e0-95053069facf",
           "order": 2,
           "status": "done",
           "reconciliation": {
@@ -185,9 +185,9 @@
               "completedAt": "2030-03-11T18:23:00Z"
             },
             {
-              "id": "411fba10-d506-5b4c-9545-9e47b015ad9f",
+              "id": "4c072182-436b-5369-8ec7-d3ba1c30153d",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "8002#1"
               },
               "order": 1,
@@ -201,9 +201,9 @@
               "superseded": true
             },
             {
-              "id": "f668c489-0d44-5df2-ab54-b7d8e2dce765",
+              "id": "16fa9620-1137-5d00-8e94-4971aca2d0e2",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "8002#2"
               },
               "order": 2,

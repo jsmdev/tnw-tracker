@@ -2,14 +2,14 @@
   "formatVersion": "1.0",
   "generatedAt": "2030-03-05T06:00:00Z",
   "source": {
-    "provider": "gym-machines"
+    "provider": "machines-atlas"
   },
   "locale": "en",
   "exercises": [
     {
-      "id": "766bb2d9-a0fe-5bab-a8ac-b5239930867e",
+      "id": "1b9e0aaf-73da-5d00-986b-dfefccbdd624",
       "externalRef": {
-        "provider": "gym-machines",
+        "provider": "machines-atlas",
         "id": "1001"
       },
       "name": "Leg press",
@@ -46,9 +46,9 @@
       }
     },
     {
-      "id": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+      "id": "c3ecc239-b598-5333-89e0-95053069facf",
       "externalRef": {
-        "provider": "gym-machines",
+        "provider": "machines-atlas",
         "id": "1002"
       },
       "name": "Chest press",
@@ -68,29 +68,29 @@
   ],
   "sessions": [
     {
-      "id": "095a8825-0691-55e9-a479-fb8a433501de",
+      "id": "2c4c2da5-56d4-505e-aac3-dd90372af81a",
       "externalRef": {
-        "provider": "gym-machines",
+        "provider": "machines-atlas",
         "id": "2030-03-04"
       },
       "completedAt": "2030-03-04T19:42:10",
       "timeZone": "Europe/Madrid",
       "entries": [
         {
-          "id": "c3c8dba1-47bd-56c8-9432-f45bee746f0e",
+          "id": "a28dcfb1-3f67-5d22-9ae5-92899efa80f4",
           "externalRef": {
-            "provider": "gym-machines",
+            "provider": "machines-atlas",
             "id": "5001"
           },
-          "exerciseId": "766bb2d9-a0fe-5bab-a8ac-b5239930867e",
+          "exerciseId": "1b9e0aaf-73da-5d00-986b-dfefccbdd624",
           "order": 1,
           "status": "done",
           "completedAt": "2030-03-04T18:31:40Z",
           "sets": [
             {
-              "id": "cebc0171-deb0-5e94-b4b9-8ce9f8383365",
+              "id": "ad5205e4-54f9-577a-b538-2b8ef0067463",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "5001#1"
               },
               "order": 1,
@@ -103,9 +103,9 @@
               "durationSeconds": 41
             },
             {
-              "id": "e7122979-a4c9-535c-93f1-0ec838e3c8b4",
+              "id": "54168e03-f9ca-5e46-be39-9b0a8dc9fdb9",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "5001#2"
               },
               "order": 2,
@@ -118,9 +118,9 @@
               "durationSeconds": 38
             },
             {
-              "id": "91f34a3f-5c8d-5d23-aba1-f06ac982f987",
+              "id": "739d2bb5-5322-5b3c-bc23-fdbdb6ab0f23",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "5001#3"
               },
               "order": 3,
@@ -135,20 +135,20 @@
           ]
         },
         {
-          "id": "e7e857d5-3f4e-5098-9dd8-3977ef4bc581",
+          "id": "16d8aefd-b88c-56af-b6a1-e19523d74fc9",
           "externalRef": {
-            "provider": "gym-machines",
+            "provider": "machines-atlas",
             "id": "5002"
           },
-          "exerciseId": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+          "exerciseId": "c3ecc239-b598-5333-89e0-95053069facf",
           "order": 2,
           "status": "done",
           "completedAt": "2030-03-04T18:42:10Z",
           "sets": [
             {
-              "id": "6eb1a352-6987-530e-af56-f3d8e9a0b392",
+              "id": "eff5fbcb-cb53-560a-bcba-2743ef5b0024",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "5002#1"
               },
               "order": 1,
@@ -161,9 +161,9 @@
               "durationSeconds": 36
             },
             {
-              "id": "cf632636-3693-5525-ab78-986d2040189a",
+              "id": "2a809335-230f-5aa4-81e9-84e2f2559d02",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "5002#2"
               },
               "order": 2,
