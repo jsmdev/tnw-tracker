@@ -22,7 +22,11 @@ struct ExerciseRepositoryTests {
                 MuscleGroup(muscle: .back, role: .primary),
                 MuscleGroup(muscle: .biceps, role: .secondary)
             ],
-            instructions: ExerciseInstructions(setup: ["Adjust the seat."], execution: ["Pull.", "Release."], tips: ["Slow."]),
+            instructions: ExerciseInstructions(
+                setup: ["Adjust the seat."],
+                execution: ["Pull.", "Release."],
+                tips: ["Slow."]
+            ),
             media: ExerciseMedia(imageURI: "exercises/row.jpg", videoURI: "https://media.example/row.mp4")
         )
     }

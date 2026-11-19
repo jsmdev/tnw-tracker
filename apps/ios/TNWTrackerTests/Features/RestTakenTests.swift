@@ -276,8 +276,18 @@ struct RestTakenTests {
 
     @Test("AC3.8 the repository updates the values of a manual set only, with the set rules")
     func repositoryUpdatesManualSetsOnly() throws {
-        let session = try fx.sessions.startSession(routineId: nil, name: "Free", at: TrainingFixtures.t0, timeZone: .gmt)
-        let manual = try fx.sessions.logManualSet(SetValues(reps: 8), exerciseId: fx.press.id, sessionId: session.id, at: TrainingFixtures.t0)
+        let session = try fx.sessions.startSession(
+            routineId: nil,
+            name: "Free",
+            at: TrainingFixtures.t0,
+            timeZone: .gmt
+        )
+        let manual = try fx.sessions.logManualSet(
+            SetValues(reps: 8),
+            exerciseId: fx.press.id,
+            sessionId: session.id,
+            at: TrainingFixtures.t0
+        )
 
         try fx.sessions.updateManualSet(SetValues(reps: 8, restSeconds: 75), setId: manual.id)
         let stored = try #require(try fx.sessions.session(id: session.id)?.entries.first?.manualSets.first)
@@ -291,7 +301,9 @@ struct RestTakenTests {
         }
 
         try fx.sessions.importEntry(fx.importedSets("e-1", reps: [10], weight: 40), into: session.id)
-        let imported = try #require(try fx.sessions.session(id: session.id)?.entries.first?.sets.first { $0.source == .imported })
+        let imported = try #require(
+            try fx.sessions.session(id: session.id)?.entries.first?.sets.first { $0.source == .imported }
+        )
         #expect(throws: TrainingDataError.invalidSet("only manual sets can be updated")) {
             try fx.sessions.updateManualSet(SetValues(reps: 10, restSeconds: 30), setId: imported.id)
         }

@@ -23,7 +23,12 @@ struct HomeModelTests {
     }
 
     private func completedSession(at date: Date, sets: [SetValues], exercise: Exercise) throws -> TrainingSession {
-        let session = try fx.sessions.startSession(routineId: nil, name: nil, at: date.addingTimeInterval(-600), timeZone: .gmt)
+        let session = try fx.sessions.startSession(
+            routineId: nil,
+            name: nil,
+            at: date.addingTimeInterval(-600),
+            timeZone: .gmt
+        )
         for values in sets {
             try fx.sessions.logManualSet(values, exerciseId: exercise.id, sessionId: session.id, at: date)
         }
@@ -49,17 +54,38 @@ struct HomeModelTests {
 
     @Test("weeklyVolume sums weight × reps of counted sets only")
     func volumeOfCountedSets() async throws {
-        let session = try fx.sessions.startSession(routineId: nil, name: nil, at: now.addingTimeInterval(-7200), timeZone: .gmt)
-        try fx.sessions.logManualSet(SetValues(reps: 10, weight: .kg(20)), exerciseId: fx.squat.id, sessionId: session.id, at: now)
-        try fx.sessions.logManualSet(SetValues(reps: 8, weight: .kg(20)), exerciseId: fx.squat.id, sessionId: session.id, at: now)
+        let session = try fx.sessions.startSession(
+            routineId: nil,
+            name: nil,
+            at: now.addingTimeInterval(-7200),
+            timeZone: .gmt
+        )
+        try fx.sessions.logManualSet(
+            SetValues(reps: 10, weight: .kg(20)),
+            exerciseId: fx.squat.id,
+            sessionId: session.id,
+            at: now
+        )
+        try fx.sessions.logManualSet(
+            SetValues(reps: 8, weight: .kg(20)),
+            exerciseId: fx.squat.id,
+            sessionId: session.id,
+            at: now
+        )
         // Manual press sets are superseded by the imported ones (default reconciliation).
-        try fx.sessions.logManualSet(SetValues(reps: 10, weight: .kg(100)), exerciseId: fx.press.id, sessionId: session.id, at: now)
+        try fx.sessions.logManualSet(
+            SetValues(reps: 10, weight: .kg(100)),
+            exerciseId: fx.press.id,
+            sessionId: session.id,
+            at: now
+        )
         try fx.sessions.importEntry(fx.importedSets("e-1", reps: [10], weight: 40), into: session.id)
         try fx.sessions.finishSession(id: session.id, at: now.addingTimeInterval(-3600), durationSeconds: nil)
 
         let model = makeModel()
         await model.load()
-        #expect(model.weeklyVolume == 10 * 20 + 8 * 20 + 10 * 40)
+        let expected: Double = 10 * 20 + 8 * 20 + 10 * 40
+        #expect(model.weeklyVolume == expected)
     }
 
     @Test("nextSession returns nil when no routines exist")
@@ -84,7 +110,10 @@ struct HomeModelTests {
     func nextSessionOldest() async throws {
         let alpha = try fx.makeRoutine(name: "Full Body A")
         let bravo = try fx.makeRoutine(name: "Full Body B")
-        for (routine, date) in [(alpha, now.addingTimeInterval(-2 * 86400)), (bravo, now.addingTimeInterval(-4 * 86400))] {
+        for (routine, date) in [
+            (alpha, now.addingTimeInterval(-2 * 86400)),
+            (bravo, now.addingTimeInterval(-4 * 86400))
+        ] {
             let session = try fx.sessions.startSession(routineId: routine.id, name: nil, at: date, timeZone: .gmt)
             try fx.sessions.logManualSet(SetValues(reps: 5), exerciseId: fx.squat.id, sessionId: session.id, at: date)
             try fx.sessions.finishSession(id: session.id, at: date, durationSeconds: nil)

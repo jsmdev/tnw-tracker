@@ -5,20 +5,6 @@ import TNWTrackerKit
 
 private let logger = Logger(subsystem: "com.tnwtracker", category: "coordinator")
 
-// MARK: - DrainCoordinatorProtocol
-
-/// Minimal protocol for drain dispatch — testable without the full coordinator.
-/// Only the methods and properties called by drainIfActive / drainPendingIntents are declared here.
-@MainActor
-public protocol DrainCoordinatorProtocol: AnyObject {
-    /// The ID of the currently active workout, or nil if no workout is running.
-    var activeWorkoutId: UUID? { get }
-    func skipTimer() async
-    func pause() async throws
-    func resume() async throws
-    func finish() async throws
-}
-
 /// FSM del workout activo. Coordina sets, timer y Live Activity.
 /// Los datos viven en `SessionRepositoryProtocol`; el coordinador solo guarda
 /// el snapshot más reciente de la sesión en curso.
@@ -41,17 +27,19 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     public private(set) var completedWorkoutId: UUID?
 
     /// Targets of the routine the session was started from, by exercise.
-    private var targets: [UUID: RoutineItem] = [:]
+    private(set) var targets: [UUID: RoutineItem] = [:]
 
     // MARK: - Dependencies
 
-    private let sessions: any SessionRepositoryProtocol
+    // Internal, not private: the extensions in `ActiveWorkoutCoordinator+*.swift` read them.
+
+    let sessions: any SessionRepositoryProtocol
     private let routines: any RoutineRepositoryProtocol
-    private let exerciseSettings: any ExerciseSettingRepositoryProtocol
+    let exerciseSettings: any ExerciseSettingRepositoryProtocol
     /// "Descanso al cambiar de ejercicio" in seconds, or nil when it is off.
     private let changeExerciseRest: @MainActor () -> Int?
     private let syncEngine: any SyncEngine
-    private let timerService: RestTimerService
+    let timerService: RestTimerService
     private let liveActivity: LiveActivityController
     private let now: () -> Date
 
@@ -173,7 +161,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         return max(0, entries.count - 1)
     }
 
-    private func target(for entry: SessionEntry) -> RoutineItem? {
+    func target(for entry: SessionEntry) -> RoutineItem? {
         targets[entry.exerciseId] ?? entry.replacedExerciseId.flatMap { targets[$0] }
     }
 
@@ -275,37 +263,6 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         }
     }
 
-    private func manualSet(_ id: UUID) -> ExerciseSet? {
-        entries.lazy.flatMap(\.manualSets).first { $0.id == id }
-    }
-
-    // MARK: - Rest settings
-
-    /// The exercise's "Descanso entre series" in force: the saved setting, else
-    /// on with the routine item's rest, else 90 s.
-    public func restSetting(for exerciseId: UUID) -> ExerciseSetting {
-        let saved = try? exerciseSettings.setting(exerciseId: exerciseId)
-        let routineRest = targets[exerciseId]?.restSeconds
-            ?? entries.first { $0.exerciseId == exerciseId }.flatMap { target(for: $0)?.restSeconds }
-        return RestPolicy.setting(exerciseId: exerciseId, saved: saved, routineRestSeconds: routineRest)
-    }
-
-    /// Saves the exercise's "Descanso entre series" for this and every later session.
-    public func saveRestSetting(_ setting: ExerciseSetting) throws {
-        try exerciseSettings.save(setting)
-    }
-
-    /// −15 s / +15 s on the running rest, the same for both timers.
-    public func adjustTimer(by seconds: Int) async {
-        await timerService.extend(by: seconds)
-    }
-
-    /// The user's warm-up annotation on a logged set of the session.
-    public func setWarmup(_ warmup: Bool, setId: UUID) throws {
-        try sessions.setWarmup(warmup, setId: setId)
-        try refreshSession()
-    }
-
     /// Deshace la última serie si todavía está en la ventana de undo.
     public func undoLastSet() async throws {
         guard let setId = undoLastSetId else { return }
@@ -377,21 +334,6 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
 
     // MARK: - Finish
 
-    /// What `finish()` did with the session.
-    public enum FinishOutcome: Equatable {
-        /// Completed and saved; the summary shows it.
-        case saved(UUID)
-        /// Deleted: it had no working sets (T6, D7).
-        case discarded
-    }
-
-    /// Whether the session in progress has a working set (T6, D-T6a). Without
-    /// one, "Terminar" asks first and `finish()` discards the session.
-    public var hasWorkingSets: Bool {
-        guard let current = session else { return false }
-        return ((try? sessions.session(id: current.id)) ?? current).hasWorkingSets
-    }
-
     /// What the last `finish()` did (nil before any finish).
     public private(set) var lastFinishOutcome: FinishOutcome?
 
@@ -436,31 +378,9 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         lastFinishOutcome = discard ? .discarded : .saved(current.id)
     }
 
-    // MARK: - DrainCoordinatorProtocol conformance
-
-    public var activeWorkoutId: UUID? {
-        session?.id
-    }
-
     // MARK: - Helpers
 
-    /// Entries the user works through, in session order. Removed entries are hidden.
-    public var entries: [SessionEntry] {
-        (session?.entries ?? []).filter { $0.status != .removed }
-    }
-
-    public var currentEntry: SessionEntry? {
-        let list = entries
-        guard list.indices.contains(currentExerciseIndex) else { return nil }
-        return list[currentExerciseIndex]
-    }
-
-    /// Expone el estado del timer de descanso para que las Views lo puedan leer directamente.
-    public var timerState: RestTimerState? {
-        timerService.state
-    }
-
-    private func refreshSession() throws {
+    func refreshSession() throws {
         guard let id = session?.id else { return }
         session = try sessions.session(id: id)
     }

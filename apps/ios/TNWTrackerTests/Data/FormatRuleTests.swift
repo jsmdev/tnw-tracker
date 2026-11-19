@@ -59,7 +59,12 @@ struct FormatRuleTests {
         try fx.sessions.importEntry(fx.importedSets("a", reps: [10], weight: 40), into: first.id)
         try fx.sessions.importEntry(fx.importedSets("b", reps: [8], weight: 40), into: first.id)
         try fx.sessions.finishSession(id: first.id, at: t0.addingTimeInterval(600), durationSeconds: nil)
-        let second = try fx.sessions.startSession(routineId: nil, name: nil, at: t0.addingTimeInterval(700), timeZone: TrainingFixtures.zone)
+        let second = try fx.sessions.startSession(
+            routineId: nil,
+            name: nil,
+            at: t0.addingTimeInterval(700),
+            timeZone: TrainingFixtures.zone
+        )
         let reshaped = ImportedEntry(
             exerciseId: fx.press.id, externalRef: fx.ref("b"),
             sets: [ImportedSet(externalRef: fx.ref("b#9"), order: 1, values: SetValues(reps: 1, weight: .kg(40)))]
@@ -86,10 +91,20 @@ struct FormatRuleTests {
         ])
         #expect(throws: TrainingDataError.self) { try fx.sessions.importEntry(negativeRest, into: session.id) }
         #expect(throws: TrainingDataError.self) {
-            try fx.sessions.logManualSet(SetValues(reps: 5, restSeconds: -1), exerciseId: fx.squat.id, sessionId: session.id, at: t0)
+            try fx.sessions.logManualSet(
+                SetValues(reps: 5, restSeconds: -1),
+                exerciseId: fx.squat.id,
+                sessionId: session.id,
+                at: t0
+            )
         }
         #expect(throws: TrainingDataError.self) {
-            try fx.sessions.logManualSet(SetValues(durationSeconds: -1), exerciseId: fx.plank.id, sessionId: session.id, at: t0)
+            try fx.sessions.logManualSet(
+                SetValues(durationSeconds: -1),
+                exerciseId: fx.plank.id,
+                sessionId: session.id,
+                at: t0
+            )
         }
         #expect(try reload(session.id).entries.isEmpty)
     }
@@ -112,7 +127,12 @@ struct FormatRuleTests {
         var late = fx.importedSets("k", reps: [10], weight: 40)
         late.completedAt = t0.addingTimeInterval(3600)
         try fx.sessions.importEntry(late, into: session.id)
-        try fx.sessions.logManualSet(SetValues(reps: 5), exerciseId: fx.squat.id, sessionId: session.id, at: t0.addingTimeInterval(4000))
+        try fx.sessions.logManualSet(
+            SetValues(reps: 5),
+            exerciseId: fx.squat.id,
+            sessionId: session.id,
+            at: t0.addingTimeInterval(4000)
+        )
         let done = try fx.sessions.finishSession(id: session.id, at: t0.addingTimeInterval(1800), durationSeconds: nil)
         #expect(done.entries.allSatisfy { ($0.completedAt ?? .distantPast) <= t0.addingTimeInterval(1800) })
     }
@@ -200,7 +220,9 @@ struct FormatRuleTests {
             try fx.exercises.save(Exercise(externalRef: ref, name: "X", type: .strength))
         }
         #expect(throws: TrainingDataError.self) {
-            try fx.routines.save(Routine(externalRef: ref, name: "R", items: [RoutineItem(order: 1, exerciseId: fx.squat.id)]))
+            try fx.routines.save(
+                Routine(externalRef: ref, name: "R", items: [RoutineItem(order: 1, exerciseId: fx.squat.id)])
+            )
         }
         let session = try start()
         #expect(throws: TrainingDataError.self) {

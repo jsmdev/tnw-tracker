@@ -77,9 +77,23 @@ struct SessionListModelTests {
     func withWorkoutsFilter() async throws {
         let performed = try fx.makeRoutine(name: "Routine A")
         _ = try fx.makeRoutine(name: "Routine B")
-        let session = try fx.sessions.startSession(routineId: performed.id, name: nil, at: TrainingFixtures.t0, timeZone: .gmt)
-        try fx.sessions.logManualSet(SetValues(reps: 5), exerciseId: fx.squat.id, sessionId: session.id, at: TrainingFixtures.t0)
-        try fx.sessions.finishSession(id: session.id, at: TrainingFixtures.t0.addingTimeInterval(60), durationSeconds: nil)
+        let session = try fx.sessions.startSession(
+            routineId: performed.id,
+            name: nil,
+            at: TrainingFixtures.t0,
+            timeZone: .gmt
+        )
+        try fx.sessions.logManualSet(
+            SetValues(reps: 5),
+            exerciseId: fx.squat.id,
+            sessionId: session.id,
+            at: TrainingFixtures.t0
+        )
+        try fx.sessions.finishSession(
+            id: session.id,
+            at: TrainingFixtures.t0.addingTimeInterval(60),
+            durationSeconds: nil
+        )
 
         let model = SessionListModel(routines: fx.routines)
         model.filter = .withWorkouts

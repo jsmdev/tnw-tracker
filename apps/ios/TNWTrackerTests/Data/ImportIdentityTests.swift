@@ -84,7 +84,9 @@ struct ImportIdentityTests {
     func bundleIdsAreNotAdopted() throws {
         let exerciseBundleId = UUID()
         let sessionBundleId = UUID()
-        let result = try store.importer.importBundle(bundle(exerciseBundleId: exerciseBundleId, sessionBundleId: sessionBundleId))
+        let result = try store.importer.importBundle(
+            bundle(exerciseBundleId: exerciseBundleId, sessionBundleId: sessionBundleId)
+        )
 
         let localExercise = try #require(result.exerciseIds[exerciseBundleId])
         #expect(localExercise != exerciseBundleId)
@@ -107,11 +109,27 @@ struct ImportIdentityTests {
     func bundleIdCollisionDoesNotOverwrite() throws {
         let manual = Exercise(name: "Goblet Squat", type: .strength, equipment: .freeWeights)
         try store.exercises.save(manual)
-        let manualSession = try store.sessions.startSession(routineId: nil, name: "Manual", at: t0.addingTimeInterval(-86400 * 3), timeZone: .gmt)
-        try store.sessions.logManualSet(SetValues(reps: 8), exerciseId: manual.id, sessionId: manualSession.id, at: manualSession.startedAt ?? t0)
-        try store.sessions.finishSession(id: manualSession.id, at: t0.addingTimeInterval(-86400 * 3 + 600), durationSeconds: nil)
+        let manualSession = try store.sessions.startSession(
+            routineId: nil,
+            name: "Manual",
+            at: t0.addingTimeInterval(-86400 * 3),
+            timeZone: .gmt
+        )
+        try store.sessions.logManualSet(
+            SetValues(reps: 8),
+            exerciseId: manual.id,
+            sessionId: manualSession.id,
+            at: manualSession.startedAt ?? t0
+        )
+        try store.sessions.finishSession(
+            id: manualSession.id,
+            at: t0.addingTimeInterval(-86400 * 3 + 600),
+            durationSeconds: nil
+        )
 
-        let result = try store.importer.importBundle(bundle(exerciseBundleId: manual.id, sessionBundleId: manualSession.id))
+        let result = try store.importer.importBundle(
+            bundle(exerciseBundleId: manual.id, sessionBundleId: manualSession.id)
+        )
 
         #expect(try store.exercises.exercise(id: manual.id) == manual)
         #expect(result.exerciseIds[manual.id] != manual.id)
@@ -127,7 +145,12 @@ struct ImportIdentityTests {
     func importJoinsSameDaySession() throws {
         let manual = Exercise(name: "Goblet Squat", type: .strength)
         try store.exercises.save(manual)
-        let morning = try store.sessions.startSession(routineId: nil, name: "Morning", at: t0, timeZone: TimeZone(identifier: "Europe/Madrid") ?? .gmt)
+        let morning = try store.sessions.startSession(
+            routineId: nil,
+            name: "Morning",
+            at: t0,
+            timeZone: TimeZone(identifier: "Europe/Madrid") ?? .gmt
+        )
         try store.sessions.logManualSet(SetValues(reps: 8), exerciseId: manual.id, sessionId: morning.id, at: t0)
         try store.sessions.finishSession(id: morning.id, at: t0.addingTimeInterval(1800), durationSeconds: nil)
 
@@ -211,7 +234,10 @@ struct ImportIdentityTests {
 
     // MARK: - Verifier regressions (B3, B4)
 
-    @Test("B3: a failing session writes nothing, even after an unrelated save, and a corrected retry imports cleanly (D13: per session)")
+    @Test("""
+        B3: a failing session writes nothing, even after an unrelated save, \
+        and a corrected retry imports cleanly (D13: per session)
+        """)
     func failingImportIsAtomic() throws {
         let strengthId = UUID(), cardioId = UUID()
         let strength = Exercise(id: strengthId, externalRef: ref("st"), name: "Row", type: .strength)
@@ -250,7 +276,12 @@ struct ImportIdentityTests {
         try store.exercises.save(mine)
         let utc = try #require(TimeZone(identifier: "UTC"))
         let started = try store.sessions.startSession(routineId: nil, name: "Leg day", at: t0, timeZone: utc)
-        try store.sessions.logManualSet(SetValues(reps: 5), exerciseId: mine.id, sessionId: started.id, at: t0.addingTimeInterval(60))
+        try store.sessions.logManualSet(
+            SetValues(reps: 5),
+            exerciseId: mine.id,
+            sessionId: started.id,
+            at: t0.addingTimeInterval(60)
+        )
         try store.sessions.finishSession(id: started.id, at: t0.addingTimeInterval(1800), durationSeconds: 1800)
 
         func providerBundle() -> TrainingBundle {

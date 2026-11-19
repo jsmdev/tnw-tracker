@@ -92,10 +92,29 @@ struct RoutineRepositoryTests {
         _ = try fx.makeRoutine(name: "Never")
         let inProgress = try fx.makeRoutine(name: "In progress only")
 
-        let done = try fx.sessions.startSession(routineId: performed.id, name: nil, at: TrainingFixtures.t0, timeZone: TrainingFixtures.zone)
-        try fx.sessions.logManualSet(SetValues(reps: 5), exerciseId: fx.squat.id, sessionId: done.id, at: TrainingFixtures.t0)
-        try fx.sessions.finishSession(id: done.id, at: TrainingFixtures.t0.addingTimeInterval(600), durationSeconds: nil)
-        _ = try fx.sessions.startSession(routineId: inProgress.id, name: nil, at: TrainingFixtures.t0, timeZone: TrainingFixtures.zone)
+        let done = try fx.sessions.startSession(
+            routineId: performed.id,
+            name: nil,
+            at: TrainingFixtures.t0,
+            timeZone: TrainingFixtures.zone
+        )
+        try fx.sessions.logManualSet(
+            SetValues(reps: 5),
+            exerciseId: fx.squat.id,
+            sessionId: done.id,
+            at: TrainingFixtures.t0
+        )
+        try fx.sessions.finishSession(
+            id: done.id,
+            at: TrainingFixtures.t0.addingTimeInterval(600),
+            durationSeconds: nil
+        )
+        _ = try fx.sessions.startSession(
+            routineId: inProgress.id,
+            name: nil,
+            at: TrainingFixtures.t0,
+            timeZone: TrainingFixtures.zone
+        )
 
         #expect(try fx.routines.routines(RoutineQuery(onlyPerformed: true)).map(\.name) == ["Performed"])
     }

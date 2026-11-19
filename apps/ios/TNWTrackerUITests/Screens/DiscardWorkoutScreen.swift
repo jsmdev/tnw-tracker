@@ -51,7 +51,11 @@ struct DiscardWorkoutScreen {
         // Wait for the workout cover to finish closing before using Home.
         let endButton = app.buttons[AXID.ActiveWorkout.endButton]
         let gone = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: endButton)
-        XCTAssertEqual(XCTWaiter().wait(for: [gone], timeout: 5), .completed, "The workout did not close after discarding.")
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [gone], timeout: 5),
+            .completed,
+            "The workout did not close after discarding."
+        )
         return HomeScreen(app: app).waitUntilLoaded()
     }
 }

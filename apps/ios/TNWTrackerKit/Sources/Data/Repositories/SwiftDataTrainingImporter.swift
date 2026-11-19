@@ -40,7 +40,10 @@ final class SwiftDataTrainingImporter: TrainingImporterProtocol {
             context.rollback()
             throw error
         }
-        let types = Dictionary(bundle.exercises.map { ($0.id, $0.type.rawValue) }, uniquingKeysWith: { first, _ in first })
+        let types = Dictionary(
+            bundle.exercises.map { ($0.id, $0.type.rawValue) },
+            uniquingKeysWith: { first, _ in first }
+        )
         let bundleRoutineIds = Set(bundle.routines.map(\.id))
         for session in bundle.sessions {
             do {
@@ -50,7 +53,9 @@ final class SwiftDataTrainingImporter: TrainingImporterProtocol {
                 result.sessionIds[session.id] = localId
             } catch let error as TrainingDataError {
                 context.rollback()
-                result.skippedSessions.append(SkippedSession(bundleId: session.id, externalRef: session.externalRef, reason: error))
+                result.skippedSessions.append(
+                    SkippedSession(bundleId: session.id, externalRef: session.externalRef, reason: error)
+                )
             } catch {
                 // Not a rule of the format (a storage failure): stop the import.
                 // Sessions already saved stay saved.
@@ -215,14 +220,21 @@ final class SwiftDataTrainingImporter: TrainingImporterProtocol {
             throw TrainingDataError.invalidSession("a session needs at least one entry")
         }
         for entry in session.entries {
-            guard entry.externalRef.isValid else { throw TrainingDataError.invalidExternalRef }
-            guard !entry.sets.isEmpty else { throw TrainingDataError.invalidSet("an imported entry needs at least one set") }
-            for set in entry.sets {
-                guard set.externalRef.isValid else { throw TrainingDataError.invalidExternalRef }
-                guard set.order >= 1 else { throw TrainingDataError.invalidSet("set order starts at 1") }
-                if let type = types[entry.exerciseId] {
-                    try SwiftDataSessionRepository.validate(set.values, typeRaw: type)
-                }
+            try validate(entry, typeRaw: types[entry.exerciseId])
+        }
+    }
+
+    /// Rules one entry of a bundle session and its sets can break.
+    private func validate(_ entry: ImportedEntry, typeRaw: String?) throws {
+        guard entry.externalRef.isValid else { throw TrainingDataError.invalidExternalRef }
+        guard !entry.sets.isEmpty else {
+            throw TrainingDataError.invalidSet("an imported entry needs at least one set")
+        }
+        for set in entry.sets {
+            guard set.externalRef.isValid else { throw TrainingDataError.invalidExternalRef }
+            guard set.order >= 1 else { throw TrainingDataError.invalidSet("set order starts at 1") }
+            if let typeRaw {
+                try SwiftDataSessionRepository.validate(set.values, typeRaw: typeRaw)
             }
         }
     }

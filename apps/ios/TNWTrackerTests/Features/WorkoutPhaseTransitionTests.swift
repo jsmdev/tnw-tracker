@@ -125,7 +125,12 @@ struct WorkoutPhaseTransitionTests {
                 triggerMode: .auto
             )
         )
-        #expect(outcome == .init(nextPhase: .restingBetweenExercises, restTimer: .init(type: .betweenExercises, durationSeconds: 120)))
+        #expect(
+            outcome == .init(
+                nextPhase: .restingBetweenExercises,
+                restTimer: .init(type: .betweenExercises, durationSeconds: 120)
+            )
+        )
     }
 
     @Test("AC3.4 with the change-exercise rest off, the last set of a non-last exercise starts no rest")
@@ -161,7 +166,9 @@ struct WorkoutPhaseTransitionTests {
                 triggerMode: .auto
             )
         )
-        #expect(outcome == .init(nextPhase: .restingBetweenSets, restTimer: .init(type: .betweenSets, durationSeconds: 75)))
+        #expect(
+            outcome == .init(nextPhase: .restingBetweenSets, restTimer: .init(type: .betweenSets, durationSeconds: 75))
+        )
     }
 
     @Test("AC3.5 the last set of the last exercise starts no rest, whatever the settings")

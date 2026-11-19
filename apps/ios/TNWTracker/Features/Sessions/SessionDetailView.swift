@@ -122,8 +122,16 @@ struct SessionDetailView: View {
                         .fontWeight(.medium)
 
                     if let sets = se.targetSets,
-                       let target = TargetRepsFormat.setsReps(sets: sets, minReps: se.targetReps?.min, maxReps: se.targetReps?.max),
-                       let spoken = TargetRepsFormat.accessibilityLabel(sets: sets, minReps: se.targetReps?.min, maxReps: se.targetReps?.max) {
+                       let target = TargetRepsFormat.setsReps(
+                           sets: sets,
+                           minReps: se.targetReps?.min,
+                           maxReps: se.targetReps?.max
+                       ),
+                       let spoken = TargetRepsFormat.accessibilityLabel(
+                           sets: sets,
+                           minReps: se.targetReps?.min,
+                           maxReps: se.targetReps?.max
+                       ) {
                         // "3 × 8–12" (T8, D9); VoiceOver reads it in words.
                         Text(verbatim: target)
                             .font(.caption)

@@ -99,14 +99,18 @@ struct FavoriteRoutineTests {
             externalRef: fx.ref("r-9"), name: "Imported Day",
             items: [RoutineItem(order: 1, exerciseId: bundleExercise.id, targetSets: 2)]
         )
-        let first = try fx.store.importer.importBundle(TrainingBundle(exercises: [bundleExercise], routines: [imported]))
+        let first = try fx.store.importer.importBundle(
+            TrainingBundle(exercises: [bundleExercise], routines: [imported])
+        )
         let localId = try #require(first.routineIds[imported.id])
         try fx.routines.setFavorite(true, routineId: localId)
 
         var renamed = imported
         renamed.id = UUID()
         renamed.name = "Imported Day v2"
-        let second = try fx.store.importer.importBundle(TrainingBundle(exercises: [bundleExercise], routines: [renamed]))
+        let second = try fx.store.importer.importBundle(
+            TrainingBundle(exercises: [bundleExercise], routines: [renamed])
+        )
         #expect(second.routineIds[renamed.id] == localId)
         let reloaded = try #require(try fx.routines.routine(id: localId))
         #expect(reloaded.name == "Imported Day v2")

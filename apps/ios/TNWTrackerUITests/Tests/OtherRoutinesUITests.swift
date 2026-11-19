@@ -27,7 +27,8 @@ final class OtherRoutinesUITests: XCTestCase {
         // A row opens the routine's detail, which shows the target reps as a range (T8).
         let detail = home.openOtherRoutine(fullBodyB)
         XCTAssertTrue(
-            detail.target(spokenAs: ["3 series de 6 a 8 repeticiones", "3 sets of 6 to 8 reps"]).waitForExistence(timeout: 3),
+            detail.target(spokenAs: ["3 series de 6 a 8 repeticiones", "3 sets of 6 to 8 reps"])
+                .waitForExistence(timeout: 3),
             "The bench press target should read 3 × 6–8."
         )
         let homeAgain = detail.backToHome()
@@ -44,6 +45,9 @@ final class OtherRoutinesUITests: XCTestCase {
         XCTAssertTrue(homeWithFavourites.nextSessionTitle.waitForLabel("Full Body A"))
         XCTAssertTrue(homeWithFavourites.otherRoutine(fullBodyB).waitForExistence(timeout: 5))
         XCTAssertTrue(homeWithFavourites.isFavorite(fullBodyB), "The favourite shows its star.")
-        try app.auditAccessibility(screen: "home other routines with a favourite", only: [AXID.Home.otherRoutine(fullBodyB)])
+        try app.auditAccessibility(
+            screen: "home other routines with a favourite",
+            only: [AXID.Home.otherRoutine(fullBodyB)]
+        )
     }
 }

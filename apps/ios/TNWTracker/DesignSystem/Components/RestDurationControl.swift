@@ -73,8 +73,18 @@ struct RestDurationControl: View {
 #Preview("RestDurationControl") {
     @Previewable @State var seconds = 90
     Form {
-        RestDurationControl(seconds: $seconds, durationIdentifier: "d", decreaseIdentifier: "m", increaseIdentifier: "p")
-        RestDurationControl(seconds: $seconds, durationIdentifier: "d2", decreaseIdentifier: "m2", increaseIdentifier: "p2")
+        RestDurationControl(
+            seconds: $seconds,
+            durationIdentifier: "d",
+            decreaseIdentifier: "m",
+            increaseIdentifier: "p"
+        )
+        RestDurationControl(
+            seconds: $seconds,
+            durationIdentifier: "d2",
+            decreaseIdentifier: "m2",
+            increaseIdentifier: "p2"
+        )
             .disabled(true)
     }
 }

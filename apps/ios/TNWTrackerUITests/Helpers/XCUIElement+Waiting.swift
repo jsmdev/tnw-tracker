@@ -6,6 +6,12 @@ extension XCUIElement {
     func waitUntilHittable(timeout: TimeInterval = 5, file: StaticString = #filePath, line: UInt = #line) {
         let hittable = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: self)
         let result = XCTWaiter().wait(for: [hittable], timeout: timeout)
-        XCTAssertEqual(result, .completed, "\(self) did not become hittable within \(timeout)s.", file: file, line: line)
+        XCTAssertEqual(
+            result,
+            .completed,
+            "\(self) did not become hittable within \(timeout)s.",
+            file: file,
+            line: line
+        )
     }
 }

@@ -9,9 +9,20 @@ struct WorkoutSummaryBuilderTests {
     let start = Date(timeIntervalSince1970: 1_898_845_200)
 
     private func set(
-        _ reps: Int, _ kg: Double, order: Int, source: SetSource = .manual, superseded: Bool = false, warmup: Bool = false
+        _ reps: Int,
+        _ kg: Double,
+        order: Int,
+        source: SetSource = .manual,
+        superseded: Bool = false,
+        warmup: Bool = false
     ) -> ExerciseSet {
-        ExerciseSet(order: order, source: source, values: SetValues(reps: reps, weight: .kg(kg)), superseded: superseded, warmup: warmup)
+        ExerciseSet(
+            order: order,
+            source: source,
+            values: SetValues(reps: reps, weight: .kg(kg)),
+            superseded: superseded,
+            warmup: warmup
+        )
     }
 
     private func session(_ entries: [SessionEntry], duration: Int? = 3720) -> TrainingSession {
@@ -67,7 +78,8 @@ struct WorkoutSummaryBuilderTests {
         let summary = WorkoutSummaryBuilder.build(
             from: session([reconciled, removed]), exerciseNames: [:], previousBests: [exerciseId: 999]
         )
-        #expect(summary.totalVolumeKg == 10 * 40 + 8 * 40)
+        let expected: Double = 10 * 40 + 8 * 40
+        #expect(summary.totalVolumeKg == expected)
         #expect(summary.exerciseRows.count == 1)
         #expect(summary.exerciseRows.first?.setCount == 2)
     }
@@ -94,8 +106,14 @@ struct WorkoutSummaryBuilderTests {
 
     @Test("duration prefers the stored training time and falls back to start–end")
     func duration() {
-        #expect(WorkoutSummaryBuilder.build(from: session([]), exerciseNames: [:], previousBests: [:]).durationSeconds == 3720)
-        #expect(WorkoutSummaryBuilder.build(from: session([], duration: nil), exerciseNames: [:], previousBests: [:]).durationSeconds == 4000)
+        let stored = WorkoutSummaryBuilder.build(from: session([]), exerciseNames: [:], previousBests: [:])
+        #expect(stored.durationSeconds == 3720)
+        let fallback = WorkoutSummaryBuilder.build(
+            from: session([], duration: nil),
+            exerciseNames: [:],
+            previousBests: [:]
+        )
+        #expect(fallback.durationSeconds == 4000)
     }
 
     @Test("Duration FormatStyle formats correctly with es-ES locale")

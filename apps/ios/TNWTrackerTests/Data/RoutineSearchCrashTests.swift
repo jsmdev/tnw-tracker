@@ -71,7 +71,9 @@ struct RoutineSearchCrashTests {
         try store.sessions.finishSession(id: session.id, at: t0.addingTimeInterval(60), durationSeconds: nil)
 
         #expect(try store.routines.routines(RoutineQuery(search: "pu")).map(\.name) == ["Pull Day", "Push Day"])
-        #expect(try store.routines.routines(RoutineQuery(search: "pu", onlyPerformed: true)).map(\.name) == ["Push Day"])
+        #expect(
+            try store.routines.routines(RoutineQuery(search: "pu", onlyPerformed: true)).map(\.name) == ["Push Day"]
+        )
 
         // One didSet Task per keystroke, none awaited, as when typing in the field.
         let model = SessionListModel(routines: store.routines)

@@ -51,7 +51,13 @@ public protocol SessionRepositoryProtocol: AnyObject {
     /// whether the new set is superseded.
     /// `warmup` marks a warm-up set; it never changes whether the set is superseded.
     @discardableResult
-    func logManualSet(_ values: SetValues, warmup: Bool, exerciseId: UUID, sessionId: UUID, at date: Date) throws -> ExerciseSet
+    func logManualSet(
+        _ values: SetValues,
+        warmup: Bool,
+        exerciseId: UUID,
+        sessionId: UUID,
+        at date: Date
+    ) throws -> ExerciseSet
 
     /// The user's warm-up annotation on any set, manual or imported.
     /// Re-imports keep it. Never changes reconciliation or `superseded`.

@@ -17,7 +17,13 @@ struct LiveActivityRequestTests {
         controller.start(workoutId: UUID(), workoutName: "Full Body A")
         try? await controller.start(
             attributes: ActiveWorkoutAttributes(workoutId: UUID(), startedAt: Date()),
-            contentState: .init(workoutName: "Full Body A", currentExerciseName: nil, restSecondsRemaining: nil, completedSets: 0, totalSets: 0)
+            contentState: .init(
+                workoutName: "Full Body A",
+                currentExerciseName: nil,
+                restSecondsRemaining: nil,
+                completedSets: 0,
+                totalSets: 0
+            )
         )
 
         #expect(Activity<ActiveWorkoutAttributes>.activities.isEmpty)

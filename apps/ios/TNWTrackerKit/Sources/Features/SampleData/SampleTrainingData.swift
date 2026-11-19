@@ -28,7 +28,10 @@
             [
                 Exercise(
                     id: ExerciseID.gobletSquat, name: "Goblet Squat", type: .strength, equipment: .freeWeights,
-                    muscleGroups: [.init(muscle: .quadriceps, role: .primary), .init(muscle: .glutes, role: .secondary)],
+                    muscleGroups: [
+                        .init(muscle: .quadriceps, role: .primary),
+                        .init(muscle: .glutes, role: .secondary)
+                    ],
                     instructions: ExerciseInstructions(
                         setup: ["Hold the weight close to the chest."],
                         execution: ["Sit down between the knees.", "Stand up tall."],
@@ -124,7 +127,12 @@
             let day: TimeInterval = 86400
 
             let startA = now.addingTimeInterval(-4 * day)
-            let first = try sessions.startSession(routineId: RoutineID.fullBodyA, name: "Full Body A", at: startA, timeZone: zone)
+            let first = try sessions.startSession(
+                routineId: RoutineID.fullBodyA,
+                name: "Full Body A",
+                at: startA,
+                timeZone: zone
+            )
             for (index, reps) in [12, 10, 10].enumerated() {
                 try sessions.logManualSet(
                     SetValues(reps: reps, weight: .kg(16), rir: 2),
@@ -154,15 +162,29 @@
             )
             try sessions.finishSession(id: first.id, at: startA.addingTimeInterval(3000), durationSeconds: 2700)
 
-            let startB = now.addingTimeInterval(-2 * day)
-            let second = try sessions.startSession(routineId: RoutineID.fullBodyB, name: "Full Body B", at: startB, timeZone: zone)
+            try loadFullBodyB(into: sessions, startB: now.addingTimeInterval(-2 * day), zone: zone)
+        }
+
+        /// The Full Body B session of `loadHistory`.
+        private static func loadFullBodyB(
+            into sessions: any SessionRepositoryProtocol,
+            startB: Date,
+            zone: TimeZone
+        ) throws {
+            let second = try sessions.startSession(
+                routineId: RoutineID.fullBodyB,
+                name: "Full Body B",
+                at: startB,
+                timeZone: zone
+            )
             for reps in [8, 8, 7] {
                 try sessions.logManualSet(
                     SetValues(reps: reps, weight: .kg(60), rir: 1),
                     exerciseId: ExerciseID.benchPress, sessionId: second.id, at: startB.addingTimeInterval(600)
                 )
             }
-            if let row = try sessions.session(id: second.id)?.entries.first(where: { $0.exerciseId == ExerciseID.seatedRow }) {
+            if let row = try sessions.session(id: second.id)?.entries
+                .first(where: { $0.exerciseId == ExerciseID.seatedRow }) {
                 try sessions.replaceExercise(entryId: row.id, with: ExerciseID.pushUp)
             }
             for reps in [15, 12] {
@@ -171,7 +193,8 @@
                     at: startB.addingTimeInterval(1500)
                 )
             }
-            if let cardio = try sessions.session(id: second.id)?.entries.first(where: { $0.exerciseId == ExerciseID.rowingMachine }) {
+            if let cardio = try sessions.session(id: second.id)?.entries
+                .first(where: { $0.exerciseId == ExerciseID.rowingMachine }) {
                 try sessions.removeEntry(id: cardio.id)
             }
             try sessions.logManualSet(

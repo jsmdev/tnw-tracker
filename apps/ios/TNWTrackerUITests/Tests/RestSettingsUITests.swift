@@ -41,7 +41,10 @@ final class RestSettingsUITests: XCTestCase {
         XCTAssertTrue(rest.isEnabled)
         // Its rest between sets runs with −15 s / +15 s (new controls on the timer).
         let timer = rest.done().tapLogSet().enterReps(8).saveStartingRest()
-        try app.auditAccessibility(screen: "rest timer", only: [AXID.RestTimer.decreaseButton, AXID.RestTimer.increaseButton])
+        try app.auditAccessibility(
+            screen: "rest timer",
+            only: [AXID.RestTimer.decreaseButton, AXID.RestTimer.increaseButton]
+        )
         timer.increaseButton.tap()
         timer.decreaseButton.tap()
         let homeLast = timer.tapSkip().tapEnd().tapClose().waitUntilLoaded()

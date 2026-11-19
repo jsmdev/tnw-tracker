@@ -29,10 +29,19 @@ struct PerSessionImportTests {
 
     private func session(_ name: String, day: Int, exerciseId: UUID, values: [SetValues]) -> BundleSession {
         BundleSession(
-            id: UUID(), externalRef: ref(name), completedAt: t0.addingTimeInterval(Double(day) * 86400), timeZone: "UTC",
-            entries: [ImportedEntry(exerciseId: exerciseId, externalRef: ref("\(name)-e"), sets: values.enumerated().map { index, value in
-                ImportedSet(externalRef: ref("\(name)-e#\(index + 1)"), order: index + 1, values: value)
-            })]
+            id: UUID(),
+            externalRef: ref(name),
+            completedAt: t0.addingTimeInterval(Double(day) * 86400),
+            timeZone: "UTC",
+            entries: [
+                ImportedEntry(
+                    exerciseId: exerciseId,
+                    externalRef: ref("\(name)-e"),
+                    sets: values.enumerated().map { index, value in
+                        ImportedSet(externalRef: ref("\(name)-e#\(index + 1)"), order: index + 1, values: value)
+                    }
+                )
+            ]
         )
     }
 
@@ -43,7 +52,12 @@ struct PerSessionImportTests {
         let cardio = Exercise(id: cardioId, externalRef: ref("ca"), name: "Bike", type: .cardio)
         return TrainingBundle(exercises: [strength, cardio], sessions: [
             session("day1", day: 0, exerciseId: strengthId, values: [SetValues(reps: 5)]),
-            session("day2", day: 1, exerciseId: cardioId, values: [SetValues(durationSeconds: 300), SetValues(reps: 5)]),
+            session(
+                "day2",
+                day: 1,
+                exerciseId: cardioId,
+                values: [SetValues(durationSeconds: 300), SetValues(reps: 5)]
+            ),
             session("day3", day: 2, exerciseId: strengthId, values: [SetValues(reps: 6), SetValues(reps: 7)])
         ])
     }
