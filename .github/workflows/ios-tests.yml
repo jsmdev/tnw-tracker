@@ -17,7 +17,7 @@ jobs:
     outputs:
       ios: ${{ steps.filter.outputs.ios }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # En pull_request, HEAD es el merge commit del PR y HEAD^1 la punta
           # de la rama base: su diff es exactamente lo que cambia el PR.
@@ -42,7 +42,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: ./.github/actions/ios-setup
 
@@ -75,7 +75,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Detectar código iOS
         id: ios-check
