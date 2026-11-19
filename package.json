@@ -9,11 +9,11 @@
     "format:check": "prettier --check \"**/*.{ts,js,mjs,json,md,yml,yaml}\" --ignore-path .prettierignore"
   },
   "devDependencies": {
-    "@commitlint/cli": "^21.0.1",
-    "@commitlint/config-conventional": "^21.0.0",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.4",
-    "prettier": "^3.4.2"
+    "lint-staged": "^17.6.1",
+    "prettier": "^3.10.1"
   },
   "engines": {
     "node": ">=22",
