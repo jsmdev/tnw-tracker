@@ -41,12 +41,10 @@ struct RootView: View {
             router.handle(deepLink: url)
         }
         .onChange(of: scenePhase) { _, newPhase in
-            // Drain pending intents when app foregrounds — catches up events
-            // that arrived while the app was backgrounded / suspended.
+            // Foreground: sync, and drain the intents that arrived while the
+            // app was backgrounded / suspended.
             if newPhase == .active {
-                Task {
-                    await appEnv.drainIfActive()
-                }
+                appEnv.sceneDidBecomeActive()
             }
         }
     }

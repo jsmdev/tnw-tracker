@@ -25,8 +25,8 @@ public final class AppEnvironment {
     public let exerciseSettingRepository: any ExerciseSettingRepositoryProtocol
     public let authRepository: any AuthRepositoryProtocol
 
-    /// Sync — no-op until the sync on the new schema exists (#135).
-    public let syncEngine: any SyncEngine
+    /// Sync (#135): claims the store at sign-in and runs the sync on its triggers.
+    public let syncScheduler: SyncScheduler
 
     /// Live Activity
     public let liveActivity: LiveActivityController
@@ -63,7 +63,7 @@ public final class AppEnvironment {
         self.supabase = supabase
 
         networkMonitor = NetworkMonitor()
-        syncEngine = NoopSyncEngine()
+        syncScheduler = SyncScheduler(store: store, remote: SupabaseTrainingRemoteStore(client: supabase))
         self.liveActivity = liveActivity
 
         exerciseRepository = store.exercises
@@ -71,6 +71,7 @@ public final class AppEnvironment {
         sessionRepository = store.sessions
         exerciseSettingRepository = store.exerciseSettings
         authRepository = AuthRepository(supabase: supabase)
+        observeReconnect()
     }
 
     /// Init interno para inyección de dependencias (tests y variantes controladas).
@@ -78,13 +79,14 @@ public final class AppEnvironment {
         store: TrainingStore,
         supabase: SupabaseClient,
         authRepository: any AuthRepositoryProtocol,
+        remote: any TrainingRemoteStore,
         networkMonitor: any NetworkMonitoring
     ) {
         self.store = store
         self.supabase = supabase
         self.networkMonitor = networkMonitor
 
-        syncEngine = NoopSyncEngine()
+        syncScheduler = SyncScheduler(store: store, remote: remote)
         liveActivity = LiveActivityController()
 
         exerciseRepository = store.exercises
@@ -92,6 +94,14 @@ public final class AppEnvironment {
         sessionRepository = store.sessions
         exerciseSettingRepository = store.exerciseSettings
         self.authRepository = authRepository
+        observeReconnect()
+    }
+
+    /// The network coming back sends what was saved offline (S3).
+    private func observeReconnect() {
+        networkMonitor.onReconnect = { [weak self] in
+            self?.syncScheduler.requestSync()
+        }
     }
 
     // MARK: - Deinit
@@ -129,23 +139,27 @@ public final class AppEnvironment {
         }
     }
 
-    private func handle(_ change: AuthStateChange) async {
+    /// Internal for tests, which drive it without the auth stream.
+    func handle(_ change: AuthStateChange) async {
         switch change.event {
         // `.signedIn` (login fresco) e `.initialSession` (restauración al arrancar)
         // traen el userId en el propio evento. Lo usamos directamente: re-consultar
         // `auth.session` desde aquí devuelve nil por reentrancy del actor de auth.
         case .signedIn, .initialSession:
             if let uid = change.userId {
-                isAuthenticated = true
+                // Claim the store before the UI can write to it (S10): the app
+                // shows the training screens only once `isAuthenticated` is set.
+                syncScheduler.signIn(userId: uid)
                 currentUserId = uid
+                isAuthenticated = true
                 logger.info("Auth: \(String(describing: change.event)) — userId resuelto")
-                try? await syncEngine.fullSync()
             } else {
                 logger.info("Auth: \(String(describing: change.event)) sin sesión")
             }
         case .signedOut:
             isAuthenticated = false
             currentUserId = nil
+            syncScheduler.signOut()
             logger.info("Auth: signedOut")
         default:
             break
@@ -182,6 +196,13 @@ public final class AppEnvironment {
         } else {
             drainLogger.error("notify_register_dispatch falló con status \(status)")
         }
+    }
+
+    /// The app came to the foreground: sync (S12) and drain the intents that
+    /// arrived while it was in the background.
+    public func sceneDidBecomeActive() {
+        syncScheduler.requestSync()
+        Task { await drainIfActive() }
     }
 
     /// Called when a Darwin notification arrives or the app foregrounds.
@@ -247,7 +268,7 @@ public final class AppEnvironment {
             routines: routineRepository,
             exerciseSettings: exerciseSettingRepository,
             changeExerciseRest: { ChangeExerciseRestPreference(defaults: .standard).restSeconds },
-            syncEngine: syncEngine,
+            requestSync: { [weak syncScheduler] in syncScheduler?.requestSync() },
             timerService: makeRestTimerService(),
             liveActivity: liveActivity
         )
@@ -280,9 +301,32 @@ public final class AppEnvironment {
             return env
         }
 
+        /// UI tests of a store that holds another account's data (S10): the store
+        /// is claimed by another user with a routine of theirs, then the UI testing
+        /// user signs in on it. The sync never runs against a store it does not own.
+        func signInOnStoreOfAnotherUserForUITesting() {
+            do {
+                let other = UUID()
+                _ = try store.ownership.claim(userId: other, at: Date())
+                let exerciseId = SampleTrainingData.ExerciseID.gobletSquat
+                try store.routines.save(Routine(
+                    name: "Full Body C",
+                    items: [RoutineItem(order: 1, exerciseId: exerciseId, targetSets: 3)]
+                ))
+            } catch {
+                preconditionFailure("signInOnStoreOfAnotherUserForUITesting: \(error)")
+            }
+            syncScheduler.signIn(userId: AppEnvironment.uiTestingUserId)
+        }
+
         /// Crea una instancia mínima de `AppEnvironment` con un `authRepository` inyectable.
         /// Exclusivo para tests — usa un `ModelContainer` in-memory y un `SupabaseClient` stub.
-        static func makeForTesting(authRepository: any AuthRepositoryProtocol) -> AppEnvironment {
+        /// `remote` is the server the sync talks to: tests pass an in-memory one.
+        static func makeForTesting(
+            authRepository: any AuthRepositoryProtocol,
+            remote: any TrainingRemoteStore,
+            networkMonitor: any NetworkMonitoring = StubNetworkMonitor(isOnline: true)
+        ) -> AppEnvironment {
             let store: TrainingStore
             do {
                 store = try TrainingStore(inMemory: true)
@@ -300,13 +344,36 @@ public final class AppEnvironment {
                 store: store,
                 supabase: stubSupabase,
                 authRepository: authRepository,
-                networkMonitor: StubNetworkMonitor(isOnline: true)
+                remote: remote,
+                networkMonitor: networkMonitor
             )
         }
 
-        /// Replaces the local training data with the invented sample data.
+        /// Loads the invented sample data into an empty store that nobody owns
+        /// yet: a store a sign-in claimed holds that user's data, pulled or not.
+        func loadSampleDataIfUnowned() {
+            do {
+                guard try store.ownership.owner() == nil else { return }
+                try SampleTrainingData.loadIfEmpty(into: store)
+            } catch {
+                logger.error("Sample data not loaded: \(error, privacy: .public)")
+            }
+        }
+
+        /// Replaces the local training data with the invented sample data. The
+        /// reset forgets the owner, so the store is claimed again for the
+        /// signed-in user; the sample data stays on the device (S9). Refused
+        /// while the store holds another user's data.
         func replaceWithSampleData() throws {
             try SampleTrainingData.replaceAll(in: store)
+            if let currentUserId {
+                syncScheduler.signIn(userId: currentUserId)
+            }
+        }
+
+        /// The user the local store belongs to, for tests.
+        func storeOwner() -> UUID? {
+            try? store.ownership.owner()
         }
 
         /// Cancela el auth listener activo.

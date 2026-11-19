@@ -13,9 +13,13 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
     /// The context does not keep its container alive; the adapter does.
     private let container: ModelContainer
 
-    init(context: ModelContext) {
+    /// Refuses the user's writes while the store is not theirs (S10).
+    private let gate: UserWriteGate
+
+    init(context: ModelContext, gate: UserWriteGate = UserWriteGate()) {
         self.context = context
         container = context.container
+        self.gate = gate
     }
 
     // MARK: Reads
@@ -76,7 +80,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
                 session.entries.append(entry)
             }
         }
-        try context.save()
+        try context.saveUserChange(gate)
         return session.snapshot
     }
 
@@ -106,7 +110,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         entry.completedAt = date
         applyReconciliationOnMerge(entry, at: date)
         session.markChanged()
-        try context.save()
+        try context.saveUserChange(gate)
         return set.snapshot
     }
 
@@ -115,7 +119,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         guard let set = try context.fetch(descriptor).first else { throw TrainingDataError.notFound }
         set.warmup = warmup
         set.entry?.session?.markChanged()
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     func updateManualSet(_ values: SetValues, setId: UUID) throws {
@@ -129,7 +133,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         try Self.validate(values, for: exercise)
         set.apply(values)
         set.entry?.session?.markChanged()
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     func deleteManualSet(id: UUID) throws {
@@ -156,7 +160,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         } else if !entry.hasBothSources {
             entry.clearReconciliation()
         }
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     func replaceExercise(entryId: UUID, with exerciseId: UUID) throws {
@@ -168,14 +172,14 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         }
         entry.exercise = exercise
         entry.session?.markChanged()
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     func removeEntry(id: UUID) throws {
         let entry = try fetchEntry(id)
         entry.statusRaw = EntryStatus.removed.rawValue
         entry.session?.markChanged()
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     func importEntry(_ imported: ImportedEntry, into sessionId: UUID) throws {
@@ -185,7 +189,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         }
         let vacated = try merge(imported, exercise: exercise, into: session)
         try removeEmptiedImportedSessions(vacated)
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     func chooseReconciliation(entryId: UUID, keep: SetSource, at date: Date) throws {
@@ -193,14 +197,14 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         guard entry.hasBothSources else { throw TrainingDataError.entryNotMixed }
         entry.setReconciliation(keep: keep, decidedBy: .user, at: date)
         entry.session?.markChanged()
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     func discardSession(id: UUID) throws {
         let session = try openSession(id)
         try context.recordDeletion(of: session)
         context.delete(session)
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     func finishSession(id: UUID, at date: Date, durationSeconds: Int?) throws -> TrainingSession {
@@ -221,7 +225,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
             entry.completedAt = nil
         }
         session.markChanged()
-        try context.save()
+        try context.saveUserChange(gate)
         return session.snapshot
     }
 

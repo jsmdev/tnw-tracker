@@ -9,9 +9,13 @@ final class SwiftDataExerciseRepository: ExerciseRepositoryProtocol {
     /// The context does not keep its container alive; the adapter does.
     private let container: ModelContainer
 
-    init(context: ModelContext) {
+    /// Refuses the user's writes while the store is not theirs (S10).
+    private let gate: UserWriteGate
+
+    init(context: ModelContext, gate: UserWriteGate = UserWriteGate()) {
         self.context = context
         container = context.container
+        self.gate = gate
     }
 
     func exercises() throws -> [Exercise] {
@@ -24,7 +28,7 @@ final class SwiftDataExerciseRepository: ExerciseRepositoryProtocol {
 
     func save(_ exercise: Exercise) throws {
         try write(exercise)
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     /// Validates and writes the exercise without saving the context.

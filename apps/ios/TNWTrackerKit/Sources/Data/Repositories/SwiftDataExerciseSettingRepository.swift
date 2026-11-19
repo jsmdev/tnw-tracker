@@ -8,9 +8,13 @@ final class SwiftDataExerciseSettingRepository: ExerciseSettingRepositoryProtoco
     /// The context does not keep its container alive; the adapter does.
     private let container: ModelContainer
 
-    init(context: ModelContext) {
+    /// Refuses the user's writes while the store is not theirs (S10).
+    private let gate: UserWriteGate
+
+    init(context: ModelContext, gate: UserWriteGate = UserWriteGate()) {
         self.context = context
         container = context.container
+        self.gate = gate
     }
 
     func setting(exerciseId: UUID) throws -> ExerciseSetting? {
@@ -40,7 +44,7 @@ final class SwiftDataExerciseSettingRepository: ExerciseSettingRepositoryProtoco
             // The user's setting, also on a catalogue exercise.
             try context.trackNew(model)
         }
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     private func fetch(exerciseId: UUID) throws -> ExerciseSettingModel? {

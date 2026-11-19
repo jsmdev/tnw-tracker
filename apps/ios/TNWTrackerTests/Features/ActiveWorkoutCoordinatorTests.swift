@@ -5,16 +5,6 @@ import Testing
 
 // MARK: - ActiveWorkoutCoordinatorTests
 
-/// Sync that always fails, to prove `finish()` closes the session anyway.
-private final class FailingSync: SyncEngine {
-    struct Offline: Error {}
-    private(set) var calls = 0
-    func fullSync() async throws {
-        calls += 1
-        throw Offline()
-    }
-}
-
 /// The coordinator drives a session through `SessionRepositoryProtocol`:
 /// no SwiftData, no network.
 @Suite("ActiveWorkoutCoordinator", .serialized)
@@ -26,14 +16,14 @@ struct ActiveWorkoutCoordinatorTests {
         fx = try TrainingFixtures()
     }
 
-    private func makeCoordinator(sync: any SyncEngine = NoopSyncEngine()) -> ActiveWorkoutCoordinator {
+    private func makeCoordinator(requestSync: @escaping @MainActor () -> Void = {}) -> ActiveWorkoutCoordinator {
         let liveActivity = LiveActivityController(requestsActivities: false)
         return ActiveWorkoutCoordinator(
             sessions: fx.sessions,
             routines: fx.routines,
             exerciseSettings: fx.store.exerciseSettings,
             changeExerciseRest: { 120 },
-            syncEngine: sync,
+            requestSync: requestSync,
             timerService: RestTimerService(liveActivity: liveActivity),
             liveActivity: liveActivity,
             now: { TrainingFixtures.t0 }
@@ -148,22 +138,69 @@ struct ActiveWorkoutCoordinatorTests {
         #expect(all.isEmpty)
     }
 
-    @Test("finish() completes the session and returns to idle even when the sync fails")
-    func finishIsAtomicEvenWhenSyncFails() async throws {
-        let routine = try fx.makeRoutine()
-        let sync = FailingSync()
-        let coordinator = makeCoordinator(sync: sync)
+    /// The real sync, signed in as a new user, against the in-memory server, and
+    /// a routine of that user's own data (written after the sign-in, so it syncs).
+    private struct SignedIn {
+        let scheduler: SyncScheduler
+        let server: InMemoryTrainingRemoteStore
+        let routine: Routine
+    }
+
+    private func signedInSync() async throws -> SignedIn {
+        let server = InMemoryTrainingRemoteStore()
+        let scheduler = SyncScheduler(store: fx.store, remote: server, now: { TrainingFixtures.t0 })
+        scheduler.signIn(userId: UUID())
+        await scheduler.waitUntilIdle()
+        let lunge = Exercise(name: "Walking Lunge", type: .strength, equipment: .freeWeights)
+        try fx.exercises.save(lunge)
+        let routine = Routine(name: "Legs", items: [RoutineItem(order: 1, exerciseId: lunge.id, targetSets: 3)])
+        try fx.routines.save(routine)
+        return SignedIn(scheduler: scheduler, server: server, routine: routine)
+    }
+
+    @Test("S12 finish() returns while the sync it started is still running", .timeLimit(.minutes(1)))
+    func finishDoesNotWaitForTheSync() async throws {
+        let world = try await signedInSync()
+        let (scheduler, server, routine) = (world.scheduler, world.server, world.routine)
+        let coordinator = makeCoordinator(requestSync: { scheduler.requestSync() })
         try await coordinator.start(routineId: routine.id)
         let id = try #require(coordinator.activeWorkoutId)
         try await coordinator.recordSet(reps: 8, weight: nil, rir: nil)
+        let gate = AsyncGate()
+        await server.duringNextPull { await gate.wait() }
 
         try await coordinator.finish()
 
-        #expect(sync.calls == 1)
+        #expect(scheduler.status == .syncing)
+        #expect(coordinator.phase == .idle)
+        #expect(coordinator.completedWorkoutId == id)
+        #expect(try fx.sessions.session(id: id)?.isCompleted == true)
+        await gate.open()
+        await scheduler.waitUntilIdle()
+        #expect(scheduler.status == .idle)
+        #expect(await server.calls.contains(.pushSession(id)))
+        #expect(try fx.store.syncState.pendingSessions().isEmpty)
+    }
+
+    @Test("S4 finish() completes the session even when the sync fails, and the session stays pending")
+    func finishIsAtomicEvenWhenSyncFails() async throws {
+        let world = try await signedInSync()
+        let (scheduler, server, routine) = (world.scheduler, world.server, world.routine)
+        let coordinator = makeCoordinator(requestSync: { scheduler.requestSync() })
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try await coordinator.recordSet(reps: 8, weight: nil, rir: nil)
+        await server.failNext(.pushSession)
+
+        try await coordinator.finish()
+        await scheduler.waitUntilIdle()
+
+        #expect(scheduler.status == .failed)
         #expect(coordinator.phase == .idle)
         #expect(coordinator.completedWorkoutId == id)
         #expect(try fx.sessions.session(id: id)?.isCompleted == true)
         #expect(try fx.sessions.activeSession() == nil)
+        #expect(try fx.store.syncState.pendingSessions().map(\.id) == [id])
     }
 
     // MARK: - T6 (D7): a session with no working sets is never saved

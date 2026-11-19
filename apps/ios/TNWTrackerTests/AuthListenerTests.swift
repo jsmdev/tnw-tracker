@@ -11,7 +11,7 @@ struct AuthListenerTests {
     @Test("Listener procesa evento signedIn y actualiza isAuthenticated")
     func processesSignedIn() async throws {
         let mock = AuthRepositoryMock()
-        let env = AppEnvironment.makeForTesting(authRepository: mock)
+        let env = AppEnvironment.makeForTesting(authRepository: mock, remote: InMemoryTrainingRemoteStore())
         env.startAuthListener()
         await Task.yield()
 
@@ -29,7 +29,7 @@ struct AuthListenerTests {
     @Test("Listener procesa signedIn y setea currentUserId desde la sesión del evento")
     func signedInSetsCurrentUserId() async throws {
         let mock = AuthRepositoryMock()
-        let env = AppEnvironment.makeForTesting(authRepository: mock)
+        let env = AppEnvironment.makeForTesting(authRepository: mock, remote: InMemoryTrainingRemoteStore())
         env.startAuthListener()
         await Task.yield()
 
@@ -46,7 +46,7 @@ struct AuthListenerTests {
     @Test("Listener procesa initialSession con sesión y restaura currentUserId")
     func initialSessionRestoresUserId() async throws {
         let mock = AuthRepositoryMock()
-        let env = AppEnvironment.makeForTesting(authRepository: mock)
+        let env = AppEnvironment.makeForTesting(authRepository: mock, remote: InMemoryTrainingRemoteStore())
         env.startAuthListener()
         await Task.yield()
 
@@ -63,7 +63,7 @@ struct AuthListenerTests {
     @Test("Listener procesa initialSession sin sesión y permanece deslogueado")
     func initialSessionWithoutSessionStaysLoggedOut() async throws {
         let mock = AuthRepositoryMock()
-        let env = AppEnvironment.makeForTesting(authRepository: mock)
+        let env = AppEnvironment.makeForTesting(authRepository: mock, remote: InMemoryTrainingRemoteStore())
         env.startAuthListener()
         await Task.yield()
 
@@ -79,7 +79,7 @@ struct AuthListenerTests {
     @Test("stopAuthListener cancela la task y no procesa eventos posteriores")
     func cancelStopsProcessing() async throws {
         let mock = AuthRepositoryMock()
-        let env = AppEnvironment.makeForTesting(authRepository: mock)
+        let env = AppEnvironment.makeForTesting(authRepository: mock, remote: InMemoryTrainingRemoteStore())
         env.startAuthListener()
         await Task.yield()
 
@@ -101,7 +101,7 @@ struct AuthListenerTests {
         weak var weakEnv: AppEnvironment?
 
         do {
-            let env = AppEnvironment.makeForTesting(authRepository: mock)
+            let env = AppEnvironment.makeForTesting(authRepository: mock, remote: InMemoryTrainingRemoteStore())
             env.startAuthListener()
             await Task.yield()
             weakEnv = env
@@ -122,7 +122,7 @@ struct AuthListenerTests {
     @Test("startAuthListener llamado dos veces solo deja 1 listener activo")
     func reInitDoesNotLeavePriorListenerActive() async throws {
         let mock = AuthRepositoryMock()
-        let env = AppEnvironment.makeForTesting(authRepository: mock)
+        let env = AppEnvironment.makeForTesting(authRepository: mock, remote: InMemoryTrainingRemoteStore())
 
         env.startAuthListener()
         await Task.yield()

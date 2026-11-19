@@ -106,7 +106,7 @@ public struct SyncPullReport: Equatable, Sendable {
     }
 }
 
-/// What `TrainingSyncEngine.fullSync()` did.
+/// What `TrainingSyncEngine.sync()` did.
 public struct SyncReport: Equatable, Sendable {
     public var push: SyncPushReport
     public var pull: SyncPullReport

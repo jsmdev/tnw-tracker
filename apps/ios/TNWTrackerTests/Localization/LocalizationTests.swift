@@ -23,7 +23,8 @@ struct LocalizationTests {
         "session-list.title",
         "summary.title",
         "active-workout.controls.end",
-        "rest-timer.skip-button"
+        "rest-timer.skip-button",
+        "settings.sync-store-not-owned"
     ])
     func existingKeysResolveInBothLocales(key: String) {
         let bundle = Bundle.main
