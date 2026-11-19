@@ -9,7 +9,13 @@ extension SwiftDataPullApplier {
         if try hasTombstone(.entry, row.entryId) { return run.report.skip(.sets, row.id, .deletedOnDevice) }
         guard let entry = try fetchEntryModel(id: row.entryId), let session = entry.session,
               let exercise = entry.exercise
-        else { return run.hold(.sets, row.id) }
+        else {
+            // Not a missing parent: the device deleted its session, and the deletion goes up next push (L8).
+            if let sessionId = run.entrySessions[row.entryId], try hasTombstone(.session, sessionId) {
+                return run.report.skip(.sets, row.id, .deletedOnDevice)
+            }
+            return run.hold(.sets, row.id)
+        }
         let values = SetValues(
             reps: row.reps, weight: row.weight, durationSeconds: row.durationSeconds,
             distanceMeters: row.distanceMeters, rir: row.rir, restSeconds: row.restSeconds
@@ -91,7 +97,7 @@ extension SwiftDataPullApplier {
         set.syncSent = true
     }
 
-    private func fetchSetModel(id: UUID) throws -> ExerciseSetModel? {
+    func fetchSetModel(id: UUID) throws -> ExerciseSetModel? {
         var descriptor = FetchDescriptor<ExerciseSetModel>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
         return try context.fetch(descriptor).first

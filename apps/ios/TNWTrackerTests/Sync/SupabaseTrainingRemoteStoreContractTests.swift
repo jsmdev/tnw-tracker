@@ -55,6 +55,22 @@ struct SupabaseTrainingRemoteStoreContractTests {
         try await run(TrainingRemoteStoreContract.rewoundCursorReadsAgain)
     }
 
+    @Test func deletedRowsLeaveTombstones() async throws {
+        try await run(TrainingRemoteStoreContract.deletedRowsLeaveTombstones)
+    }
+
+    @Test func rePushClearsTombstones() async throws {
+        try await run(TrainingRemoteStoreContract.rePushClearsTombstones)
+    }
+
+    @Test func removedEntryKeepsUnknownSets() async throws {
+        try await run(TrainingRemoteStoreContract.removedEntryKeepsUnknownSets)
+    }
+
+    @Test func exerciseInUseIsRefused() async throws {
+        try await run(TrainingRemoteStoreContract.exerciseInUseIsRefused)
+    }
+
     private func run(_ scenario: (RemoteStoreHarness) async throws -> Void) async throws {
         try await LocalSupabaseStack.withThrowawayUser { client, userId in
             let store = SupabaseTrainingRemoteStore(client: client)

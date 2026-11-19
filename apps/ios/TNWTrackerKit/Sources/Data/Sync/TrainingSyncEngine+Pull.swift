@@ -2,6 +2,7 @@ import Foundation
 
 /// The rows one pull read, per table, each in cursor order.
 struct PulledBatch: Sendable {
+    var tombstones: [RemoteTombstoneRow] = []
     var exercises: [RemoteExerciseRow] = []
     var muscleGroups: [RemoteMuscleGroupRow] = []
     var routines: [RemoteRoutineRow] = []
@@ -15,8 +16,9 @@ struct PulledBatch: Sendable {
 /// - Only when the store's owner is the signed-in user (S10), checked again
 ///   before anything is applied.
 /// - Every table is read from its cursor, rewound by `pullOverlap`, page by page
-///   until a page is not full. Children are read before their parents, so the
-///   parent of every child read is read too, or was already on the device.
+///   until a page is not full. The tombstones go first, then children before
+///   their parents, so the parent of every child read is read too, or was
+///   already on the device, and a row read after its tombstone exists again.
 /// - Nothing is applied until every table is read; then everything, cursors
 ///   included, is applied in one save, parents first. A failure anywhere leaves
 ///   the store and the cursors as they were (S4).
@@ -24,6 +26,7 @@ extension TrainingSyncEngine {
     func pullChanges() async throws -> SyncPullReport {
         try requireOwner()
         var batch = PulledBatch()
+        batch.tombstones = try await readAll(RemoteTombstoneRow.self)
         batch.sets = try await readAll(RemoteSetRow.self)
         batch.entries = try await readAll(RemoteEntryRow.self)
         batch.sessions = try await readAll(RemoteSessionRow.self)

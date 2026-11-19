@@ -7,8 +7,11 @@ import Foundation
 /// (rows written together share it, as in one Postgres statement), keyset
 /// pulls, and the server rules a push can break (parents first, rows only
 /// referring to exercises and routines the server holds, no set on a skipped
-/// entry, one row per user and external ref), refused as
-/// `RemoteStoreError.rejected` with the server's SQLSTATE.
+/// entry, one row per user and external ref, no delete of an exercise in
+/// use), refused as `RemoteStoreError.rejected` with the server's SQLSTATE.
+/// Like the server's triggers, every delete (cascades included) records a
+/// tombstone of each deleted session, entry, set, routine and user exercise,
+/// and writing a row again under its id clears its tombstone.
 ///
 /// It can fail the next call of an operation, the next pull of a table, or a
 /// push part way, to simulate the network dropping, and run an action in the
@@ -16,7 +19,7 @@ import Foundation
 /// can jump ahead, to place writes outside the pull's overlap window.
 actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     enum Operation: Hashable, Sendable {
-        case pushSession, upsert, pull
+        case pushSession, upsert, delete, pull
     }
 
     /// The writes of a push, in the order the real store makes them.
@@ -29,6 +32,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     enum Call: Equatable, Sendable {
         case pushSession(UUID)
         case upsert(RemoteTable, count: Int)
+        case delete(RemoteTable, ids: [UUID])
         case pull(RemoteTable, after: RemoteCursor?, limit: Int)
     }
 
@@ -50,12 +54,13 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     private var failures: [Operation: [any Error]] = [:]
     private var pullFailures: [RemoteTable: (pagesFirst: Int, error: any Error)] = [:]
     private var pushFailure: (step: PushStep, error: any Error)?
-    private var tables: [RemoteTable: [UUID: any RemoteRow]] = [:]
-    private var clock = 0
+    /// Rows by table and id. Internal for the delete half (`+Deletes.swift`).
+    var tables: [RemoteTable: [UUID: any RemoteRow]] = [:]
+    var clock = 0
     /// The curated catalogue of supabase/seed.sql, which every user can refer to.
     private let catalogue: Set<UUID>
     private var duringNextPush: (@Sendable () async -> Void)?
-    private var duringNextPull: (@Sendable () async -> Void)?
+    private var duringNextPull: (table: RemoteTable?, action: @Sendable () async -> Void)?
 
     init(catalogue: Set<UUID> = TrainingRemoteStoreContract.catalogue) {
         self.catalogue = catalogue
@@ -90,15 +95,21 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         duringNextPush = action
     }
 
-    /// The next pull runs `action` before it answers: as if the device changed
-    /// while the pages were read.
-    func duringNextPull(_ action: @escaping @Sendable () async -> Void) {
-        duringNextPull = action
+    /// The next pull (of `table`, when given) runs `action` before it answers:
+    /// as if the device or another client changed data while the pages were read.
+    func duringNextPull(of table: RemoteTable? = nil, _ action: @escaping @Sendable () async -> Void) {
+        duringNextPull = (table, action)
     }
 
     /// Writes a row as another client would (an importer, another device).
     func insertOnServer<Row: RemoteRow>(_ row: Row) throws {
         try write([row])
+    }
+
+    /// Deletes rows as another client would (an importer, another device),
+    /// with the cascades and tombstones of the server.
+    func deleteOnServer(_ table: RemoteTable, ids: [UUID]) throws {
+        try remove(table, ids: ids)
     }
 
     /// Writes a row whose transaction committed late: its `updated_at` is
@@ -108,7 +119,9 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         try checkExternalRefs([row])
         var row = row
         row.updatedAt = Self.timestamp(clock - seconds * 1_000_000)
+        let inserted = tables[Row.table]?[row.id] == nil
         tables[Row.table, default: [:]][row.id] = row
+        if inserted { clearTombstones(Row.table, ids: [row.id]) }
     }
 
     /// Rows of `type` stored now, in cursor order.
@@ -134,12 +147,17 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
             let sets = aggregate.removedSetIds.filter { id in
                 (tables[.sets]?[id] as? RemoteSetRow).map { entryIds.contains($0.entryId) } ?? false
             }
-            delete(sets, from: .sets)
+            try remove(.sets, ids: sets)
         }
         try run(.deleteEntries) {
-            deleteEntries(aggregate.removedEntryIds.filter { id in
+            let removed = aggregate.removedEntryIds.filter { id in
                 (tables[.entries]?[id] as? RemoteEntryRow)?.sessionId == aggregate.session.id
-            })
+            }
+            // A set the aggregate does not list is one the device never saw: its entry stays.
+            let listed = Set(aggregate.sets.map(\.id))
+            let kept = removed.filter { id in setsOf(id).contains { !listed.contains($0.id) } }
+            try remove(.entries, ids: removed.filter { !kept.contains($0) })
+            touch(entries: kept)
         }
         try run(.session) { try write([aggregate.session]) }
         if let action = duringNextPush {
@@ -156,6 +174,12 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         try write(rows)
     }
 
+    func delete(_ table: RemoteTable, ids: [UUID]) async throws {
+        calls.append(.delete(table, ids: ids))
+        try throwIfFailing(.delete)
+        try remove(table, ids: ids)
+    }
+
     func pull<Row: RemoteRow>(
         _ type: Row.Type,
         after cursor: RemoteCursor?,
@@ -163,9 +187,9 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     ) async throws -> RemotePage<Row> {
         calls.append(.pull(Row.table, after: cursor, limit: limit))
         try throwIfFailing(.pull)
-        if let action = duringNextPull {
+        if let hook = duringNextPull, hook.table == nil || hook.table == Row.table {
             duringNextPull = nil
-            await action()
+            await hook.action()
         }
         if let failure = pullFailures[Row.table] {
             if failure.pagesFirst == 0 {
@@ -197,12 +221,14 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
             try check(row)
         }
         try checkExternalRefs(rows)
+        let inserted = rows.map(\.id).filter { tables[Row.table]?[$0] == nil }
         clock += 1
         let now = Self.timestamp(clock)
         for var row in rows {
             row.updatedAt = now
             tables[Row.table, default: [:]][row.id] = row
         }
+        clearTombstones(Row.table, ids: inserted)
     }
 
     private func check(_ row: some RemoteRow) throws {
@@ -271,22 +297,8 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         }
     }
 
-    private func setsOf(_ entryId: UUID) -> [RemoteSetRow] {
+    func setsOf(_ entryId: UUID) -> [RemoteSetRow] {
         (tables[.sets]?.values.compactMap { $0 as? RemoteSetRow } ?? []).filter { $0.entryId == entryId }
-    }
-
-    private func delete(_ ids: [UUID], from table: RemoteTable) {
-        for id in ids {
-            tables[table]?[id] = nil
-        }
-    }
-
-    /// Deleting an entry cascades to its sets.
-    private func deleteEntries(_ ids: [UUID]) {
-        for id in ids {
-            delete(setsOf(id).map(\.id), from: .sets)
-        }
-        delete(ids, from: .entries)
     }
 
     private func ordered<Row: RemoteRow>(_ type: Row.Type) -> [Row] {
@@ -301,7 +313,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     }
 
     /// `tick` microseconds after 2026-01-01T00:00:00Z, written as Postgres does.
-    private static func timestamp(_ tick: Int) -> String {
+    static func timestamp(_ tick: Int) -> String {
         let date = Date(timeIntervalSince1970: 1_767_225_600 + TimeInterval(tick / 1_000_000))
         let seconds = ISO8601DateFormatter().string(from: date).dropLast() // drops the "Z"
         return seconds + String(format: ".%06d+00:00", tick % 1_000_000)

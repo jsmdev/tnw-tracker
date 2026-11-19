@@ -60,6 +60,22 @@ struct InMemoryTrainingRemoteStoreTests {
         try await TrainingRemoteStoreContract.rewoundCursorReadsAgain(harness)
     }
 
+    @Test func deletedRowsLeaveTombstones() async throws {
+        try await TrainingRemoteStoreContract.deletedRowsLeaveTombstones(harness)
+    }
+
+    @Test func rePushClearsTombstones() async throws {
+        try await TrainingRemoteStoreContract.rePushClearsTombstones(harness)
+    }
+
+    @Test func removedEntryKeepsUnknownSets() async throws {
+        try await TrainingRemoteStoreContract.removedEntryKeepsUnknownSets(harness)
+    }
+
+    @Test func exerciseInUseIsRefused() async throws {
+        try await TrainingRemoteStoreContract.exerciseInUseIsRefused(harness)
+    }
+
     // MARK: - Failure controls
 
     @Test func failedPushThrowsAndStoresNothing() async throws {

@@ -3,6 +3,13 @@ import Foundation
 // What the pull half of the sync reports, and the conflict rule it applies.
 // Rules in docs/database-schema.md, "Sync".
 
+/// What the server did to a row the device holds.
+public enum SyncServerChange: Equatable, Sendable {
+    case updated
+    /// A tombstone: another device or an importer deleted it.
+    case deleted
+}
+
 /// Which version of an aggregate held on both sides the pull kept (S13).
 public enum SyncConflictRule: Equatable, Sendable {
     /// The aggregate had no local change waiting: the server's values were applied.
@@ -14,10 +21,15 @@ public enum SyncConflictRule: Equatable, Sendable {
 
     /// The conflict rule (S13). An assumption until the owner confirms it: the
     /// device's pending change wins over the server, field by field for the
-    /// fields a user edits; imported data always merges. Changing the rule
-    /// means changing only this function.
-    static func rule(localPending: Bool) -> Self {
-        localPending ? .localKept : .serverApplied
+    /// fields a user edits; imported data always merges. A deletion follows the
+    /// same rule: a row of an aggregate with a change waiting is kept, and the
+    /// next push writes it back, so a delete elsewhere never silently drops an
+    /// edit made here. Changing the rule means changing only this function.
+    static func rule(localPending: Bool, change: SyncServerChange = .updated) -> Self {
+        switch change {
+        case .updated: localPending ? .localKept : .serverApplied
+        case .deleted: localPending ? .localKept : .serverApplied
+        }
     }
 }
 
@@ -51,6 +63,15 @@ public struct SyncPullReport: Equatable, Sendable {
         public var serverId: UUID
     }
 
+    /// A row the server deleted that the device held, and what the conflict rule decided.
+    public struct Deletion: Equatable, Sendable {
+        public var table: RemoteTable
+        public var id: UUID
+        /// `serverApplied`: deleted on the device. `localKept`: kept, with the
+        /// local change that is waiting, so the next push sends the row back.
+        public var rule: SyncConflictRule
+    }
+
     public struct Skip: Equatable, Sendable {
         public var table: RemoteTable
         public var id: UUID
@@ -64,6 +85,8 @@ public struct SyncPullReport: Equatable, Sendable {
     /// Aggregates the device already held, with the rule that decided them, in apply order.
     public var resolved: [Resolution] = []
     public var adopted: [Adoption] = []
+    /// Rows the server deleted that the device held, in apply order (children first).
+    public var deletions: [Deletion] = []
     public var skipped: [Skip] = []
     /// Sessions the pull changed into something the server does not hold (a
     /// reconciliation the merge decided, server values merged next to a value the
@@ -72,12 +95,10 @@ public struct SyncPullReport: Equatable, Sendable {
 
     public init() {}
 
-    mutating func resolve(_ aggregate: SyncAggregateRef, localPending: Bool) -> SyncConflictRule {
-        let rule = SyncConflictRule.rule(localPending: localPending)
+    mutating func resolve(_ aggregate: SyncAggregateRef, rule: SyncConflictRule) {
         if !resolved.contains(where: { $0.aggregate == aggregate }) {
             resolved.append(.init(aggregate: aggregate, rule: rule))
         }
-        return rule
     }
 
     mutating func skip(_ table: RemoteTable, _ id: UUID, _ reason: SyncPullSkipReason) {

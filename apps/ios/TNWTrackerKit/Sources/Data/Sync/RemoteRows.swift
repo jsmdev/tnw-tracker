@@ -19,6 +19,8 @@ public enum RemoteTable: String, Sendable, CaseIterable {
     case sessions
     case entries
     case sets
+    /// Rows the server deleted from the tables above (`RemoteTombstoneRow`).
+    case tombstones
 }
 
 /// A row of a table whose primary key is `id` and that carries `updated_at`.

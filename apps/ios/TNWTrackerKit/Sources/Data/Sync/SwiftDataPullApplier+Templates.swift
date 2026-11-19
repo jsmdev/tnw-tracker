@@ -3,8 +3,9 @@ import SwiftData
 
 // Exercises, their muscle groups, routines and their items, as the pull applies
 // them. An exercise or routine is one aggregate: with a local change waiting,
-// none of its server values is applied. Rows the server no longer lists are not
-// removed here (T5, T6).
+// none of its server values is applied. Exercises and routines the server
+// deleted go with its tombstones (`SwiftDataPullApplier+Tombstones.swift`);
+// muscle groups and routine items it no longer lists are not removed here (T6).
 
 extension SwiftDataPullApplier {
     func applyTemplates(_ batch: PulledBatch, _ run: PullRun) throws {

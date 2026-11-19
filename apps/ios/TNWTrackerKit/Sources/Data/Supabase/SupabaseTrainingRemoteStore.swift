@@ -32,15 +32,48 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
                 .execute()
         }
         if !aggregate.removedEntryIds.isEmpty {
-            try await client.from(RemoteTable.entries.rawValue)
-                .delete(returning: .minimal)
-                .in("id", values: Self.text(aggregate.removedEntryIds))
-                .eq("session_id", value: aggregate.session.id.uuidString.lowercased())
-                .execute()
+            try await deleteEntries(of: aggregate)
         }
         try await upsertRows([aggregate.session])
         try await upsertRows(aggregate.entries)
         try await upsertRows(aggregate.sets)
+    }
+
+    /// The removed entries go, except one still holding a set the aggregate
+    /// does not list: an importer added it after the device's last pull, and
+    /// deleting the entry would delete it too. That entry and its sets are
+    /// written again unchanged (the server moves their `updated_at`), so the
+    /// next pull brings them back to the device. A set an importer adds between
+    /// the read and the delete is not seen; the window is one request long.
+    private func deleteEntries(of aggregate: RemoteSessionAggregate) async throws {
+        let session = aggregate.session.id.uuidString.lowercased()
+        let removed = Self.text(aggregate.removedEntryIds)
+        let held: [HeldSet] = try await client.from(RemoteTable.sets.rawValue)
+            .select("id,entry_id")
+            .in("entry_id", values: removed)
+            .execute()
+            .value
+        let listed = Set(aggregate.sets.map(\.id))
+        let kept = Set(held.filter { !listed.contains($0.id) }.map(\.entryId))
+        let deletable = aggregate.removedEntryIds.filter { !kept.contains($0) }
+        if !deletable.isEmpty {
+            try await client.from(RemoteTable.entries.rawValue)
+                .delete(returning: .minimal)
+                .in("id", values: Self.text(deletable))
+                .eq("session_id", value: session)
+                .execute()
+        }
+        guard !kept.isEmpty else { return }
+        let owner = ["user_id": aggregate.session.userId.uuidString.lowercased()]
+        try await client.from(RemoteTable.entries.rawValue)
+            .update(owner, returning: .minimal)
+            .in("id", values: Self.text(Array(kept)))
+            .eq("session_id", value: session)
+            .execute()
+        try await client.from(RemoteTable.sets.rawValue)
+            .update(owner, returning: .minimal)
+            .in("entry_id", values: Self.text(Array(kept)))
+            .execute()
     }
 
     /// One request, so one statement: the rows are written together or not at
@@ -56,6 +89,16 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
         try await client.from(Row.table.rawValue)
             .upsert(rows, onConflict: "id", returning: .minimal)
             .execute()
+    }
+
+    public func delete(_ table: RemoteTable, ids: [UUID]) async throws {
+        guard !ids.isEmpty else { return }
+        try await Self.reportingRejections {
+            try await client.from(table.rawValue)
+                .delete(returning: .minimal)
+                .in("id", values: Self.text(ids))
+                .execute()
+        }
     }
 
     public func pull<Row: RemoteRow>(
@@ -95,5 +138,16 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
 
     private static func text(_ ids: [UUID]) -> [String] {
         ids.map { $0.uuidString.lowercased() }
+    }
+}
+
+/// A set's id and entry, to tell the sets the device knows from late imports.
+private struct HeldSet: Decodable {
+    let id: UUID
+    let entryId: UUID
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case entryId = "entry_id"
     }
 }
