@@ -66,19 +66,17 @@ final class SwiftDataSyncStateRepository: SyncStateRepositoryProtocol {
             let models = try context.fetch(FetchDescriptor<RoutineModel>(
                 predicate: #Predicate { $0.isSyncable && $0.syncRevision > $0.syncedRevision }
             ))
-            return Self.byId(models.map { PendingSyncAggregate(kind: kind, id: $0.id, revision: $0.syncRevision) })
+            return Self.byId(models.map { Self.pending(kind, id: $0.id, model: $0) })
         case .exercise:
             let models = try context.fetch(FetchDescriptor<ExerciseModel>(
                 predicate: #Predicate { $0.isSyncable && !$0.isCatalogue && $0.syncRevision > $0.syncedRevision }
             ))
-            return Self.byId(models.map { PendingSyncAggregate(kind: kind, id: $0.id, revision: $0.syncRevision) })
+            return Self.byId(models.map { Self.pending(kind, id: $0.id, model: $0) })
         case .exerciseSetting:
             let models = try context.fetch(FetchDescriptor<ExerciseSettingModel>(
                 predicate: #Predicate { $0.isSyncable && $0.syncRevision > $0.syncedRevision }
             ))
-            return Self.byId(models.map {
-                PendingSyncAggregate(kind: kind, id: $0.exerciseId, revision: $0.syncRevision)
-            })
+            return Self.byId(models.map { Self.pending(kind, id: $0.exerciseId, model: $0) })
         }
     }
 
@@ -97,14 +95,25 @@ final class SwiftDataSyncStateRepository: SyncStateRepositoryProtocol {
         }
         return try ordered.map { session in
             let removed = try childTombstones(of: session.id)
-            return PendingSyncAggregate(
-                kind: .session,
-                id: session.id,
-                revision: session.syncRevision,
-                removedEntryIds: removed.filter { $0.kindRaw == SyncTombstoneKind.entry.rawValue }.map(\.rowId),
-                removedSetIds: removed.filter { $0.kindRaw == SyncTombstoneKind.set.rawValue }.map(\.rowId)
-            )
+            var pending = Self.pending(.session, id: session.id, model: session)
+            pending.removedEntryIds = removed.filter { $0.kindRaw == SyncTombstoneKind.entry.rawValue }.map(\.rowId)
+            pending.removedSetIds = removed.filter { $0.kindRaw == SyncTombstoneKind.set.rawValue }.map(\.rowId)
+            return pending
         }
+    }
+
+    private static func pending(
+        _ kind: SyncAggregateKind,
+        id: UUID,
+        model: any SyncTrackedModel
+    ) -> PendingSyncAggregate {
+        PendingSyncAggregate(
+            kind: kind,
+            id: id,
+            revision: model.syncRevision,
+            failureCount: model.syncFailureCount,
+            lastError: model.syncLastError
+        )
     }
 
     private static func byId(_ pending: [PendingSyncAggregate]) -> [PendingSyncAggregate] {
@@ -128,11 +137,21 @@ final class SwiftDataSyncStateRepository: SyncStateRepositoryProtocol {
         }
         stampSent(model)
         model.syncedRevision = revision
+        model.syncFailureCount = 0
+        model.syncLastError = nil
         if kind == .session {
             for tombstone in try childTombstones(of: id) where tombstone.revision <= revision {
                 context.delete(tombstone)
             }
         }
+        try context.save()
+        return true
+    }
+
+    func markFailed(_ kind: SyncAggregateKind, id: UUID, reason: String) throws -> Bool {
+        guard let model = try trackedModel(kind, id: id), model.isSyncable else { return false }
+        model.syncFailureCount += 1
+        model.syncLastError = reason
         try context.save()
         return true
     }

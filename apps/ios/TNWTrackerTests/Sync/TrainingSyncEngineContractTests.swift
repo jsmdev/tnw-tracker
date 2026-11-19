@@ -1,0 +1,56 @@
+import Foundation
+import Supabase
+import Testing
+@testable import TNWTrackerKit
+
+/// S1 end to end: a session logged through the real repositories reaches the
+/// local Supabase stack through the real adapter. Skipped when the stack is
+/// not configured or not running (see `LocalSupabaseStack`).
+@Suite(
+    "Sync engine push (local stack)",
+    .enabled("needs the local Supabase stack") { await LocalSupabaseStack.isAvailable() }
+)
+struct TrainingSyncEngineContractTests {
+    @Test("a session logged in the app appears in Supabase with its routine and exercise")
+    func loggedSessionAppearsInSupabase() async throws {
+        try await LocalSupabaseStack.withThrowawayUser { client, userId in
+            try await Self.loggedSessionAppearsInSupabase(client: client, userId: userId)
+        }
+    }
+
+    @MainActor
+    private static func loggedSessionAppearsInSupabase(client: SupabaseClient, userId: UUID) async throws {
+        let world = try PushWorld(userId: userId)
+        let routine = try world.saveRoutine()
+        let session = try world.finishedSession(routineId: routine.id)
+        let remote = SupabaseTrainingRemoteStore(client: client)
+        let engine = TrainingSyncEngine(store: world.store, remote: remote, userId: userId)
+
+        let report = try await engine.push()
+
+        #expect(report.rejected.isEmpty)
+        #expect(report.pushed.map(\.id) == [world.squat.id, routine.id, session.id])
+        let local = try #require(try world.store.sessions.session(id: session.id))
+        let expected = PushWorld.rows(of: local, userId: userId)
+        let sessions = try await TrainingRemoteStoreContract.pullAll(RemoteSessionRow.self, from: remote)
+        let entries = try await TrainingRemoteStoreContract.pullAll(RemoteEntryRow.self, from: remote)
+        let sets = try await TrainingRemoteStoreContract.pullAll(RemoteSetRow.self, from: remote)
+        let items = try await TrainingRemoteStoreContract.pullAll(RemoteRoutineItemRow.self, from: remote)
+        let exercises = try await TrainingRemoteStoreContract.pullAll(RemoteExerciseRow.self, from: remote)
+        #expect(sessions.map(PushWorld.plain) == [expected.session])
+        #expect(PushWorld.byId(entries.map(PushWorld.plain)) == PushWorld.byId(expected.entries))
+        #expect(PushWorld.byId(sets.map(PushWorld.plain)) == PushWorld.byId(expected.sets))
+        #expect(PushWorld.byId(items.map(PushWorld.plain)) == PushWorld.byId(world.itemRows(routine)))
+        #expect(exercises.map(PushWorld.plain).filter { $0.userId != nil } == [world.squatRow])
+        try world.expectNothingPending()
+
+        // Pushing again after an edit updates the same rows.
+        let setId = try #require(local.entries.first { $0.exerciseId == world.squat.id }?.sets.first?.id)
+        try world.store.sessions.setWarmup(true, setId: setId)
+        try await engine.push()
+        let updated = try await TrainingRemoteStoreContract.pullAll(RemoteSetRow.self, from: remote)
+        #expect(updated.count == expected.sets.count)
+        #expect(updated.first { $0.id == setId }?.warmup == true)
+        try world.expectNothingPending()
+    }
+}

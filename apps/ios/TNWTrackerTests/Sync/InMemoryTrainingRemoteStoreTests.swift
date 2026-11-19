@@ -36,6 +36,14 @@ struct InMemoryTrainingRemoteStoreTests {
         try await TrainingRemoteStoreContract.importedSetArrivesAfterCursor(harness)
     }
 
+    @Test func serverRefusalIsRejected() async throws {
+        try await TrainingRemoteStoreContract.serverRefusalIsRejected(harness)
+    }
+
+    @Test func exerciseAndRoutineReadBack() async throws {
+        try await TrainingRemoteStoreContract.exerciseAndRoutineReadBack(harness)
+    }
+
     @Test func rowsWrittenTogetherPageOneByOne() async throws {
         try await TrainingRemoteStoreContract.rowsWrittenTogetherPageOneByOne(harness)
     }
@@ -94,7 +102,7 @@ struct InMemoryTrainingRemoteStoreTests {
         try await fake.pushSession(aggregate)
         aggregate.entries[0].status = .skipped
 
-        await #expect(throws: InMemoryTrainingRemoteStore.Rejected(reason: "a skipped entry has no sets")) {
+        await #expect(throws: InMemoryTrainingRemoteStore.skippedEntryWithSets) {
             try await fake.upsert([aggregate.entries[0]])
         }
         #expect(await fake.stored(RemoteEntryRow.self).first { $0.id == aggregate.entries[0].id }?.status == .done)

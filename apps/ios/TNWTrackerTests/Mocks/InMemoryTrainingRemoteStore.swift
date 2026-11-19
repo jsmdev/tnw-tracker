@@ -5,11 +5,12 @@ import Foundation
 /// `SupabaseTrainingRemoteStore` (the same scenarios run against both in
 /// TNWTrackerTests/Sync): rows stored by id, a server `updated_at` per write
 /// (rows written together share it, as in one Postgres statement), keyset
-/// pulls, and the server rules a push can break (parents first, no set on a
-/// skipped entry).
+/// pulls, and the server rules a push can break (parents first, rows only
+/// referring to exercises and routines the server holds, no set on a skipped
+/// entry), refused as `RemoteStoreError.rejected` with the server's SQLSTATE.
 ///
 /// It can fail the next call of an operation, or a push part way, to simulate
-/// the network dropping.
+/// the network dropping, and run an action in the middle of the next push.
 actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     enum Operation: Hashable, Sendable {
         case pushSession, upsert, pull
@@ -28,18 +29,27 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         case pull(RemoteTable, after: RemoteCursor?, limit: Int)
     }
 
-    /// The server refused a write (what Postgres reports as a constraint or trigger error).
-    struct Rejected: Error, Equatable {
-        let reason: String
+    static let networkDown = URLError(.notConnectedToInternet)
+
+    /// What the server answers for a broken foreign key or check.
+    static func foreignKeyViolation(_ constraint: String) -> RemoteStoreError {
+        .rejected(code: "23503", message: constraint)
     }
 
-    static let networkDown = URLError(.notConnectedToInternet)
+    static let skippedEntryWithSets = RemoteStoreError.rejected(code: "23514", message: "a skipped entry has no sets")
 
     private(set) var calls: [Call] = []
     private var failures: [Operation: [any Error]] = [:]
     private var pushFailure: (step: PushStep, error: any Error)?
     private var tables: [RemoteTable: [UUID: any RemoteRow]] = [:]
     private var clock = 0
+    /// The curated catalogue of supabase/seed.sql, which every user can refer to.
+    private let catalogue: Set<UUID>
+    private var duringNextPush: (@Sendable () async -> Void)?
+
+    init(catalogue: Set<UUID> = TrainingRemoteStoreContract.catalogue) {
+        self.catalogue = catalogue
+    }
 
     // MARK: - Test controls
 
@@ -51,6 +61,12 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     /// The next push writes the steps before `step`, then throws `error`.
     func failNextPush(at step: PushStep, with error: any Error = networkDown) {
         pushFailure = (step, error)
+    }
+
+    /// The next push runs `action` once its session row is written, before its
+    /// entries and sets: as if the user edited the data while it uploads.
+    func duringNextPush(_ action: @escaping @Sendable () async -> Void) {
+        duringNextPush = action
     }
 
     /// Writes a row as another client would (an importer, another device).
@@ -89,6 +105,10 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
             })
         }
         try run(.session) { try write([aggregate.session]) }
+        if let action = duringNextPush {
+            duringNextPush = nil
+            await action()
+        }
         try run(.entries) { try write(aggregate.entries) }
         try run(.sets) { try write(aggregate.sets) }
     }
@@ -138,18 +158,42 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
 
     private func check(_ row: some RemoteRow) throws {
         switch row {
+        case let session as RemoteSessionRow:
+            try require(session.routineId, in: .routines, "sessions_routine_fkey")
         case let entry as RemoteEntryRow:
-            guard tables[.sessions]?[entry.sessionId] != nil else { throw Rejected(reason: "entries_session_fkey") }
-            if entry.status == .skipped, !setsOf(entry.id).isEmpty {
-                throw Rejected(reason: "a skipped entry has no sets")
-            }
+            try check(entry)
         case let set as RemoteSetRow:
             guard let entry = tables[.entries]?[set.entryId] as? RemoteEntryRow else {
-                throw Rejected(reason: "sets_entry_fkey")
+                throw Self.foreignKeyViolation("sets_entry_fkey")
             }
-            if entry.status == .skipped { throw Rejected(reason: "a skipped entry has no sets") }
+            if entry.status == .skipped { throw Self.skippedEntryWithSets }
+        case let group as RemoteMuscleGroupRow:
+            try require(group.exerciseId, in: .exercises, "exercise_muscle_groups_exercise_id_fkey")
+        case let item as RemoteRoutineItemRow:
+            try require(item.routineId, in: .routines, "routine_items_routine_fkey")
+            try requireExercise(item.exerciseId, "routine_items_exercise_id_fkey")
         default:
             break
+        }
+    }
+
+    private func check(_ entry: RemoteEntryRow) throws {
+        try require(entry.sessionId, in: .sessions, "entries_session_fkey")
+        try requireExercise(entry.exerciseId, "entries_exercise_id_fkey")
+        try requireExercise(entry.replacedExerciseId, "entries_replaced_exercise_id_fkey")
+        if entry.status == .skipped, !setsOf(entry.id).isEmpty { throw Self.skippedEntryWithSets }
+    }
+
+    /// A `nil` reference refers to nothing, so it always holds.
+    private func require(_ id: UUID?, in table: RemoteTable, _ constraint: String) throws {
+        guard let id, tables[table]?[id] == nil else { return }
+        throw Self.foreignKeyViolation(constraint)
+    }
+
+    private func requireExercise(_ id: UUID?, _ constraint: String) throws {
+        guard let id else { return }
+        guard catalogue.contains(id) || tables[.exercises]?[id] != nil else {
+            throw Self.foreignKeyViolation(constraint)
         }
     }
 

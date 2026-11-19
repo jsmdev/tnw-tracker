@@ -12,6 +12,10 @@ import Foundation
 
 /// A server table the sync reads with a cursor.
 public enum RemoteTable: String, Sendable, CaseIterable {
+    case exercises
+    case exerciseMuscleGroups = "exercise_muscle_groups"
+    case routines
+    case routineItems = "routine_items"
     case sessions
     case entries
     case sets
@@ -366,7 +370,7 @@ public struct RemoteSetRow: RemoteRow {
 // MARK: - externalRef columns
 
 /// `externalRef` is stored as two columns, `external_provider` and `external_id`.
-private enum ExternalRefColumns: String, CodingKey {
+enum ExternalRefColumns: String, CodingKey {
     case provider = "external_provider"
     case id = "external_id"
 

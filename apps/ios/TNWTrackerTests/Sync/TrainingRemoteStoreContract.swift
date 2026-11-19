@@ -18,6 +18,7 @@ enum TrainingRemoteStoreContract {
     /// Catalogue exercises of supabase/seed.sql: a strength one and another.
     static let benchPress = UUID(uuidString: "e1000001-0000-4000-8000-000000000001") ?? UUID()
     static let shoulderPress = UUID(uuidString: "e1000002-0000-4000-8000-000000000002") ?? UUID()
+    static let catalogue: Set<UUID> = [benchPress, shoulderPress]
 
     // MARK: - Scenarios
 
@@ -160,6 +161,68 @@ enum TrainingRemoteStoreContract {
         #expect(sessions.isEmpty)
     }
 
+    /// A row the server's rules refuse arrives as `RemoteStoreError.rejected`
+    /// with the SQLSTATE, so the sync can tell it from a network failure.
+    static func serverRefusalIsRejected(_ harness: RemoteStoreHarness) async throws {
+        var aggregate = finishedSession(for: harness.userId)
+        aggregate.entries[0].status = .skipped
+        aggregate.entries[0].completedAt = nil
+
+        await #expect(throws: RemoteStoreError.rejected(code: "23514", message: "a skipped entry has no sets")) {
+            try await harness.store.pushSession(aggregate)
+        }
+
+        let sets = try await pullAll(RemoteSetRow.self, from: harness.store)
+        #expect(sets.isEmpty)
+    }
+
+    /// A user exercise with its muscle groups and a routine with its items read
+    /// back unchanged, and pushing them again updates the same rows: child ids
+    /// derived from their natural keys never collide with those keys.
+    static func exerciseAndRoutineReadBack(_ harness: RemoteStoreHarness) async throws {
+        let exercise = RemoteExerciseRow(
+            id: UUID(), userId: harness.userId, name: "Cable fly", type: .strength, equipment: .machine,
+            setupSteps: ["Set the pulleys high"], executionSteps: ["Bring the handles together"],
+            tips: nil, imageURI: "https://example.test/fly.png",
+            externalRef: ExternalRef(provider: "machines-atlas", id: "fly-\(UUID().uuidString)")
+        )
+        let muscles = [
+            RemoteMuscleGroupRow(exerciseId: exercise.id, muscle: .chest, role: .primary),
+            RemoteMuscleGroupRow(exerciseId: exercise.id, muscle: .shoulders, role: .secondary)
+        ]
+        let routine = RemoteRoutineRow(id: UUID(), userId: harness.userId, name: "Push", description: "Chest day",
+                                       isFavorite: true)
+        var items = [
+            RemoteRoutineItemRow(
+                id: RemoteRoutineItemRow.id(routineId: routine.id, position: 1), userId: harness.userId,
+                routineId: routine.id, position: 1, exerciseId: exercise.id, targetSets: 3,
+                targetReps: RepRange(min: 8, max: 12), targetWeight: .kg(20), restSeconds: 90, notes: "Slow"
+            ),
+            RemoteRoutineItemRow(
+                id: RemoteRoutineItemRow.id(routineId: routine.id, position: 2), userId: harness.userId,
+                routineId: routine.id, position: 2, exerciseId: benchPress, targetDurationSeconds: 60
+            )
+        ]
+        for _ in 0 ..< 2 {
+            try await harness.store.upsert([exercise])
+            try await harness.store.upsert(muscles)
+            try await harness.store.upsert([routine])
+            try await harness.store.upsert(items)
+        }
+        items[0].exerciseId = benchPress
+        items[1].exerciseId = exercise.id
+        try await harness.store.upsert(items)
+
+        let exercises = try await pullAll(RemoteExerciseRow.self, from: harness.store)
+        let groups = try await pullAll(RemoteMuscleGroupRow.self, from: harness.store)
+        #expect(exercises.map(withoutServerFields).filter { $0.userId != nil } == [exercise])
+        let storedMuscles = groups.map(withoutServerFields).filter { $0.exerciseId == exercise.id }
+        #expect(storedMuscles.sorted(by: byId) == muscles.sorted(by: byId))
+        #expect(try await pullAll(RemoteRoutineRow.self, from: harness.store).map(withoutServerFields) == [routine])
+        let storedItems = try await pullAll(RemoteRoutineItemRow.self, from: harness.store)
+        #expect(storedItems.map(withoutServerFields).sorted { $0.position < $1.position } == items)
+    }
+
     // MARK: - Fixtures
 
     /// A finished session: a done strength entry with two manual sets, then a
@@ -220,6 +283,10 @@ enum TrainingRemoteStoreContract {
         var row = row
         row.updatedAt = nil
         return row
+    }
+
+    private static func byId<Row: RemoteRow>(_ lhs: Row, _ rhs: Row) -> Bool {
+        lhs.id.uuidString < rhs.id.uuidString
     }
 
     private static func byPosition(_ lhs: RemoteEntryRow, _ rhs: RemoteEntryRow) -> Bool {
