@@ -16,7 +16,7 @@ jobs:
 
       - uses: supabase/setup-cli@v2
         with:
-          version: latest
+          version: 3.2.0
 
       - name: Link Supabase project
         run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
@@ -25,6 +25,6 @@ jobs:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
 
       - name: Run migrations
-        run: supabase db push
+        run: supabase db push --remote
         env:
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
