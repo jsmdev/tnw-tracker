@@ -171,3 +171,10 @@ The key is `(user_id, exercise_id)`, which is also the upsert key: saving a sett
 - A `done` entry has at least one set, and a routine or session has at least one item or entry. Rows are written one at a time, so these hold only once a whole session is stored.
 - `reconciliation` is present exactly when an entry mixes sources, and `superseded` marks the source that was not kept. Imported sets can arrive before the app reconciles, so a mixed entry without a decision is a valid state in the database.
 - Changing an exercise's own `type` after sets exist is not re-checked. Switching an entry to another exercise is: its sets must fit the new type.
+
+## Sync
+
+The app talks to these tables through PostgREST, as the signed-in user (`SupabaseTrainingRemoteStore`).
+
+- **Push.** The unit is one finished session with its entries and sets, rows keyed by the app's own ids. The app sends them in this order: delete the sets removed on the device, then the removed entries (only rows still in that session on the server; deleting an entry deletes its sets), then upsert the session, its entries and their sets. Each step is one request, valid on its own: an entry can turn `skipped` only once the server holds none of its sets, and children need their parent for the composite foreign keys and the `completed_at` check. A push that fails part way leaves a valid but incomplete session; pushing the same session again completes it. Every request sends all the columns the app owns, `null` included, and never `created_at` or `updated_at`.
+- **Pull.** Per table, the rows whose (`updated_at`, `id`) is after a cursor, in that order, a page at a time. Rows written in one statement share `updated_at`, so the `id` breaks the tie. The cursor keeps `updated_at` as the text the server returned, never a device clock or a rounded date.
