@@ -47,6 +47,14 @@ struct SupabaseTrainingRemoteStoreContractTests {
         try await run(TrainingRemoteStoreContract.exerciseAndRoutineReadBack)
     }
 
+    @Test func duplicateExternalRefIsRejected() async throws {
+        try await run(TrainingRemoteStoreContract.duplicateExternalRefIsRejected)
+    }
+
+    @Test func rewoundCursorReadsAgain() async throws {
+        try await run(TrainingRemoteStoreContract.rewoundCursorReadsAgain)
+    }
+
     private func run(_ scenario: (RemoteStoreHarness) async throws -> Void) async throws {
         try await LocalSupabaseStack.withThrowawayUser { client, userId in
             let store = SupabaseTrainingRemoteStore(client: client)

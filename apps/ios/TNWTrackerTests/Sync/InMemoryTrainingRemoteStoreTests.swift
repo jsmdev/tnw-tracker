@@ -52,6 +52,14 @@ struct InMemoryTrainingRemoteStoreTests {
         try await TrainingRemoteStoreContract.inconsistentAggregateWritesNothing(harness)
     }
 
+    @Test func duplicateExternalRefIsRejected() async throws {
+        try await TrainingRemoteStoreContract.duplicateExternalRefIsRejected(harness)
+    }
+
+    @Test func rewoundCursorReadsAgain() async throws {
+        try await TrainingRemoteStoreContract.rewoundCursorReadsAgain(harness)
+    }
+
     // MARK: - Failure controls
 
     @Test func failedPushThrowsAndStoresNothing() async throws {

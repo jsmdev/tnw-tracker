@@ -8,35 +8,42 @@ import Testing
 @MainActor
 struct PushWorld {
     let store: TrainingStore
-    let server = InMemoryTrainingRemoteStore()
+    let server: InMemoryTrainingRemoteStore
     let userId: UUID
     let engine: TrainingSyncEngine
     /// 2030-03-04T09:00:00Z, whole seconds so dates survive the round trip.
     let t0 = TrainingFixtures.t0
 
     /// A user exercise, with everything the server stores for one.
-    let squat = Exercise(
-        externalRef: ExternalRef(provider: "machines-atlas", id: "squat-1"),
-        name: "Goblet Squat",
-        type: .strength,
-        equipment: .freeWeights,
-        muscleGroups: [
-            MuscleGroup(muscle: .quadriceps, role: .primary),
-            MuscleGroup(muscle: .glutes, role: .secondary)
-        ],
-        instructions: ExerciseInstructions(setup: ["Hold the bell"], execution: ["Sit down", "Stand up"], tips: []),
-        media: ExerciseMedia(imageURI: "https://example.test/squat.png", videoURI: nil)
-    )
+    let squat: Exercise
+    static func makeSquat() -> Exercise {
+        Exercise(
+            externalRef: ExternalRef(provider: "machines-atlas", id: "squat-1"),
+            name: "Goblet Squat",
+            type: .strength,
+            equipment: .freeWeights,
+            muscleGroups: [
+                MuscleGroup(muscle: .quadriceps, role: .primary),
+                MuscleGroup(muscle: .glutes, role: .secondary)
+            ],
+            instructions: ExerciseInstructions(setup: ["Hold the bell"], execution: ["Sit down", "Stand up"], tips: []),
+            media: ExerciseMedia(imageURI: "https://example.test/squat.png", videoURI: nil)
+        )
+    }
+
     /// A catalogue exercise the server already holds (supabase/seed.sql).
     let bench = Exercise(
         id: TrainingRemoteStoreContract.benchPress, isCatalogue: true, name: "Bench Press", type: .strength
     )
 
     /// Without `claimed`, everything written before `claim()` belongs to nobody (sample data).
-    init(claimed: Bool = true, userId: UUID = UUID()) throws {
-        self.userId = userId
+    /// With `sharing`, another device of the same user: same server, user and exercises.
+    init(claimed: Bool = true, userId: UUID = UUID(), sharing other: PushWorld? = nil) throws {
+        self.userId = other?.userId ?? userId
+        server = other?.server ?? InMemoryTrainingRemoteStore()
+        squat = other?.squat ?? Self.makeSquat()
         store = try TrainingStore(inMemory: true)
-        engine = TrainingSyncEngine(store: store, remote: server, userId: userId)
+        engine = TrainingSyncEngine(store: store, remote: server, userId: self.userId)
         if claimed { try claim() }
         try store.exercises.save(squat)
         try store.exercises.save(bench)
