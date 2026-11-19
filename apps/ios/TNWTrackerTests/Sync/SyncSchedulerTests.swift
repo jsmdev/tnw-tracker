@@ -14,7 +14,7 @@ struct SyncSchedulerTests {
     let t0 = TrainingFixtures.t0
 
     init() throws {
-        store = try TrainingStore(inMemory: true)
+        store = try TrainingStore.inMemory()
         scheduler = SyncScheduler(store: store, remote: server, now: { TrainingFixtures.t0 })
         try store.exercises.save(Self.bench)
     }
@@ -64,7 +64,7 @@ struct SyncSchedulerTests {
         await scheduler.waitUntilIdle()
         try store.routines.save(routine("Push"))
 
-        scheduler.signOut()
+        await scheduler.signOut()
         scheduler.requestSync()
         await scheduler.waitUntilIdle()
 
@@ -74,19 +74,34 @@ struct SyncSchedulerTests {
         #expect(try store.routines.routines(RoutineQuery()).map(\.name) == ["Push"])
     }
 
-    @Test("S12 a request made before a sign-out runs no further sync after it")
-    func signOutDropsTheQueuedRun() async throws {
-        let hold = await holdNextPull()
+    @Test(
+        "S10 S12 signing out stops the sync in flight: it applies nothing, sends nothing more, and no run follows",
+        .timeLimit(.minutes(1))
+    )
+    func signOutStopsTheSyncInFlight() async throws {
+        try await server.insertOnServer(RemoteExerciseRow(id: UUID(), userId: nil, name: "Deadlift", type: .strength))
+        let reached = AsyncGate()
+        let answered = AsyncGate()
+        // The last table of the pull is held like a request in flight: the
+        // sign-out's cancellation ends it, with every table already read.
+        await server.duringNextPull(of: .exercises) {
+            await reached.open()
+            await AsyncGate().waitUnlessCancelled()
+            await answered.open()
+        }
         scheduler.signIn(userId: user)
-        await hold.reached.wait()
+        await reached.wait()
         scheduler.requestSync()
+        let callsBefore = await server.calls.count
 
-        scheduler.signOut()
-        await hold.release.open()
-        await scheduler.waitUntilIdle()
+        await scheduler.signOut()
 
-        #expect(await syncRuns() == 1)
+        #expect(await answered.isOpen, "the sign-out returned only once the request in flight ended")
         #expect(scheduler.status == .signedOut)
+        #expect(await syncRuns() == 1, "the request queued during the sync does not run")
+        #expect(await server.calls.count == callsBefore, "nothing was sent after the request in flight")
+        #expect(try store.exercises.exercises().map(\.name) == ["Bench Press"], "what the pull read is not applied")
+        #expect(try store.pulled.cursor(.exercises, userId: user) == nil)
     }
 
     // MARK: - Sign-in
@@ -211,7 +226,7 @@ struct SyncSchedulerTests {
         return (owner, legs)
     }
 
-    @Test("S10 another user signing in never syncs, is told whose store it is, and nothing is deleted")
+    @Test("S10 a store stamped with another user never syncs for this one, and nothing is deleted")
     func anotherUserNeverSyncs() async throws {
         let (owner, legs) = try ownedByAnotherUser()
 
@@ -223,35 +238,5 @@ struct SyncSchedulerTests {
         #expect(await server.calls.isEmpty)
         #expect(try store.ownership.owner() == owner)
         #expect(try store.routines.routine(id: legs.id) == legs)
-        #expect(store.userWritesBlocked)
-    }
-
-    @Test("S10 another user's writes are refused and never reach the owner's account")
-    func anotherUsersWritesAreRefused() async throws {
-        let (owner, legs) = try ownedByAnotherUser()
-        scheduler.signIn(userId: user)
-
-        #expect(throws: TrainingDataError.storeNotOwned) { try store.routines.save(routine("Pull")) }
-        #expect(throws: TrainingDataError.storeNotOwned) { try store.routines.setFavorite(true, routineId: legs.id) }
-        #expect(throws: TrainingDataError.storeNotOwned) { try store.deleteAllTrainingData() }
-
-        scheduler.signOut()
-        scheduler.signIn(userId: owner)
-        await scheduler.waitUntilIdle()
-        #expect(scheduler.status == .idle)
-        #expect(!store.userWritesBlocked)
-        #expect(try store.routines.routines(RoutineQuery()).map(\.name) == ["Legs"])
-        #expect(try store.routines.routine(id: legs.id)?.isFavorite == false)
-        #expect(await server.calls.filter { $0 == .upsert(.routines, count: 1) }.count == 1)
-    }
-
-    @Test("S10 signing out lifts the refusal of writes")
-    func signOutLiftsTheRefusal() throws {
-        _ = try ownedByAnotherUser()
-        scheduler.signIn(userId: user)
-
-        scheduler.signOut()
-
-        #expect(!store.userWritesBlocked)
     }
 }

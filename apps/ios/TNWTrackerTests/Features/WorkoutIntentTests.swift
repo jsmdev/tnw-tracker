@@ -34,7 +34,7 @@ struct WorkoutIntentTests {
     let workoutId: UUID
 
     init() throws {
-        container = try ModelContainerFactory.makeContainer(inMemory: true)
+        container = try ModelContainerFactory.makeIntentMailboxContainer(inMemory: true)
         workoutId = UUID()
     }
 

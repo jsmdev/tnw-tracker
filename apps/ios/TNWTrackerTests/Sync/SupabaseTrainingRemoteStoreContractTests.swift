@@ -81,7 +81,7 @@ struct SupabaseTrainingRemoteStoreContractTests {
 
     private func run(_ scenario: (RemoteStoreHarness) async throws -> Void) async throws {
         try await LocalSupabaseStack.withThrowawayUser { client, userId in
-            let store = SupabaseTrainingRemoteStore(client: client)
+            let store = SupabaseTrainingRemoteStore(client: client, userId: userId)
             let harness = RemoteStoreHarness(store: store, userId: userId) { row in
                 // The importer writes as the same user, outside the adapter.
                 try await client.from("sets").insert(row, returning: .minimal).execute()

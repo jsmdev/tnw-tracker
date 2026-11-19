@@ -19,33 +19,12 @@ final class SwiftDataStoreOwnership: StoreOwnershipProtocol {
     }
 
     func claim(userId: UUID, at date: Date) throws -> StoreOwnership {
-        let owners = try context.fetch(FetchDescriptor<StoreOwnerModel>())
-        if owners.map(\.userId) == [userId] { return .owned }
-        if let other = owners.first(where: { $0.userId != userId }), try holdsOwnedData() {
-            return .mismatch(ownerId: other.userId)
-        }
-        for owner in owners {
-            context.delete(owner)
-        }
-        // Pull cursors are kept per user; another user's would only be stale.
-        for cursor in try context.fetch(FetchDescriptor<SyncCursorModel>()) where cursor.userId != userId {
-            context.delete(cursor)
-        }
+        let owners = try context.fetch(FetchDescriptor<StoreOwnerModel>()).map(\.userId)
+        if let other = owners.first(where: { $0 != userId }) { return .mismatch(ownerId: other) }
+        if !owners.isEmpty { return .owned }
         context.insert(StoreOwnerModel(userId: userId, claimedAt: date))
         try context.save()
         return .claimed
-    }
-
-    /// True when any syncable aggregate or tombstone is stored: data of the current owner.
-    private func holdsOwnedData() throws -> Bool {
-        let counts = try [
-            context.fetchCount(FetchDescriptor<SessionModel>(predicate: #Predicate { $0.isSyncable })),
-            context.fetchCount(FetchDescriptor<RoutineModel>(predicate: #Predicate { $0.isSyncable })),
-            context.fetchCount(FetchDescriptor<ExerciseModel>(predicate: #Predicate { $0.isSyncable })),
-            context.fetchCount(FetchDescriptor<ExerciseSettingModel>(predicate: #Predicate { $0.isSyncable })),
-            context.fetchCount(FetchDescriptor<SyncTombstoneModel>())
-        ]
-        return counts.contains { $0 > 0 }
     }
 }
 

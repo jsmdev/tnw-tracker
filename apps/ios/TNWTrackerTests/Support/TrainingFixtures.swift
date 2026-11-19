@@ -20,7 +20,7 @@ struct TrainingFixtures {
     let rower = Exercise(name: "Rowing Machine", type: .cardio, equipment: .cardioMachine)
 
     init() throws {
-        store = try TrainingStore(inMemory: true)
+        store = try TrainingStore.inMemory()
         for exercise in [squat, press, plank, rower] {
             try store.exercises.save(exercise)
         }

@@ -53,6 +53,10 @@ public enum TrainingSyncError: Error, Equatable, Sendable {
     /// The local store does not belong to the signed-in user (it belongs to
     /// `owner`, or to nobody yet): nothing was sent and nothing changed (S10).
     case storeNotOwned(userId: UUID, owner: UUID?)
+    /// The server answered rows of another user than the engine's (S10): the
+    /// pull applies none of them. Row-level security never does this; it guards
+    /// against a request made with another account's session.
+    case pulledRowsOfAnotherUser
 }
 
 /// The sync between the local store and the server (#135): `sync()` pushes
@@ -90,6 +94,7 @@ public final class TrainingSyncEngine {
     let pullOverlap: TimeInterval
     private var pushing: Task<SyncPushReport, any Error>?
     private var pulling: Task<SyncPullReport, any Error>?
+    private var isStopped = false
 
     /// - Parameters:
     ///   - pageSize: rows per pull request.
@@ -108,6 +113,22 @@ public final class TrainingSyncEngine {
         self.userId = userId
         self.pageSize = pageSize
         self.pullOverlap = pullOverlap
+    }
+
+    /// Stops the engine for good (a sign-out, another account signing in): the
+    /// push or pull running now ends at its next step, before it sends anything
+    /// more or writes anything more to the store, and nothing runs after it.
+    public func stop() {
+        isStopped = true
+        pushing?.cancel()
+        pulling?.cancel()
+    }
+
+    /// Throws `CancellationError` once the engine is stopped: checked before
+    /// every request and after every answer, before the store is written.
+    func checkRunning() throws {
+        if isStopped { throw CancellationError() }
+        try Task.checkCancellation()
     }
 
     /// Pushes, then pulls: local changes reach the server before its state is
@@ -171,6 +192,7 @@ public final class TrainingSyncEngine {
     }
 
     private func pushPending() async throws -> SyncPushReport {
+        try checkRunning()
         let owner = try store.ownership.owner()
         guard owner == userId else { throw TrainingSyncError.storeNotOwned(userId: userId, owner: owner) }
         let run = PushRun()
@@ -192,12 +214,14 @@ public final class TrainingSyncEngine {
         let tombstones = try store.syncState.tombstones().filter { $0.kind == kind }
         guard let target = kind.pushTarget, !tombstones.isEmpty else { return }
         let refs = tombstones.map { SyncAggregateRef(target.kind, id: $0.id) }
+        try checkRunning()
         do {
             try await remote.delete(target.table, ids: tombstones.map(\.id))
         } catch let error as RemoteStoreError {
             run.report.rejected += refs.map { .init(aggregate: $0, error: error) }
             return
         }
+        try checkRunning()
         for tombstone in tombstones {
             try store.syncState.clearTombstone(tombstone)
         }
@@ -211,6 +235,7 @@ public final class TrainingSyncEngine {
         while let pending = try store.syncState.pending(kind).first(where: {
             !run.attempted.contains(SyncAggregateRef(kind, id: $0.id))
         }) {
+            try checkRunning()
             let ref = SyncAggregateRef(kind, id: pending.id)
             run.attempted.insert(ref)
             switch try upload(for: pending, run: run) {
@@ -224,10 +249,12 @@ public final class TrainingSyncEngine {
                 do {
                     try await send(remote)
                 } catch let error as RemoteStoreError {
+                    try checkRunning()
                     try store.syncState.markFailed(kind, id: ref.id, reason: String(describing: error))
                     run.report.rejected.append(.init(aggregate: ref, error: error))
                     continue
                 }
+                try checkRunning()
                 run.acknowledged.insert(ref)
                 run.report.pushed.append(ref)
                 if let children {

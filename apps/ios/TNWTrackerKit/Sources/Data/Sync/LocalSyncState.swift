@@ -84,21 +84,24 @@ public struct SyncTombstone: Equatable, Sendable {
 
 /// The outcome of a sign-in against the store's owner stamp.
 public enum StoreOwnership: Equatable, Sendable {
-    /// The store now belongs to the user: it had no owner, or its owner had no user data in it.
+    /// The store now belongs to the user: it had no owner.
     case claimed
     /// The store already belonged to the user.
     case owned
-    /// The store holds user data of another user. Nothing changed and the sync must not run.
+    /// The store is stamped with another user. Nothing changed and the sync must not run.
     case mismatch(ownerId: UUID)
 }
 
-/// The owner stamp of the local store (S10). It never deletes data.
+/// The owner stamp of an account's store (S10), kept as a second check on top
+/// of each account having its own file: the sync runs only when the stamp is the
+/// signed-in user. It never deletes data.
 @MainActor
 public protocol StoreOwnershipProtocol: AnyObject {
     /// The user the store's user data belongs to, if any.
     func owner() throws -> UUID?
-    /// Claims the store for `userId` when it has no owner, or when its owner has
-    /// no syncable data or tombstone left in it. Reports `mismatch` otherwise.
+    /// Claims the store for `userId` when it has no owner yet (a new store, or
+    /// one the debug reset cleared). A store stamped with another user is never
+    /// stamped again: it reports `mismatch`.
     func claim(userId: UUID, at date: Date) throws -> StoreOwnership
 }
 

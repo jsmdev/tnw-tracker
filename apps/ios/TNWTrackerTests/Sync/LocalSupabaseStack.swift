@@ -108,7 +108,7 @@ enum LocalSupabaseStack {
 }
 
 /// Keeps the throwaway session out of the host app's keychain.
-private final class InMemoryAuthStorage: AuthLocalStorage, @unchecked Sendable {
+final class InMemoryAuthStorage: AuthLocalStorage, @unchecked Sendable {
     private let lock = NSLock()
     private var values: [String: Data] = [:]
 

@@ -3,8 +3,9 @@ import SwiftData
 import Testing
 @testable import TNWTrackerKit
 
-/// S10: the local store is stamped with the user its data belongs to. Another
-/// user signing in is refused while that data is there, and nothing is deleted.
+/// S10: each account's store is stamped with its user, a second check on top of
+/// each account having its own file: a store stamped with one user is never
+/// claimed for another, and nothing is deleted.
 /// S9: data written before any sign-in (the debug sample data) is never attributed.
 @Suite("Store ownership (S10, S9)")
 @MainActor
@@ -64,11 +65,11 @@ struct StoreOwnershipTests {
         #expect(try sync.pendingSessions().map(\.id) == [session.id], "the owner's changes are still pending")
     }
 
-    @Test("another user claims a store whose owner left no user data in it")
-    func anotherUserClaimsAnEmptyStore() throws {
+    @Test("a store stamped with one user is never claimed for another, even with no data of theirs left")
+    func anotherUserNeverClaimsAStampedStore() throws {
         try ownership.claim(userId: userA, at: t0)
-        #expect(try ownership.claim(userId: userB, at: t0) == .claimed)
-        #expect(try savedOwners() == [userB])
+        #expect(try ownership.claim(userId: userB, at: t0) == .mismatch(ownerId: userA))
+        #expect(try savedOwners() == [userA])
     }
 
     @Test("a catalogue exercise saved after the claim is not the owner's data")
@@ -76,17 +77,15 @@ struct StoreOwnershipTests {
         try ownership.claim(userId: userA, at: t0)
         try fx.exercises.save(Exercise(isCatalogue: true, name: "Deadlift", type: .strength))
 
-        #expect(try ownership.claim(userId: userB, at: t0) == .claimed)
-        #expect(try savedOwners() == [userB])
+        // The fixtures' exercises predate the claim; the catalogue never syncs.
+        #expect(try sync.pending(.exercise).isEmpty)
     }
 
     @Test("data written before any sign-in is never attributed and does not block a claim")
     func unownedDataStaysLocal() throws {
         try SampleTrainingData.loadIfEmpty(into: fx.store, now: t0)
 
-        #expect(try ownership.claim(userId: userA, at: t0) == .claimed)
-        #expect(try nothingPending())
-        #expect(try ownership.claim(userId: userB, at: t0) == .claimed, "sample data is nobody's data")
+        #expect(try ownership.claim(userId: userA, at: t0) == .claimed, "sample data is nobody's data")
         #expect(try nothingPending())
     }
 

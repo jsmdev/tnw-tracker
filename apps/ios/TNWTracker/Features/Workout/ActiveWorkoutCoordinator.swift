@@ -41,7 +41,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// Asks for a sync and returns at once: finishing never waits for it (S12).
     private let requestSync: @MainActor () -> Void
     let timerService: RestTimerService
-    private let liveActivity: LiveActivityController
+    let liveActivity: LiveActivityController
     private let now: () -> Date
 
     /// The set whose rest timer is running (AC3.8: its rest taken is recorded when the rest ends).
@@ -49,12 +49,12 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// The last set after which no timer ran; its rest is the time until the next set.
     private var setWithoutTimer: (setId: UUID, completedAt: Date)?
 
-    private var elapsedTask: Task<Void, Never>?
+    var elapsedTask: Task<Void, Never>?
     private var undoLastSetId: UUID?
     /// The set whose rest the last set ended, and its `completedAt`: undo clears
     /// that rest and measures it again from there (D-T3k).
     private var undoRestore: (setId: UUID, completedAt: Date)?
-    private var undoTask: Task<Void, Never>?
+    var undoTask: Task<Void, Never>?
 
     // MARK: - Init
 
@@ -366,16 +366,20 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         liveActivity.end()
 
         if !discard { completedWorkoutId = current.id }
-        session = nil
-        targets = [:]
-        currentExerciseIndex = 0
-        phase = .idle
-        elapsedSeconds = 0
+        clearWorkout()
         logger.info("Coordinator phase → .idle (finished, summary ID: \(current.id))")
         lastFinishOutcome = discard ? .discarded : .saved(current.id)
     }
 
     // MARK: - Helpers
+
+    func clearWorkout() {
+        session = nil
+        targets = [:]
+        currentExerciseIndex = 0
+        phase = .idle
+        elapsedSeconds = 0
+    }
 
     func refreshSession() throws {
         guard let id = session?.id else { return }

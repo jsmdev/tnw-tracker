@@ -13,7 +13,7 @@ struct ImportIdentityTests {
     let t0 = Date(timeIntervalSince1970: 1_898_845_200)
 
     init() throws {
-        store = try TrainingStore(inMemory: true)
+        store = try TrainingStore.inMemory()
     }
 
     private func ref(_ id: String) -> ExternalRef {

@@ -104,3 +104,10 @@ public enum RemoteStoreError: Error, Equatable, Sendable {
     /// same rows again fails the same way.
     case rejected(code: String, message: String)
 }
+
+/// A remote store of one account refused to send a request: the client is not
+/// signed in as that account, because another one signed in on the device or
+/// nobody is (S10). Nothing was sent; the sync stops and keeps every change.
+public enum RemoteSessionError: Error, Equatable, Sendable {
+    case notSignedInAsAccount
+}

@@ -9,7 +9,7 @@ struct SampleTrainingDataTests {
     let now = Date(timeIntervalSince1970: 1_899_028_800)
 
     init() throws {
-        store = try TrainingStore(inMemory: true)
+        store = try TrainingStore.inMemory()
     }
 
     @Test("loads invented exercises, routines and two completed sessions into an empty store")

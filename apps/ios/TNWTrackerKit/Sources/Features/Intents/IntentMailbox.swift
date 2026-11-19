@@ -5,7 +5,7 @@ import SwiftData
 
 /// Two-method protocol enabling test substitution without swizzling CFNotificationCenter.
 public protocol IntentMailboxProtocol: Sendable {
-    /// Persists a new WorkoutIntentEvent to the shared SwiftData container.
+    /// Persists a new WorkoutIntentEvent to the device's intent mailbox, shared with the app.
     func enqueue(workoutId: UUID, kind: String) async throws
     /// Posts a Darwin notification to wake the app process.
     func postIntentNotification()

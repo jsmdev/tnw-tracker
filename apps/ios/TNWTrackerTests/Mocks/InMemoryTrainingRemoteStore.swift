@@ -19,6 +19,9 @@ import Foundation
 /// Exercise settings are stored by their exercise id, which is their key for
 /// the one user a fake serves.
 ///
+/// Like a network request, a call made from a cancelled task throws
+/// `CancellationError` and is not made (it is not recorded either).
+///
 /// It can fail the next call of an operation, the next pull of a table, or a
 /// push part way, to simulate the network dropping, and run an action in the
 /// middle of the next push. Its clock ticks one microsecond per statement and
@@ -146,6 +149,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     // MARK: - TrainingRemoteStore
 
     func pushSession(_ aggregate: RemoteSessionAggregate) async throws {
+        try Task.checkCancellation()
         calls.append(.pushSession(aggregate.session.id))
         try throwIfFailing(.pushSession)
         try aggregate.validate()
@@ -183,6 +187,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     }
 
     func upsert<Row: RemoteRow>(_ rows: [Row]) async throws {
+        try Task.checkCancellation()
         calls.append(.upsert(Row.table, count: rows.count))
         try throwIfFailing(.upsert)
         try write(rows)
@@ -193,12 +198,14 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     }
 
     func delete(_ table: RemoteTable, ids: [UUID]) async throws {
+        try Task.checkCancellation()
         calls.append(.delete(table, ids: ids))
         try throwIfFailing(.delete)
         try remove(table, ids: ids)
     }
 
     func deleteChildren(_ table: RemoteTable, of parentId: UUID, keeping ids: [UUID]) async throws {
+        try Task.checkCancellation()
         calls.append(.deleteChildren(table, parentId: parentId, keeping: ids))
         try throwIfFailing(.deleteChildren)
         let keep = Set(ids)
@@ -215,6 +222,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         after cursor: RemoteCursor?,
         limit: Int
     ) async throws -> RemotePage<Row> {
+        try Task.checkCancellation()
         calls.append(.pull(Row.table, after: cursor, limit: limit))
         try throwIfFailing(.pull)
         if let hook = duringNextPull, hook.table == nil || hook.table == Row.table {

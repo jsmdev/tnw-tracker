@@ -90,6 +90,13 @@ public final class RestTimerService {
         onEnded?(current, Self.seconds(from: current.startedAt, to: min(now(), current.endsAt)))
     }
 
+    /// Drops the rest without ending it: no rest taken is reported (`onEnded`
+    /// is not called). For a workout left where it is.
+    public func stop() async {
+        await cancelTick()
+        state = nil
+    }
+
     /// Ends the rest when its time is up. The tick calls it every second.
     public func expireIfDue() async {
         guard let current = state, now() >= current.endsAt else { return }

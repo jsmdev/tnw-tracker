@@ -24,7 +24,7 @@ struct TrainingSyncEngineContractTests {
         let world = try PushWorld(userId: userId)
         let routine = try world.saveRoutine()
         let session = try world.finishedSession(routineId: routine.id)
-        let remote = SupabaseTrainingRemoteStore(client: client)
+        let remote = SupabaseTrainingRemoteStore(client: client, userId: userId)
         let engine = TrainingSyncEngine(store: world.store, remote: remote, userId: userId)
 
         let report = try await engine.push()
@@ -69,7 +69,7 @@ struct TrainingSyncEngineContractTests {
     private static func importedSetAppearsInTheApp(client: SupabaseClient, userId: UUID) async throws {
         let world = try PushWorld(userId: userId)
         let session = try world.finishedSession()
-        let remote = SupabaseTrainingRemoteStore(client: client)
+        let remote = SupabaseTrainingRemoteStore(client: client, userId: userId)
         let engine = TrainingSyncEngine(store: world.store, remote: remote, userId: userId)
         try await engine.sync()
         let entryId = try #require(session.entries.first { $0.exerciseId == world.squat.id }?.id)
@@ -114,7 +114,7 @@ struct TrainingSyncEngineContractTests {
     @MainActor
     private static func deletionsGoBothWays(client: SupabaseClient, userId: UUID) async throws {
         let world = try PushWorld(userId: userId)
-        let remote = SupabaseTrainingRemoteStore(client: client)
+        let remote = SupabaseTrainingRemoteStore(client: client, userId: userId)
         let engine = TrainingSyncEngine(store: world.store, remote: remote, userId: userId)
         // The app removes Wednesday, an import-only session it already sent.
         let ids = try await world.importThenRegroup(using: engine)

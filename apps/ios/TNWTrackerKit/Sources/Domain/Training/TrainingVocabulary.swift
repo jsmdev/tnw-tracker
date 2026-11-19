@@ -120,7 +120,4 @@ public enum TrainingDataError: Error, Equatable, Sendable {
     case sessionAlreadyCompleted
     case entryNotMixed
     case entryHasSets
-    /// The signed-in user does not own the local store, which holds another
-    /// user's data: their changes are refused and nothing was written (S10).
-    case storeNotOwned
 }

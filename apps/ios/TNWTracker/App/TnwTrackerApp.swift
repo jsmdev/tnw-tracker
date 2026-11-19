@@ -3,31 +3,21 @@ import TNWTrackerKit
 
 @main
 struct TnwTrackerApp: App {
-    private let store: TrainingStore = {
-        do {
-            #if DEBUG
-                let isUITesting = ProcessInfo.processInfo.arguments.contains("--uitesting")
-                return try TrainingStore(inMemory: isUITesting)
-            #else
-                return try TrainingStore()
-            #endif
-        } catch {
-            fatalError("Failed to open the training store: \(error)")
-        }
-    }()
-
-    @State private var appEnv: AppEnvironment?
+    @State private var accounts: AppAccounts?
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             Group {
-                if let env = appEnv {
-                    if env.isAuthenticated {
+                if let accounts {
+                    if let env = accounts.current {
+                        // One view tree per account: nothing of one account's screens survives a switch (S10).
                         RootView()
                             .environment(env)
+                            .id(env.userId)
                     } else {
                         LoginView { email, password in
-                            _ = try await env.authRepository.signIn(email: email, password: password)
+                            _ = try await accounts.authRepository.signIn(email: email, password: password)
                         }
                     }
                 } else {
@@ -37,15 +27,11 @@ struct TnwTrackerApp: App {
             .task {
                 #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("--uitesting") {
-                        // UI test bypass: pre-authenticated, in-memory store, no real auth.
-                        // The invented sample data populates the empty in-memory store.
-                        // startAuthListener and currentSession are NOT called.
-                        appEnv = AppEnvironment.bootstrapForUITesting(store: store)
-                        try? SampleTrainingData.loadIfEmpty(into: store)
-                        if ProcessInfo.processInfo.arguments.contains("--uitesting-store-of-another-user") {
-                            appEnv?.signInOnStoreOfAnotherUserForUITesting()
-                        }
-                        appEnv?.startIntentObserver()
+                        // UI test bypass: pre-authenticated, in-memory store with the
+                        // invented sample data, no real auth and no sync.
+                        let accounts = await AppAccounts.bootstrapForUITesting()
+                        accounts.startIntentObserver()
+                        self.accounts = accounts
                         // Live Activities left by an earlier run make the system
                         // relaunch the app in the background, without `--uitesting`,
                         // racing the next run's first launch (T11).
@@ -53,15 +39,23 @@ struct TnwTrackerApp: App {
                         return
                     }
                 #endif
-                appEnv = AppEnvironment.bootstrap(store: store)
-                #if DEBUG
-                    appEnv?.loadSampleDataIfUnowned()
-                #endif
+                let accounts: AppAccounts
+                do {
+                    accounts = try AppAccounts.bootstrap()
+                } catch {
+                    fatalError("Failed to open the account stores: \(error)")
+                }
+                self.accounts = accounts
                 // El auth listener maneja la restauración: al suscribirse, Supabase
-                // emite `.initialSession` con la sesión persistida (o nil). `handle`
-                // resuelve isAuthenticated + currentUserId desde ese evento.
-                appEnv?.startAuthListener()
-                appEnv?.startIntentObserver()
+                // emite `.initialSession` con la sesión persistida (o nil), que abre
+                // el store de esa cuenta.
+                accounts.startAuthListener()
+                accounts.startIntentObserver()
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                accounts?.sceneDidEnterBackground()
             }
         }
     }
