@@ -66,7 +66,8 @@ A test is only worth keeping if it fails when the behaviour it covers breaks.
 - **Test doubles only at boundaries** the test cannot control: network, clock, authentication, system services (Live Activities, notifications, HealthKit). Never replace the app's own code with a double; if a unit is hard to test without one, change its design instead.
 - **Assert outcomes, not calls.** Check the resulting state, output or stored data, not which functions a double received, unless the call itself is the observable effect (for example, a request sent to the network).
 - **Strong assertions.** Each test checks every observable effect of its rule (value, persisted data, error), not just that something is not nil.
-- **Mutation testing.** At each checkpoint, run mutation testing (Muter for Swift) on the files the change touched. Every surviving mutant gets a new or stronger test, or a written reason why it is equivalent.
+- **Coverage.** Run the unit tests with code coverage (`xcodebuild test -enableCodeCoverage YES`, read with `xcrun xccov view --report`). Every changed line of production code is covered, or the gap is explained. Coverage shows what ran, not what was checked, so it never replaces the next point.
+- **Targeted mutation.** At each checkpoint, the independent reviewer breaks the changed logic on purpose in a scratch copy (flip a condition, drop a call, change a boundary), one change at a time, and runs the tests. Every break the tests miss gets a new or stronger test, or a written reason why it is equivalent. No third-party mutation tools.
 - **Review.** The independent review includes the tests: for each criterion, would the test fail if the behaviour broke, and is every double justified?
 
 ## Definition of Done
@@ -77,7 +78,7 @@ A change is done when:
 2. CI is green: commit messages, formatting, SwiftLint, iOS unit and UI tests, `supabase test db`, format examples, secret scan (gitleaks), CodeQL;
 3. a new table has row-level security tests for its owner and for another user;
 4. an independent reviewer (an agent that did not write the change) has checked the diff and its tests against the criteria and its findings are fixed or listed for the owner;
-5. mutation testing on the changed files leaves no unexplained surviving mutant;
+5. changed lines are covered, and the reviewer's targeted mutation leaves no unexplained surviving break;
 6. docs that describe the behaviour are updated in the same change;
 7. the decisions taken without asking are listed for the owner.
 
