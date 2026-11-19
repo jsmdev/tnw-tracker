@@ -145,10 +145,13 @@ public final class AppEnvironment {
     extension AppEnvironment {
         /// Replaces the local training data with the invented sample data. The
         /// reset forgets the owner, so the store is claimed again for the
-        /// signed-in user; the sample data stays on the device (S9).
+        /// signed-in user; the sample data stays on the device (S9). A sync
+        /// running now is stopped first, so it writes no row nor cursor it read
+        /// before into the reset store.
         func replaceWithSampleData() throws {
+            syncScheduler.stop()
+            defer { syncScheduler.signIn(userId: userId) }
             try SampleTrainingData.replaceAll(in: store)
-            syncScheduler.signIn(userId: userId)
         }
 
         /// The user the account's store is stamped with, for tests.

@@ -86,10 +86,16 @@ extension SwiftDataPullApplier {
     }
 
     /// The muscle takes the server's position (from 1 on the server, from 0 on
-    /// the device); one the exercise does not list yet is added.
+    /// the device); one the exercise does not list yet is added. A muscle-group
+    /// row names no owner, so it is applied only under a catalogue exercise or
+    /// one of the user's own that the server holds (S10), never under data
+    /// that never leaves the device.
     private func applyMuscleGroup(_ row: RemoteMuscleGroupRow, _ run: PullRun) throws {
         guard let exercise = try context.fetchExercise(id: row.exerciseId) else {
             return run.hold(.exerciseMuscleGroups, row.id)
+        }
+        guard exercise.isCatalogue || exercise.isSyncable else {
+            return run.report.skip(.exerciseMuscleGroups, row.id, .invalid("its exercise is not the user's"))
         }
         if !exercise.isCatalogue, run.childRule(for: .init(.exercise, id: exercise.id), model: exercise) == .localKept {
             return

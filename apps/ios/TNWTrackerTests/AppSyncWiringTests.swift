@@ -160,4 +160,31 @@ struct AppSyncWiringTests {
             return false
         })
     }
+
+    @Test("S10 the reset to sample data stops a running sync first: it reads nothing more into the reset store",
+          .timeLimit(.minutes(1)))
+    func replaceWithSampleDataStopsTheRunningSync() async throws {
+        let env = try await signIn(user)
+        let reached = AsyncGate()
+        let release = AsyncGate()
+        await server.duringNextPull {
+            await reached.open()
+            await release.wait()
+        }
+        let before = await server.calls.count
+        env.sceneDidBecomeActive()
+        await reached.wait()
+
+        try env.replaceWithSampleData()
+        await release.open()
+        await env.syncScheduler.waitUntilIdle()
+
+        let pulls = await server.calls.dropFirst(before).compactMap { call -> RemoteTable? in
+            if case let .pull(table, _, _) = call { return table }
+            return nil
+        }
+        #expect(pulls == [.tombstones] + SyncSchedulerTests.pullOrder)
+        #expect(env.storeOwner() == user)
+        #expect(env.syncScheduler.status == .idle)
+    }
 }

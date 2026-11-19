@@ -74,9 +74,9 @@ public enum TrainingSyncError: Error, Equatable, Sendable {
 /// - An aggregate is read, turned into rows and marked sent in one MainActor
 ///   stretch, then uploaded, then marked synced at the revision it was read
 ///   at: an edit during the upload keeps it pending (S7).
-/// - The server refusing an aggregate is recorded on it and the push carries
-///   on with the next; any other error stops the push and is thrown, leaving
-///   everything not acknowledged pending (S3, S4).
+/// - The server refusing an aggregate (`RemoteStoreError`) is recorded on it
+///   and the push carries on with the next; any other error stops the push and
+///   is thrown, leaving everything not acknowledged pending (S3, S4).
 /// - Every pending aggregate is tried at most once per push.
 /// - Deletions made on the device (S11) go children first: sessions before the
 ///   sessions are uploaded (a re-import may reuse a removed session's refs),
@@ -133,9 +133,21 @@ public final class TrainingSyncEngine {
 
     /// Pushes, then pulls: local changes reach the server before its state is
     /// applied, so the pull reads them back as echoes instead of conflicts.
+    ///
+    /// A push stopped by a server fault (`RemoteServerError`) still lets the
+    /// pull run, then throws: what the pull brings may be what the push needs
+    /// (a tombstone that makes the device send a row again). Any other error
+    /// stops the run: no network, a session that is not the account's or was
+    /// refused, a stopped engine (S4).
     @discardableResult
     public func sync() async throws -> SyncReport {
-        let push = try await push()
+        let push: SyncPushReport
+        do {
+            push = try await self.push()
+        } catch let error as RemoteServerError {
+            _ = try await pull()
+            throw error
+        }
         let pull = try await pull()
         return SyncReport(push: push, pull: pull)
     }

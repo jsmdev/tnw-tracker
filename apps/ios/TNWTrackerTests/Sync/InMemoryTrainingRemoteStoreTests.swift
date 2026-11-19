@@ -60,6 +60,14 @@ struct InMemoryTrainingRemoteStoreTests {
         try await TrainingRemoteStoreContract.inconsistentAggregateWritesNothing(harness)
     }
 
+    @Test func unseenExerciseIsRejected() async throws {
+        try await TrainingRemoteStoreContract.unseenExerciseIsRejected(harness)
+    }
+
+    @Test func secondDoneEntryIsRejected() async throws {
+        try await TrainingRemoteStoreContract.secondDoneEntryIsRejected(harness)
+    }
+
     @Test func duplicateExternalRefIsRejected() async throws {
         try await TrainingRemoteStoreContract.duplicateExternalRefIsRejected(harness)
     }

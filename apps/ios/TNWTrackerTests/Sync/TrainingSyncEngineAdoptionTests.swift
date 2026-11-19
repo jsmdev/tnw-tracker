@@ -194,22 +194,4 @@ struct TrainingSyncEngineAdoptionTests {
         #expect(benchRows.map(\.id) == [entry.id])
         try world.expectNothingPending()
     }
-
-    @Test("a second done entry of an exercise the device already sent is passed over as a conflict")
-    func secondDoneEntryIsAConflict() async throws {
-        let session = try world.finishedSession()
-        try await engine.push()
-        let second = RemoteEntryRow(
-            id: UUID(), userId: world.userId, sessionId: session.id, position: 5, exerciseId: world.squat.id,
-            status: .done
-        )
-        try await server.insertOnServer(second)
-
-        let report = try await engine.pull()
-
-        #expect(report.skipped == [.init(
-            table: .entries, id: second.id, reason: .conflict("the session already has a done entry of the exercise")
-        )])
-        #expect(try world.session(session.id).entries.count == session.entries.count)
-    }
 }

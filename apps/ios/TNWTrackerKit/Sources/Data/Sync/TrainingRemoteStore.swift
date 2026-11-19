@@ -100,14 +100,36 @@ public enum RemoteStoreError: Error, Equatable, Sendable {
     /// The aggregate is inconsistent; nothing was written.
     case invalidAggregate(String)
     /// The server refused the rows: a constraint or validation rule failed
-    /// (Postgres error classes 22 and 23, `code` is the SQLSTATE). Sending the
-    /// same rows again fails the same way.
+    /// (Postgres error classes 22 and 23, `code` is the SQLSTATE), or a row
+    /// names an exercise the user cannot see, such as one deleted on the server
+    /// (`42501` from a row-level security check, which only runs for a signed-in
+    /// user). Sending the same rows again fails the same way.
     case rejected(code: String, message: String)
 }
 
-/// A remote store of one account refused to send a request: the client is not
-/// signed in as that account, because another one signed in on the device or
-/// nobody is (S10). Nothing was sent; the sync stops and keeps every change.
+/// The request is not the account's (S10). Nothing more is sent; the sync
+/// stops and keeps every change.
 public enum RemoteSessionError: Error, Equatable, Sendable {
+    /// The client is not signed in as the store's account, because another one
+    /// signed in on the device or nobody is: before a request, nothing was sent;
+    /// after one, its answer is thrown away.
     case notSignedInAsAccount
+    /// The server did not take the request as the signed-in user's: the token
+    /// expired and could not be renewed, or was refused (`42501` permission
+    /// denied, `PGRST3xx`). Nothing was written.
+    case sessionRefused
+}
+
+/// The server answered with an error about neither the data nor the session
+/// (a server fault, a statement timeout): the same request may succeed later.
+/// It stops the push, but `sync()` still pulls, as the pull does not depend on
+/// what the push failed to send.
+public struct RemoteServerError: Error, Equatable, Sendable {
+    public var code: String?
+    public var message: String
+
+    public init(code: String?, message: String) {
+        self.code = code
+        self.message = message
+    }
 }

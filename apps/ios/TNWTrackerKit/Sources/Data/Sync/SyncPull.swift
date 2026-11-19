@@ -56,7 +56,9 @@ public enum SyncPullSkipReason: Equatable, Sendable {
     /// It breaks a rule of the format; it is passed over.
     case invalid(String)
     /// It cannot be placed without losing data on one side, for example a second
-    /// `done` entry of the same exercise in a session the device already sent.
+    /// `done` entry of the same exercise in a session whose own entry of it the
+    /// server also sent. A conflicting entry is held like a row with a missing
+    /// parent, so a later pull places it once the other entry changed.
     case conflict(String)
 }
 
