@@ -97,9 +97,11 @@ struct TrainingSyncEngineTemplateChildrenTests {
             id: UUID(), userId: phone.userId, routineId: routine.id, position: 2, exerciseId: phone.squat.id
         )
         try await server.insertOnServer(foreignItem)
-        // The device, which has not pulled them, edits both aggregates.
+        // The device, which has not pulled them, edits both lists.
         try phone.store.exercises.save(editedSquat)
-        try phone.store.routines.save(routine)
+        var edited = routine
+        edited.items[0].notes = "Slow"
+        try phone.store.routines.save(edited)
 
         let report = try await phone.engine.push()
 
@@ -108,7 +110,9 @@ struct TrainingSyncEngineTemplateChildrenTests {
             RemoteMuscleGroupRow(exerciseId: phone.squat.id, muscle: .glutes, role: .secondary).id,
             RemoteMuscleGroupRow(exerciseId: phone.squat.id, muscle: .core, role: .primary).id
         ])
-        #expect(await serverItems(of: routine.id) == phone.itemRows(routine))
+        var expectedItems = phone.itemRows(routine)
+        expectedItems[0].notes = "Slow"
+        #expect(await serverItems(of: routine.id) == expectedItems)
         try phone.expectNothingPending()
     }
 
@@ -225,7 +229,7 @@ struct TrainingSyncEngineTemplateChildrenTests {
         #expect(await serverItems(of: routine.id) == phone.itemRows(routine))
     }
 
-    @Test("a muscle or item deleted on the server stays while its aggregate has a local change, and goes back up")
+    @Test("a muscle or item deleted on the server stays while its list has a local change, and goes back up")
     func localChangeKeepsDeletedChildren() async throws {
         let routine = try phone.saveRoutine()
         try await phone.engine.push()
@@ -233,20 +237,24 @@ struct TrainingSyncEngineTemplateChildrenTests {
         let second = RemoteRoutineItemRow.id(routineId: routine.id, position: 2)
         try await server.deleteOnServer(.exerciseMuscleGroups, ids: [quadriceps.id])
         try await server.deleteOnServer(.routineItems, ids: [second])
-        var renamed = phone.squat
-        renamed.name = "Front Squat"
-        try phone.store.exercises.save(renamed)
-        try phone.store.routines.setFavorite(false, routineId: routine.id)
+        // Both lists change here; a change of the parent alone lets the deletions
+        // through (`TrainingSyncEngineChildListTests`).
+        var squat = phone.squat
+        squat.muscleGroups.append(MuscleGroup(muscle: .core, role: .secondary))
+        try phone.store.exercises.save(squat)
+        var edited = routine
+        edited.items[0].notes = "Slow"
+        try phone.store.routines.save(edited)
 
         let pull = try await phone.engine.pull()
 
         #expect(Set(pull.deletions.map(\.id)) == [quadriceps.id, second])
         #expect(pull.deletions.allSatisfy { $0.rule == .localKept })
-        #expect(try phone.store.exercises.exercise(id: phone.squat.id)?.muscleGroups == phone.squat.muscleGroups)
-        #expect(try phone.store.routines.routine(id: routine.id)?.items == routine.items)
+        #expect(try phone.store.exercises.exercise(id: phone.squat.id)?.muscleGroups == squat.muscleGroups)
+        #expect(try phone.store.routines.routine(id: routine.id)?.items == edited.items)
 
         try await phone.engine.sync()
-        #expect(await serverMuscles(of: phone.squat.id).count == 2)
+        #expect(await serverMuscles(of: phone.squat.id).count == 3)
         #expect(await serverItems(of: routine.id).count == 2)
         #expect(await server.stored(RemoteTombstoneRow.self).isEmpty)
         try phone.expectNothingPending()

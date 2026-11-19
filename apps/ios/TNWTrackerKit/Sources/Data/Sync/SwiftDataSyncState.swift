@@ -152,6 +152,13 @@ final class SwiftDataSyncStateRepository: SyncStateRepositoryProtocol {
         return true
     }
 
+    func markChildrenSynced(_ kind: SyncAggregateKind, id: UUID, fingerprint: String) throws -> Bool {
+        guard let model = try trackedModel(kind, id: id) as? any SyncChildListOwner else { return false }
+        model.syncedChildrenFingerprint = fingerprint
+        try context.save()
+        return true
+    }
+
     func markFailed(_ kind: SyncAggregateKind, id: UUID, reason: String) throws -> Bool {
         guard let model = try trackedModel(kind, id: id), model.isSyncable else { return false }
         model.syncFailureCount += 1

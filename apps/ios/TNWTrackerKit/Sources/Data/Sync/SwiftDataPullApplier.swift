@@ -44,6 +44,7 @@ final class SwiftDataPullApplier {
             // after its tombstone was written again since.
             try applyTombstones(batch.tombstones, run)
             try applyTemplates(batch, run)
+            run.stampServerLists()
             try applySessions(batch, run)
             try saveCursor(batch.exercises, run)
             try saveCursor(batch.muscleGroups, run)
@@ -121,6 +122,10 @@ final class PullRun {
     var removedItems: Set<PersistentIdentifier> = []
     /// Whether each aggregate had a local change waiting when the pull first reached it.
     private var pending: [SyncAggregateRef: Bool] = [:]
+    /// Whether each child list had changed on the device when the pull first reached it.
+    private var childListsChanged: [SyncAggregateRef: Bool] = [:]
+    /// Parents whose child list now is the server's, stamped synced before the save.
+    private var serverLists: [SyncAggregateRef: any SyncChildListOwner] = [:]
 
     init(userId: UUID, entries: [RemoteEntryRow] = []) {
         self.userId = userId
@@ -142,6 +147,37 @@ final class PullRun {
         let rule = SyncConflictRule.rule(localPending: localPending, change: change)
         if change == .updated { report.resolve(aggregate, rule: rule) }
         return rule
+    }
+
+    /// The conflict rule of an exercise's muscle groups or a routine's items,
+    /// apart from their parent (`SyncConflictRule.childListChanged`), decided on
+    /// the list as it was when the pull first reached it: applying the first
+    /// server row changes the list. The caller reports a deletion.
+    func childRule(
+        for aggregate: SyncAggregateRef,
+        model: any SyncChildListOwner,
+        change: SyncServerChange = .updated
+    ) -> SyncConflictRule {
+        let changed = !created.contains(aggregate) && (childListsChanged[aggregate] ?? model.childListChanged)
+        childListsChanged[aggregate] = changed
+        let rule = SyncConflictRule.rule(localPending: changed, change: change)
+        if rule == .serverApplied { serverLists[aggregate] = model }
+        return rule
+    }
+
+    /// A parent this pull created holds the server's list, children or none.
+    func create(_ aggregate: SyncAggregateRef, list model: any SyncChildListOwner) {
+        create(aggregate)
+        serverLists[aggregate] = model
+    }
+
+    /// Records the server's lists the pull applied as the ones the server holds,
+    /// so a later change of the parent alone does not send them again.
+    func stampServerLists() {
+        for (aggregate, model) in serverLists {
+            let table: RemoteTable = aggregate.kind == .routine ? .routines : .exercises
+            if !deletes(table, aggregate.id) { model.markChildrenSynced() }
+        }
     }
 
     func markDeleted(_ table: RemoteTable, _ id: UUID) {

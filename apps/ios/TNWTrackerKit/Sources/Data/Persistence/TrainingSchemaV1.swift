@@ -78,6 +78,9 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     /// Pushes the server refused since the last acknowledged one, and why the last did.
     var syncFailureCount: Int = 0
     var syncLastError: String?
+    /// The muscle groups as the server last held them for this device (app-local,
+    /// see `Data/Sync/SyncChildList.swift`); `nil` before the first sync.
+    var syncedChildrenFingerprint: String?
 
     @Relationship(deleteRule: .cascade, inverse: \MuscleGroupModel.exercise)
     var muscleGroups: [MuscleGroupModel] = []
@@ -144,6 +147,9 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     /// Pushes the server refused since the last acknowledged one, and why the last did.
     var syncFailureCount: Int = 0
     var syncLastError: String?
+    /// The items as the server last held them for this device (app-local, see
+    /// `Data/Sync/SyncChildList.swift`); `nil` before the first sync.
+    var syncedChildrenFingerprint: String?
 
     @Relationship(deleteRule: .cascade, inverse: \RoutineItemModel.routine)
     var items: [RoutineItemModel] = []

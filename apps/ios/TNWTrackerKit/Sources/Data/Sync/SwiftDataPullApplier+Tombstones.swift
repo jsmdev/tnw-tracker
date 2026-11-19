@@ -12,7 +12,9 @@ import SwiftData
 //   by its exercise id.
 // - A deletion follows the conflict rule of the row's aggregate
 //   (`SyncConflictRule`, change `.deleted`): with no local change waiting, the
-//   row goes; with one, it is kept and the next push writes it back.
+//   row goes; with one, it is kept and the next push writes it back. A muscle
+//   group or routine item follows the rule of its list instead
+//   (`PullRun.childRule`): it goes unless the device changed that list.
 // - Applying a deletion is not a local change: it leaves no tombstone and
 //   marks nothing pending, so it is never echoed back.
 // - A row the device does not hold, or holds as data that never leaves it, is
@@ -48,9 +50,8 @@ extension SwiftDataPullApplier {
         guard let item = try context.fetch(FetchDescriptor<RoutineItemModel>()).first(where: { $0.rowId == id }),
               let routine = item.routine, routine.isSyncable
         else { return }
-        guard decide(.routineItems, id, aggregate: .init(.routine, id: routine.id), model: routine, run) else {
-            return
-        }
+        let rule = run.childRule(for: .init(.routine, id: routine.id), model: routine, change: .deleted)
+        guard report(.routineItems, id, rule: rule, run) else { return }
         run.removedItems.insert(item.persistentModelID)
         routine.items.removeAll { $0.persistentModelID == item.persistentModelID }
         context.delete(item)
@@ -60,8 +61,8 @@ extension SwiftDataPullApplier {
         guard let group = try context.fetch(FetchDescriptor<MuscleGroupModel>()).first(where: { $0.rowId == id }),
               let exercise = group.exercise, exercise.isSyncable, !exercise.isCatalogue
         else { return }
-        guard decide(.exerciseMuscleGroups, id, aggregate: .init(.exercise, id: exercise.id), model: exercise, run)
-        else { return }
+        let rule = run.childRule(for: .init(.exercise, id: exercise.id), model: exercise, change: .deleted)
+        guard report(.exerciseMuscleGroups, id, rule: rule, run) else { return }
         exercise.muscleGroups.removeAll { $0.persistentModelID == group.persistentModelID }
         context.delete(group)
     }
@@ -146,7 +147,11 @@ extension SwiftDataPullApplier {
         model: any SyncTrackedModel,
         _ run: PullRun
     ) -> Bool {
-        let rule = run.rule(for: aggregate, model: model, change: .deleted)
+        report(table, id, rule: run.rule(for: aggregate, model: model, change: .deleted), run)
+    }
+
+    /// Reports the deletion's rule; `true` when the row goes.
+    private func report(_ table: RemoteTable, _ id: UUID, rule: SyncConflictRule, _ run: PullRun) -> Bool {
         run.report.deletions.append(.init(table: table, id: id, rule: rule))
         if rule == .serverApplied { run.markDeleted(table, id) }
         return rule == .serverApplied

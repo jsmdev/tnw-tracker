@@ -119,4 +119,43 @@ struct TrainingSyncEngineTemplateContractTests {
         #expect(again.push.pushed.isEmpty)
         try tablet.expectNothingPending()
     }
+
+    @Test("a favourite marked on one device keeps the item another device added in Supabase")
+    func favouriteKeepsAnotherDevicesItem() async throws {
+        try await LocalSupabaseStack.withThrowawayUser { client, userId in
+            try await Self.favouriteKeepsAnotherDevicesItem(client: client, userId: userId)
+        }
+    }
+
+    @MainActor
+    private static func favouriteKeepsAnotherDevicesItem(client: SupabaseClient, userId: UUID) async throws {
+        let phone = try PushWorld(userId: userId)
+        let tablet = try PushWorld(sharing: phone)
+        let remote = SupabaseTrainingRemoteStore(client: client)
+        let phoneEngine = TrainingSyncEngine(store: phone.store, remote: remote, userId: userId)
+        let tabletEngine = TrainingSyncEngine(store: tablet.store, remote: remote, userId: userId)
+        let routine = try phone.saveRoutine()
+        try await phoneEngine.sync()
+        try await tabletEngine.sync()
+
+        var longer = routine
+        longer.items.append(RoutineItem(order: 3, exerciseId: phone.squat.id, targetSets: 2, notes: "Pause"))
+        try tablet.store.routines.save(longer)
+        try await tabletEngine.sync()
+        // The phone has not pulled the third item when the user unmarks the favourite there.
+        try phone.store.routines.setFavorite(false, routineId: routine.id)
+        try await phoneEngine.sync()
+        try await tabletEngine.sync()
+
+        var expected = longer
+        expected.isFavorite = false
+        #expect(try phone.store.routines.routine(id: routine.id) == expected)
+        #expect(try tablet.store.routines.routine(id: routine.id) == expected)
+        let items = try await TrainingRemoteStoreContract.pullAll(RemoteRoutineItemRow.self, from: remote)
+        #expect(items.map(\.position).sorted() == [1, 2, 3])
+        let routines = try await TrainingRemoteStoreContract.pullAll(RemoteRoutineRow.self, from: remote)
+        #expect(routines.map(\.isFavorite) == [false])
+        try phone.expectNothingPending()
+        try tablet.expectNothingPending()
+    }
 }

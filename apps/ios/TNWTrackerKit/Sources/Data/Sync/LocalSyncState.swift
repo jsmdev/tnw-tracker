@@ -127,6 +127,13 @@ public protocol SyncStateRepositoryProtocol: AnyObject {
     /// Records that the server refused the aggregate, with the reason. It stays
     /// pending and its data is untouched; the revision does not change. Returns
     /// `false` for an aggregate that is not stored or not syncable.
+    /// Records that the server acknowledged the exercise's muscle groups or the
+    /// routine's items with `fingerprint`, the list as it was read for that push,
+    /// whatever the parent's revision is now: the server holds that list. Returns
+    /// `false` for an aggregate with no child list or not stored.
+    @discardableResult
+    func markChildrenSynced(_ kind: SyncAggregateKind, id: UUID, fingerprint: String) throws -> Bool
+
     @discardableResult
     func markFailed(_ kind: SyncAggregateKind, id: UUID, reason: String) throws -> Bool
 
