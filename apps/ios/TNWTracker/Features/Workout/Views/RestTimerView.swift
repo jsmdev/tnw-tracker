@@ -3,14 +3,16 @@ import TNWTrackerKit
 
 // MARK: - RestTimerView
 
-/// Displays the active rest timer countdown with a skip button.
+/// Displays the active rest timer countdown with −15 s / +15 s and skip.
+/// The same view serves both timers (between sets and changing exercise).
 /// REQ-AWV-04 (timer sync), REQ-AWV-07 (Duration.TimeFormatStyle).
 ///
 /// Reads `RestTimerState` from the coordinator's timer service.
-/// Emits a single action: `onSkip`.
+/// Emits `onSkip` and `onAdjust(seconds)`.
 struct RestTimerView: View {
     let state: RestTimerState
     let onSkip: () -> Void
+    var onAdjust: (Int) -> Void = { _ in }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     // REQ-DS-05: el size del countdown escala con Dynamic Type vía @ScaledMetric
@@ -25,7 +27,13 @@ struct RestTimerView: View {
     var body: some View {
         VStack(spacing: Spacing.md) {
             timerLabel
-            skipButton
+            HStack(spacing: Spacing.md) {
+                adjustButton(title: "rest-timer.decrease-button", label: "rest-duration.decrease",
+                             identifier: AXID.RestTimer.decreaseButton, delta: -RestPolicy.stepSeconds)
+                skipButton
+                adjustButton(title: "rest-timer.increase-button", label: "rest-duration.increase",
+                             identifier: AXID.RestTimer.increaseButton, delta: RestPolicy.stepSeconds)
+            }
         }
         .animation(reduceMotion ? nil : .smooth, value: remaining)
     }
@@ -46,6 +54,21 @@ struct RestTimerView: View {
                 .contentTransition(.numericText(countsDown: true))
                 .accessibilityIdentifier(AXID.RestTimer.timerLabel)
         }
+    }
+
+    private func adjustButton(
+        title: LocalizedStringKey,
+        label: LocalizedStringKey,
+        identifier: String,
+        delta: Int
+    ) -> some View {
+        Button(title) { onAdjust(delta) }
+            .font(.headline)
+            .monospacedDigit()
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .accessibilityLabel(Text(label))
+            .accessibilityIdentifier(identifier)
     }
 
     private var skipButton: some View {

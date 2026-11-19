@@ -103,6 +103,57 @@
         }
       }
     },
+    "active-workout.discard.confirm": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descartar"
+          }
+        }
+      }
+    },
+    "active-workout.discard.keep": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep training"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seguir entrenando"
+          }
+        }
+      }
+    },
+    "active-workout.discard.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You haven't logged any sets. Discard the workout?"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No has registrado ninguna serie. ¿Descartar el entrenamiento?"
+          }
+        }
+      }
+    },
     "active-workout.elapsed-label": {
       "localizations": {
         "en": {
@@ -131,6 +182,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "Ejercicio actual"
+          }
+        }
+      }
+    },
+    "active-workout.exercise-options": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exercise options"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opciones del ejercicio"
           }
         }
       }
@@ -217,6 +284,38 @@
     },
     "Contraseña": {},
     "Email": {},
+    "exercise-rest.footer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved for this exercise and used in every session."
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se guarda para este ejercicio y se usa en todas las sesiones."
+          }
+        }
+      }
+    },
+    "exercise-rest.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest between sets"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descanso entre series"
+          }
+        }
+      }
+    },
     "home.next-session.empty-message": {
       "localizations": {
         "en": {
@@ -319,6 +418,40 @@
           "stringUnit": {
             "state": "translated",
             "value": "Próxima sesión"
+          }
+        }
+      }
+    },
+    "home.other-routines.see-all": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See all"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver todas"
+          }
+        }
+      }
+    },
+    "home.other-routines.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other routines"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Otras rutinas"
           }
         }
       }
@@ -437,6 +570,102 @@
         }
       }
     },
+    "rest-duration.decrease": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove 15 seconds"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar 15 segundos"
+          }
+        }
+      }
+    },
+    "rest-duration.increase": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add 15 seconds"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir 15 segundos"
+          }
+        }
+      }
+    },
+    "rest-duration.label": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duration"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duración"
+          }
+        }
+      }
+    },
+    "rest-duration.value %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld seconds"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld segundos"
+          }
+        }
+      }
+    },
+    "rest-timer.decrease-button": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "−15 s"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "−15 s"
+          }
+        }
+      }
+    },
+    "rest-timer.increase-button": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+15 s"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+15 s"
+          }
+        }
+      }
+    },
     "rest-timer.label": {
       "localizations": {
         "en": {
@@ -469,7 +698,89 @@
         }
       }
     },
-    "rpe.value %lld": {},
+    "rir.at-least %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld or more reps in reserve"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld o más repeticiones en reserva"
+          }
+        }
+      }
+    },
+    "rir.value %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld reps in reserve"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld repeticiones en reserva"
+          }
+        }
+      }
+    },
+    "routine.favorite.mark": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mark as favorite"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marcar como favorita"
+          }
+        }
+      }
+    },
+    "routine.favorite.unmark": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove from favorites"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar de favoritas"
+          }
+        }
+      }
+    },
+    "routine.favorite.value": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorite"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Favorita"
+          }
+        }
+      }
+    },
     "session-detail.exercises-section": {
       "localizations": {
         "en": {
@@ -598,13 +909,30 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld sets × %lld reps"
+            "value": "%lld sets of %lld reps"
           }
         },
         "es-ES": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld series × %lld repeticiones"
+            "value": "%lld series de %lld repeticiones"
+          }
+        }
+      }
+    },
+    "session-detail.sets-reps-range": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld sets of %2$lld to %3$lld reps"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld series de %2$lld a %3$lld repeticiones"
           }
         }
       }
@@ -827,23 +1155,23 @@
         }
       }
     },
-    "set-log.rpe-label": {
+    "set-log.rir-label": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Rate of Perceived Exertion"
+            "value": "Reps in reserve"
           }
         },
         "es-ES": {
           "stringUnit": {
             "state": "translated",
-            "value": "Esfuerzo percibido (RPE)"
+            "value": "Repeticiones en reserva"
           }
         }
       }
     },
-    "set-log.rpe-section-header": {
+    "set-log.rir-section-header": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -914,13 +1242,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Warmup set"
+            "value": "Warm-up"
           }
         },
         "es-ES": {
           "stringUnit": {
             "state": "translated",
-            "value": "Serie de calentamiento"
+            "value": "Calentamiento"
           }
         }
       }
@@ -958,7 +1286,151 @@
       }
     },
     "set.reps %lld": {},
-    "set.rpe": {},
+    "set.rir": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RIR"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "RIR"
+          }
+        }
+      }
+    },
+    "set.warmup-badge": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Warm-up"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calentamiento"
+          }
+        }
+      }
+    },
+    "set.warmup-short": {
+      "comment": "Short warm-up mark shown instead of the set number.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "C"
+          }
+        }
+      }
+    },
+    "settings.change-exercise-rest-footer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts after the last set of an exercise."
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arranca tras la última serie de un ejercicio."
+          }
+        }
+      }
+    },
+    "settings.change-exercise-rest-toggle": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest when changing exercise"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descanso al cambiar de ejercicio"
+          }
+        }
+      }
+    },
+    "settings.effort-section": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Effort"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esfuerzo"
+          }
+        }
+      }
+    },
+    "settings.rest-section": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rest"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descanso"
+          }
+        }
+      }
+    },
+    "settings.rir-maximum %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max RIR: %lld"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Máximo de RIR: %lld"
+          }
+        }
+      }
+    },
+    "settings.rir-maximum-footer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The effort selector offers 0 up to this value, the last option meaning this value or more."
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El selector de esfuerzo ofrece de 0 a este valor; la última opción significa este valor o más."
+          }
+        }
+      }
+    },
     "settings.title": {
       "localizations": {
         "en": {

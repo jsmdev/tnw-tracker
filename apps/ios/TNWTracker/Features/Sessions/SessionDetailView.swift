@@ -1,20 +1,19 @@
-import SwiftData
 import SwiftUI
 import TNWTrackerKit
 
 // MARK: - SessionDetailView
 
-/// Shows session info (name, description) + its exercises list.
+/// Shows a routine (name, description) + its exercises list, with a star
+/// toggle for the favourite mark (T5 AC5.4).
 /// Tapping an exercise navigates to `.exerciseDetail(exerciseID:)`.
 /// REQ-SESSLIST-04.
 struct SessionDetailView: View {
     @Environment(AppEnvironment.self) private var appEnv
-    @Environment(\.modelContext) private var modelContext
 
     let sessionID: UUID
 
-    @State private var session: Session?
-    @State private var exercises: [(sessionExercise: SessionExercise, exercise: Exercise?)] = []
+    @State private var session: Routine?
+    @State private var exercises: [(item: RoutineItem, exercise: Exercise?)] = []
     @State private var isLoading = true
 
     var body: some View {
@@ -33,6 +32,13 @@ struct SessionDetailView: View {
         }
         .navigationTitle(session.map { Text(verbatim: $0.name) } ?? Text("session-detail.title"))
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            if let session {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    favoriteButton(session: session)
+                }
+            }
+        }
         .task {
             await load()
         }
@@ -40,25 +46,15 @@ struct SessionDetailView: View {
 
     // MARK: - Content
 
-    private func content(session: Session) -> some View {
+    private func content(session: Routine) -> some View {
         List {
             // Session info header
             Section {
                 VStack(alignment: .leading, spacing: Spacing.sm) {
-                    if let desc = session.sessionDescription, !desc.isEmpty {
+                    if let desc = session.description, !desc.isEmpty {
                         Text(verbatim: desc)
                             .font(.body)
                             .foregroundStyle(.secondary)
-                    }
-
-                    if let rest = session.restBetweenExercisesSeconds {
-                        HStack {
-                            Image(systemName: "timer")
-                                .foregroundStyle(.secondary)
-                            Text("session-detail.rest-between-exercises \(rest)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        }
                     }
                 }
                 .padding(.vertical, Spacing.xs)
@@ -71,7 +67,7 @@ struct SessionDetailView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(exercises, id: \.sessionExercise.id) { item in
+                    ForEach(exercises, id: \.item.order) { item in
                         exerciseRow(item: item)
                     }
                 }
@@ -82,6 +78,7 @@ struct SessionDetailView: View {
                 PrimaryButton(title: "session-detail.start-button") {
                     appEnv.router.presentedActiveWorkout = ActiveWorkoutPresentation(id: sessionID)
                 }
+                .accessibilityIdentifier(AXID.RoutineDetail.startButton)
                 .listRowInsets(EdgeInsets(
                     top: Spacing.sm,
                     leading: Spacing.md,
@@ -95,8 +92,24 @@ struct SessionDetailView: View {
         .listStyle(.insetGrouped)
     }
 
-    private func exerciseRow(item: (sessionExercise: SessionExercise, exercise: Exercise?)) -> some View {
-        let se = item.sessionExercise
+    /// Star toggle that marks or unmarks the routine as a favourite (T5 AC5.4).
+    private func favoriteButton(session: Routine) -> some View {
+        Button {
+            toggleFavorite(session)
+        } label: {
+            Image(systemName: session.isFavorite ? "star.fill" : "star")
+        }
+        .accessibilityLabel(session.isFavorite ? "routine.favorite.unmark" : "routine.favorite.mark")
+        .accessibilityIdentifier(AXID.RoutineDetail.favoriteButton)
+    }
+
+    private func toggleFavorite(_ routine: Routine) {
+        try? appEnv.routineRepository.setFavorite(!routine.isFavorite, routineId: routine.id)
+        session = (try? appEnv.routineRepository.routine(id: routine.id)) ?? session
+    }
+
+    private func exerciseRow(item: (item: RoutineItem, exercise: Exercise?)) -> some View {
+        let se = item.item
         let ex = item.exercise
 
         return Button {
@@ -108,16 +121,22 @@ struct SessionDetailView: View {
                         .font(.body)
                         .fontWeight(.medium)
 
-                    if let sets = se.targetSets, let reps = se.targetReps {
-                        // Use verbatim + String(localized:) to avoid creating a literal
-                        // LocalizedStringKey like "session-detail.sets-reps %lld %lld".
-                        // The catalog key "session-detail.sets-reps" carries %lld format args.
-                        Text(verbatim: String(
-                            format: String(localized: "session-detail.sets-reps"),
-                            sets, reps
-                        ))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if let sets = se.targetSets,
+                       let target = TargetRepsFormat.setsReps(
+                           sets: sets,
+                           minReps: se.targetReps?.min,
+                           maxReps: se.targetReps?.max
+                       ),
+                       let spoken = TargetRepsFormat.accessibilityLabel(
+                           sets: sets,
+                           minReps: se.targetReps?.min,
+                           maxReps: se.targetReps?.max
+                       ) {
+                        // "3 × 8–12" (T8, D9); VoiceOver reads it in words.
+                        Text(verbatim: target)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .accessibilityLabel(Text(verbatim: spoken))
                     }
                 }
 
@@ -138,65 +157,26 @@ struct SessionDetailView: View {
         isLoading = true
         defer { isLoading = false }
 
-        let context = ModelContext(modelContext.container)
-
-        // Fetch session by ID
-        var sessionDescriptor = FetchDescriptor<Session>()
-        sessionDescriptor.predicate = #Predicate<Session> { $0.id == sessionID }
-        sessionDescriptor.fetchLimit = 1
-        guard let fetchedSession = (try? context.fetch(sessionDescriptor))?.first else {
+        guard let routine = try? appEnv.routineRepository.routine(id: sessionID) else {
             session = nil
             return
         }
-        session = fetchedSession
-
-        // Fetch session exercises ordered by orderIndex
-        var seDescriptor = FetchDescriptor<SessionExercise>(
-            sortBy: [SortDescriptor(\.orderIndex)]
-        )
-        seDescriptor.predicate = #Predicate<SessionExercise> { $0.sessionId == sessionID }
-        let sessionExercises = (try? context.fetch(seDescriptor)) ?? []
-
-        // SwiftData no soporta `contains` con [UUID] en #Predicate — fetch all + map en memoria.
-        let allExercises = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
+        session = routine
+        let allExercises = (try? appEnv.exerciseRepository.exercises()) ?? []
         let exerciseMap = Dictionary(uniqueKeysWithValues: allExercises.map { ($0.id, $0) })
-
-        exercises = sessionExercises.map { se in
-            (sessionExercise: se, exercise: exerciseMap[se.exerciseId])
+        exercises = routine.items.map { item in
+            (item: item, exercise: exerciseMap[item.exerciseId])
         }
     }
 }
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview("SessionDetailView — with exercises") {
-    let container = ModelContainerFactory.previewContainer()
-    let context = ModelContext(container)
-    let userId = UUID()
-    let session = Session(userId: userId, name: "Push Day")
-    session.sessionDescription = "Upper body pushing movements"
-    context.insert(session)
-
-    let bench = Exercise(name: "Bench Press", category: "strength")
-    let ohp = Exercise(name: "Overhead Press", category: "strength")
-    context.insert(bench)
-    context.insert(ohp)
-
-    let se1 = SessionExercise(sessionId: session.id, exerciseId: bench.id, orderIndex: 0)
-    se1.targetSets = 4
-    se1.targetReps = 8
-    se1.restBetweenSetsSeconds = 90
-    let se2 = SessionExercise(sessionId: session.id, exerciseId: ohp.id, orderIndex: 1)
-    se2.targetSets = 3
-    se2.targetReps = 10
-    context.insert(se1)
-    context.insert(se2)
-    session.sessionExercises = [se1, se2]
-    try? context.save()
-
-    return NavigationStack {
-        SessionDetailView(sessionID: session.id)
+    NavigationStack {
+        SessionDetailView(sessionID: SampleTrainingData.RoutineID.fullBodyA)
     }
-    .environment(AppEnvironment.bootstrap(modelContext: container.mainContext))
-    .modelContainer(container)
+    .environment(AppEnvironment.preview())
 }
+#endif

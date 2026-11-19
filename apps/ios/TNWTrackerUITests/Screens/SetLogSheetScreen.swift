@@ -62,6 +62,12 @@ struct SetLogSheetScreen {
         return ActiveWorkoutScreen(app: app).waitUntilLoaded()
     }
 
+    /// Taps the save button when the set starts a rest; returns the validated RestTimerScreen.
+    func saveStartingRest() -> RestTimerScreen {
+        saveButton.tap()
+        return RestTimerScreen(app: app).waitUntilLoaded()
+    }
+
     /// Taps the cancel button and returns an already-validated ActiveWorkoutScreen.
     func cancel() -> ActiveWorkoutScreen {
         cancelButton.tap()

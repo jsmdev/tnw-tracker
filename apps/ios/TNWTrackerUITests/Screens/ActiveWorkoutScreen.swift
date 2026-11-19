@@ -85,10 +85,31 @@ struct ActiveWorkoutScreen {
 
     // MARK: - Transitions
 
+    /// Opens the exercise's options and then "Descanso entre series".
+    /// The menu item exists as soon as the menu starts to open; it is tapped only
+    /// once it is hittable (fully presented), else the tap may only close the menu.
+    func openExerciseRest() -> ExerciseRestSheetScreen {
+        let menu = app.buttons[AXID.ActiveWorkout.exerciseOptionsMenu]
+        menu.waitUntilHittable()
+        menu.tap()
+        let restButton = app.buttons[AXID.ActiveWorkout.exerciseRestButton]
+        XCTAssertTrue(restButton.waitForExistence(timeout: 3), "Exercise options did not show the rest item.")
+        restButton.waitUntilHittable()
+        restButton.tap()
+        return ExerciseRestSheetScreen(app: app).waitUntilLoaded()
+    }
+
     /// Taps the log-set button and returns an already-validated SetLogSheetScreen.
     func tapLogSet() -> SetLogSheetScreen {
         logSetButton.tap()
         return SetLogSheetScreen(app: app).waitUntilLoaded()
+    }
+
+    /// Taps the end button of a workout with no working sets; returns the
+    /// validated discard prompt (T6 AC6.1).
+    func tapEndWithoutSets() -> DiscardWorkoutScreen {
+        endButton.tap()
+        return DiscardWorkoutScreen(app: app).waitUntilLoaded()
     }
 
     /// Taps the end button and returns an already-validated WorkoutSummaryScreen.

@@ -1,12 +1,11 @@
 import Foundation
 import Observation
-import SwiftData
 import TNWTrackerKit
 
 // MARK: - SessionListModel
 
-/// View model for SessionListView.
-/// Manages pagination (50 per page), filter (.all / .withWorkouts), ordering (most recent first),
+/// View model for SessionListView: the routines the user can start.
+/// Manages pagination (50 per page), filter (.all / .withWorkouts), ordering (favourites first, then by name),
 /// and search-by-name. Covers REQ-SESSLIST-01, REQ-SESSLIST-02, REQ-SESSLIST-03.
 @Observable
 @MainActor
@@ -15,12 +14,13 @@ final class SessionListModel {
 
     enum Filter: String, CaseIterable {
         case all
+        /// Routines with at least one completed session.
         case withWorkouts
     }
 
     // MARK: - State
 
-    private(set) var sessions: [Session] = []
+    private(set) var sessions: [Routine] = []
     private(set) var isLoading = false
     private(set) var hasNextPage = false
 
@@ -34,14 +34,14 @@ final class SessionListModel {
 
     // MARK: - Private
 
-    private let container: ModelContainer
+    private let routines: any RoutineRepositoryProtocol
     private let pageSize = 50
     private var currentPage = 0
 
     // MARK: - Init
 
-    init(container: ModelContainer) {
-        self.container = container
+    init(routines: any RoutineRepositoryProtocol) {
+        self.routines = routines
     }
 
     // MARK: - Public API
@@ -50,6 +50,13 @@ final class SessionListModel {
         currentPage = 0
         sessions = []
         await loadPage()
+    }
+
+    /// Marks or unmarks `routine` as a favourite and reloads the list, so it
+    /// moves into or out of the favourites group (AC5.1, AC5.4).
+    func setFavorite(_ favorite: Bool, for routine: Routine) async {
+        try? routines.setFavorite(favorite, routineId: routine.id)
+        await loadFirstPage()
     }
 
     func loadMore() async {
@@ -63,56 +70,19 @@ final class SessionListModel {
         isLoading = true
         defer { isLoading = false }
 
-        let context = ModelContext(container)
-        let offset = currentPage * pageSize
-
-        let fetched = fetchSessions(context: context, offset: offset)
-
-        if filter == .withWorkouts {
-            let filtered = applyWithWorkoutsFilter(fetched, context: context)
-            sessions.append(contentsOf: filtered)
-        } else {
-            sessions.append(contentsOf: fetched)
-        }
+        let query = RoutineQuery(
+            search: searchQuery,
+            onlyPerformed: filter == .withWorkouts,
+            offset: currentPage * pageSize,
+            limit: pageSize
+        )
+        let fetched = (try? routines.routines(query)) ?? []
+        sessions.append(contentsOf: fetched)
 
         // If we got a full page, there may be more
         hasNextPage = fetched.count == pageSize
         if hasNextPage {
             currentPage += 1
         }
-    }
-
-    private func fetchSessions(context: ModelContext, offset: Int) -> [Session] {
-        var descriptor = FetchDescriptor<Session>(
-            sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
-        )
-        descriptor.fetchLimit = pageSize
-        descriptor.fetchOffset = offset
-
-        if !searchQuery.isEmpty {
-            let query = searchQuery
-            descriptor.predicate = #Predicate<Session> { session in
-                session.name.localizedStandardContains(query)
-            }
-        }
-
-        return (try? context.fetch(descriptor)) ?? []
-    }
-
-    /// Filters sessions to those that have at least one completed Workout referencing them by sessionId.
-    private func applyWithWorkoutsFilter(_ sessions: [Session], context: ModelContext) -> [Session] {
-        guard !sessions.isEmpty else { return [] }
-
-        // Fetch all completed workouts that have a sessionId set
-        var workoutDescriptor = FetchDescriptor<Workout>()
-        workoutDescriptor.predicate = #Predicate<Workout> { workout in
-            workout.statusRaw == "completed"
-        }
-        let completedWorkouts = (try? context.fetch(workoutDescriptor)) ?? []
-
-        // Build set of sessionIds that have at least one completed workout
-        let sessionIdsWithWorkouts = Set(completedWorkouts.compactMap(\.sessionId))
-
-        return sessions.filter { sessionIdsWithWorkouts.contains($0.id) }
     }
 }

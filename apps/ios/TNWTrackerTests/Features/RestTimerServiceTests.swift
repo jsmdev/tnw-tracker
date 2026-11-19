@@ -1,6 +1,4 @@
 import Foundation
-import Supabase
-import SwiftData
 import Testing
 @testable import TNWTracker
 @testable import TNWTrackerKit
@@ -11,22 +9,10 @@ import Testing
 // Strict TDD — RED → GREEN for Task 11.1 (REQ-WIDGET-01: workoutName real in ContentState).
 //
 // Strategy:
-// - RestTimerService depends on SupabaseClient (concrete type from SDK).
-//   We create a dummy client pointing to a nonexistent URL.
-//   All Supabase calls inside start() use `try?` — failures are silently swallowed.
+// - RestTimerService keeps the timer in memory only (no persistence, no network).
 // - LiveActivityController cannot run Live Activities in Simulator (ActivityKit gated),
 //   so liveActivity.start() / update() are no-ops in the test environment.
 // - We test only the observable surface: workoutName property + state.workoutId after start().
-
-private func makeDummySupabase() -> SupabaseClient {
-    guard let url = URL(string: "https://test.invalid") else {
-        preconditionFailure("Invalid dummy Supabase URL")
-    }
-    return SupabaseClient(
-        supabaseURL: url,
-        supabaseKey: "test-key"
-    )
-}
 
 @Suite("RestTimerService workoutName", .serialized)
 @MainActor
@@ -37,14 +23,7 @@ struct RestTimerServiceTests {
     /// Verifies the new workoutName param compiles + state.workoutId is set correctly.
     @Test("start() accepts workoutName and state carries correct workoutId")
     func startAcceptsWorkoutName() async throws {
-        let container = try ModelContainerFactory.makeContainer(inMemory: true)
-        let context = ModelContext(container)
-        let service = RestTimerService(
-            supabase: makeDummySupabase(),
-            modelContext: context,
-            liveActivity: LiveActivityController(),
-            networkMonitor: StubNetworkMonitor(isOnline: true)
-        )
+        let service = RestTimerService(liveActivity: LiveActivityController(requestsActivities: false))
 
         let workoutId = UUID()
         let workoutName = "Push Day — Test"
@@ -68,14 +47,7 @@ struct RestTimerServiceTests {
     /// After start(), the exposed workoutName property matches what was passed.
     @Test("workoutName property reflects the value passed to start()")
     func workoutNameIsStored() async throws {
-        let container = try ModelContainerFactory.makeContainer(inMemory: true)
-        let context = ModelContext(container)
-        let service = RestTimerService(
-            supabase: makeDummySupabase(),
-            modelContext: context,
-            liveActivity: LiveActivityController(),
-            networkMonitor: StubNetworkMonitor(isOnline: true)
-        )
+        let service = RestTimerService(liveActivity: LiveActivityController(requestsActivities: false))
 
         let name = "Legs Day"
         await service.start(
@@ -90,18 +62,10 @@ struct RestTimerServiceTests {
         await service.skip()
     }
 
-    /// Offline path: start() still sets local state and doesn't crash when networkMonitor
-    /// reports offline. Remote Supabase calls are gated by isOnline; they must be skipped.
+    /// The timer is local: start() sets its state without any network dependency.
     @Test("start() works offline — local state is set without crashing")
     func startWorksOffline() async throws {
-        let container = try ModelContainerFactory.makeContainer(inMemory: true)
-        let context = ModelContext(container)
-        let service = RestTimerService(
-            supabase: makeDummySupabase(),
-            modelContext: context,
-            liveActivity: LiveActivityController(),
-            networkMonitor: StubNetworkMonitor(isOnline: false)
-        )
+        let service = RestTimerService(liveActivity: LiveActivityController(requestsActivities: false))
 
         let workoutId = UUID()
         await service.start(
@@ -120,14 +84,7 @@ struct RestTimerServiceTests {
     /// After skip(), workoutName persists (stored on service, not cleared on skip).
     @Test("workoutName persists after skip()")
     func workoutNamePersistsAfterSkip() async throws {
-        let container = try ModelContainerFactory.makeContainer(inMemory: true)
-        let context = ModelContext(container)
-        let service = RestTimerService(
-            supabase: makeDummySupabase(),
-            modelContext: context,
-            liveActivity: LiveActivityController(),
-            networkMonitor: StubNetworkMonitor(isOnline: true)
-        )
+        let service = RestTimerService(liveActivity: LiveActivityController(requestsActivities: false))
 
         let name = "Pull Day"
         await service.start(workoutId: UUID(), workoutName: name, type: .betweenSets, durationSeconds: 30)

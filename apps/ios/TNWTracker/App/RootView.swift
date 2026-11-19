@@ -1,16 +1,17 @@
-import SwiftData
 import SwiftUI
 import TNWTrackerKit
 
 struct RootView: View {
     @Environment(AppEnvironment.self) private var appEnv
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         @Bindable var router = appEnv.router
         NavigationStack(path: $router.path) {
-            HomeView(container: modelContext.container)
+            HomeView(
+                sessionRepository: appEnv.sessionRepository,
+                routineRepository: appEnv.routineRepository
+            )
                 .navigationDestination(for: Route.self) { route in
                     destination(for: route)
                 }
@@ -58,7 +59,7 @@ struct RootView: View {
         case let .exerciseDetail(exerciseID):
             Text(verbatim: exerciseID.uuidString)
         case .sessionHistory:
-            SessionListView(container: modelContext.container)
+            SessionListView(routineRepository: appEnv.routineRepository)
         case .settings:
             SettingsView()
         }
@@ -66,12 +67,11 @@ struct RootView: View {
 }
 
 /// Contenedor del cover que crea el coordinator y arranca el workout
-/// desde la Session referida en `sessionID`. El `@State` propio evita el
+/// desde la rutina referida en `sessionID`. El `@State` propio evita el
 /// race que sufría el patrón `@State` en el padre + `.onChange`.
 private struct ActiveWorkoutCover: View {
     let sessionID: UUID
     @Environment(AppEnvironment.self) private var appEnv
-    @Environment(\.modelContext) private var modelContext
     @State private var coordinator: ActiveWorkoutCoordinator?
 
     var body: some View {
@@ -94,19 +94,10 @@ private struct ActiveWorkoutCover: View {
             }
             coordinator = c
             appEnv.activeCoordinator = c
-            // Fetch Session y arrancar el workout. Si la session no existe o el
+            // Arrancar el workout desde la rutina. Si la rutina no existe o el
             // start falla, cerramos el cover para volver al Home.
-            let id = sessionID
-            var descriptor = FetchDescriptor<Session>()
-            descriptor.predicate = #Predicate<Session> { $0.id == id }
-            descriptor.fetchLimit = 1
-            guard let session = try? modelContext.fetch(descriptor).first else {
-                appEnv.router.presentedActiveWorkout = nil
-                appEnv.activeCoordinator = nil
-                return
-            }
             do {
-                try await c.start(from: session)
+                try await c.start(routineId: sessionID)
             } catch {
                 appEnv.router.presentedActiveWorkout = nil
                 appEnv.activeCoordinator = nil

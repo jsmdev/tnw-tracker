@@ -14,18 +14,35 @@ private let logger = Logger(subsystem: "com.tnwtracker", category: "liveactivity
 @MainActor
 public final class LiveActivityController {
     private var currentActivity: Activity<ActiveWorkoutAttributes>?
+    private let requestsActivities: Bool
 
     /// `nonisolated` so the init is callable from any context without
     /// requiring `await`. The instance itself is @MainActor-isolated once
     /// constructed; its properties are never accessed before the first method
     /// call reaches the main actor.
-    public nonisolated init() {}
+    ///
+    /// `requestsActivities: false` never starts a Live Activity (unit tests): a
+    /// Live Activity outlives the test host, and the system relaunches the app in
+    /// the background for it, without the UI tests' launch arguments (T11).
+    public nonisolated init(requestsActivities: Bool = true) {
+        self.requestsActivities = requestsActivities
+    }
+
+    /// Ends every workout Live Activity of the app, including ones left by an
+    /// earlier process (a crashed run or a test host). Used by the UI-testing
+    /// launch so each run starts without them.
+    public static func endAll() async {
+        for activity in Activity<ActiveWorkoutAttributes>.activities {
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
+    }
 
     // MARK: - MainActor face (callers already on MainActor)
 
     /// Requests a new Live Activity for the given workout.
     /// Only callable from @MainActor context (e.g. ActiveWorkoutCoordinator).
     public func start(workoutId: UUID, workoutName: String) {
+        guard requestsActivities else { return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             logger.info("Live Activities disabled on this device — skipping start")
             return
@@ -103,7 +120,7 @@ extension LiveActivityController: LiveActivityRendering {
         attributes: ActiveWorkoutAttributes,
         contentState: ActiveWorkoutAttributes.ContentState
     ) async throws {
-        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        guard requestsActivities, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         currentActivity = try Activity.request(
             attributes: attributes,
             content: .init(state: contentState, staleDate: nil)

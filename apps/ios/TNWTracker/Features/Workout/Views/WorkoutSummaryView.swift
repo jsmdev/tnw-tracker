@@ -1,4 +1,3 @@
-import SwiftData
 import SwiftUI
 import TNWTrackerKit
 
@@ -9,7 +8,6 @@ import TNWTrackerKit
 /// REQ-WS-01, REQ-WS-02, REQ-WS-03, REQ-WS-04.
 struct WorkoutSummaryView: View {
     @Environment(AppEnvironment.self) private var appEnv
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
     let workoutId: UUID
@@ -224,52 +222,28 @@ struct WorkoutSummaryView: View {
         isLoading = true
         defer { isLoading = false }
 
-        let ctx = ModelContext(modelContext.container)
-
-        // Fetch the completed workout by ID
-        var workoutDescriptor = FetchDescriptor<Workout>()
-        workoutDescriptor.predicate = #Predicate<Workout> { $0.id == workoutId }
-        workoutDescriptor.fetchLimit = 1
-
-        guard let workout = (try? ctx.fetch(workoutDescriptor))?.first else {
+        guard let session = try? appEnv.sessionRepository.session(id: workoutId) else {
             summary = nil
             return
         }
-
-        summary = WorkoutSummaryBuilder.build(from: workout, context: ctx)
+        let names = ((try? appEnv.exerciseRepository.exercises()) ?? [])
+            .reduce(into: [UUID: String]()) { $0[$1.id] = $1.name }
+        let bests = (try? appEnv.sessionRepository.bestWeights(
+            completedBefore: session.completedAt ?? Date()
+        )) ?? [:]
+        summary = WorkoutSummaryBuilder.build(from: session, exerciseNames: names, previousBests: bests)
     }
 }
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview("WorkoutSummaryView") {
-    let container = ModelContainerFactory.previewContainer()
-    let context = ModelContext(container)
-    let userId = UUID()
-    let exerciseId = UUID()
-
-    let exercise = Exercise(name: "Bench Press", category: "strength")
-    exercise.id = exerciseId
-    context.insert(exercise)
-
-    let workout = Workout(userId: userId, name: "Push Day")
-    workout.completedAt = Date()
-    workout.durationSeconds = 3720 // 62 min
-    context.insert(workout)
-
-    let we = WorkoutExercise(workoutId: workout.id, exerciseId: exerciseId, orderIndex: 0)
-    context.insert(we)
-    workout.workoutExercises.append(we)
-
-    for i in 1 ... 4 {
-        let s = ExerciseSet(workoutExerciseId: we.id, setNumber: i)
-        s.reps = 8; s.weight = 80.0; s.weightUnit = .kg; s.isWarmup = false
-        context.insert(s); we.exerciseSets.append(s)
-    }
-    try? context.save()
-
-    let appEnv = AppEnvironment.bootstrap(modelContext: context)
-    return WorkoutSummaryView(workoutId: workout.id)
+    let appEnv = AppEnvironment.preview()
+    let lastSession = try? appEnv.sessionRepository.completedSessions(
+        in: DateInterval(start: .distantPast, end: Date())
+    ).first
+    WorkoutSummaryView(workoutId: lastSession?.id ?? UUID())
         .environment(appEnv)
-        .modelContainer(container)
 }
+#endif

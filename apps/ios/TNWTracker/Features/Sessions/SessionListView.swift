@@ -1,18 +1,17 @@
-import SwiftData
 import SwiftUI
 import TNWTrackerKit
 
 // MARK: - SessionListView
 
-/// Displays a paginated, filterable, searchable list of session templates.
+/// Displays a paginated, filterable, searchable list of routines: favourites
+/// first with a star, marked or unmarked by swiping the row (T5 AC5.1, AC5.4).
 /// REQ-SESSLIST-01, REQ-SESSLIST-02, REQ-SESSLIST-03, REQ-SESSLIST-04, REQ-SESSLIST-05.
 struct SessionListView: View {
     @Environment(AppEnvironment.self) private var appEnv
-    @Environment(\.modelContext) private var modelContext
     @State private var model: SessionListModel
 
-    init(container: ModelContainer) {
-        _model = State(initialValue: SessionListModel(container: container))
+    init(routineRepository: any RoutineRepositoryProtocol) {
+        _model = State(initialValue: SessionListModel(routines: routineRepository))
     }
 
     var body: some View {
@@ -57,23 +56,45 @@ struct SessionListView: View {
         .listStyle(.plain)
     }
 
-    private func sessionRow(_ session: Session) -> some View {
+    private func sessionRow(_ session: Routine) -> some View {
         Button {
             appEnv.router.push(.sessionDetail(sessionID: session.id))
         } label: {
             Card {
-                VStack(alignment: .leading, spacing: Spacing.sm) {
-                    Text(verbatim: session.name)
-                        .font(.headline)
+                HStack(alignment: .firstTextBaseline, spacing: Spacing.sm) {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        Text(verbatim: session.name)
+                            .font(.headline)
 
-                    Text("session-list.row.exercises-count \(session.sessionExercises.count)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        Text("session-list.row.exercises-count \(session.items.count)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if session.isFavorite {
+                        Image(systemName: "star.fill")
+                            .foregroundStyle(.orange)
+                            .accessibilityHidden(true)
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .buttonStyle(.plain)
+        .accessibilityValue(session.isFavorite ? Text("routine.favorite.value") : Text(verbatim: ""))
+        .accessibilityIdentifier(AXID.RoutineList.row(session.id))
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+            Button {
+                Task { await model.setFavorite(!session.isFavorite, for: session) }
+            } label: {
+                Label(
+                    session.isFavorite ? "routine.favorite.unmark" : "routine.favorite.mark",
+                    systemImage: session.isFavorite ? "star.slash" : "star"
+                )
+            }
+            .tint(.orange)
+            .accessibilityIdentifier(AXID.RoutineList.favoriteAction)
+        }
     }
 
     private var loadMoreRow: some View {
@@ -125,31 +146,20 @@ struct SessionListView: View {
 
 // MARK: - Preview
 
+#if DEBUG
 #Preview("SessionListView — with data") {
-    let container = ModelContainerFactory.previewContainer()
-    let context = ModelContext(container)
-    let userId = UUID()
-    let push = Session(userId: userId, name: "Push Day")
-    let pull = Session(userId: userId, name: "Pull Day")
-    context.insert(push)
-    context.insert(pull)
-    let se = SessionExercise(sessionId: push.id, exerciseId: UUID(), orderIndex: 0)
-    context.insert(se)
-    push.sessionExercises = [se]
-    try? context.save()
-
-    return NavigationStack {
-        SessionListView(container: container)
+    let appEnv = AppEnvironment.preview()
+    NavigationStack {
+        SessionListView(routineRepository: appEnv.routineRepository)
     }
-    .environment(AppEnvironment.bootstrap(modelContext: container.mainContext))
-    .modelContainer(container)
+    .environment(appEnv)
 }
 
 #Preview("SessionListView — empty") {
-    let container = ModelContainerFactory.previewContainer()
-    return NavigationStack {
-        SessionListView(container: container)
+    let appEnv = AppEnvironment.preview(withSampleData: false)
+    NavigationStack {
+        SessionListView(routineRepository: appEnv.routineRepository)
     }
-    .environment(AppEnvironment.bootstrap(modelContext: container.mainContext))
-    .modelContainer(container)
+    .environment(appEnv)
 }
+#endif

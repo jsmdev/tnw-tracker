@@ -1,277 +1,325 @@
 import Foundation
-import Supabase
-import SwiftData
 import Testing
 @testable import TNWTracker
 @testable import TNWTrackerKit
 
 // MARK: - ActiveWorkoutCoordinatorTests
 
-//
-// Tests for relationship wiring after logSet and coordinator state transitions.
-// Covers Batch 7 requirements: SwiftData relationship integrity (MANDATORY per ADR).
-//
-// RED→GREEN: tests written before implementation of any new logic.
-
-@Suite("ActiveWorkoutCoordinator", .serialized)
-@MainActor
-struct ActiveWorkoutCoordinatorTests {
-    let container: ModelContainer
-
-    init() throws {
-        container = try ModelContainerFactory.makeContainer(inMemory: true)
-    }
-
-    // MARK: - Relationship wiring
-
-    @Test("recordSet wires exerciseSets relationship on WorkoutExercise")
-    func recordSetWiresRelationshipOnWorkoutExercise() throws {
-        let context = ModelContext(container)
-        let userId = UUID()
-
-        // Setup: Workout + WorkoutExercise (replicating the mandatory explicit-append pattern)
-        let workout = Workout(userId: userId, name: "Test Workout")
-        context.insert(workout)
-
-        let we = WorkoutExercise(workoutId: workout.id, exerciseId: UUID(), orderIndex: 0)
-        context.insert(we)
-        workout.workoutExercises.append(we) // EXPLICIT — per swiftdata bug
-
-        try context.save()
-
-        // Simulate what recordSet does inside the coordinator
-        let setNumber = we.exerciseSets.count + 1
-        let set = ExerciseSet(workoutExerciseId: we.id, setNumber: setNumber)
-        set.reps = 8
-        set.weight = 100.0
-        set.weightUnit = .kg
-        set.rpe = 8
-        set.isWarmup = false
-        set.completedAt = Date()
-        context.insert(set)
-        we.exerciseSets.append(set) // EXPLICIT — per swiftdata bug
-        try context.save()
-
-        // Verify relationship is wired
-        #expect(we.exerciseSets.count == 1)
-        #expect(we.exerciseSets.first?.reps == 8)
-        #expect(we.exerciseSets.first?.rpe == 8)
-    }
-
-    @Test("workout.workoutExercises populated after explicit append")
-    func workoutExercisesPopulatedAfterAppend() throws {
-        let context = ModelContext(container)
-        let userId = UUID()
-
-        let workout = Workout(userId: userId, name: "Push Day")
-        context.insert(workout)
-
-        let we1 = WorkoutExercise(workoutId: workout.id, exerciseId: UUID(), orderIndex: 0)
-        let we2 = WorkoutExercise(workoutId: workout.id, exerciseId: UUID(), orderIndex: 1)
-        context.insert(we1)
-        context.insert(we2)
-        workout.workoutExercises.append(we1)
-        workout.workoutExercises.append(we2)
-        try context.save()
-
-        // Verify parent→children relationship populated
-        #expect(workout.workoutExercises.count == 2)
-    }
-
-    @Test("multiple sets accumulate on single WorkoutExercise")
-    func multipleSetsAccumulateOnExercise() throws {
-        let context = ModelContext(container)
-        let userId = UUID()
-
-        let workout = Workout(userId: userId, name: "Test")
-        context.insert(workout)
-        let we = WorkoutExercise(workoutId: workout.id, exerciseId: UUID(), orderIndex: 0)
-        context.insert(we)
-        workout.workoutExercises.append(we)
-        try context.save()
-
-        // Log 3 sets
-        for i in 1 ... 3 {
-            let set = ExerciseSet(workoutExerciseId: we.id, setNumber: i)
-            set.reps = 8
-            set.weight = Double(100 + (i - 1) * 5)
-            set.weightUnit = .kg
-            set.isWarmup = false
-            set.completedAt = Date()
-            context.insert(set)
-            we.exerciseSets.append(set)
-        }
-        try context.save()
-
-        #expect(we.exerciseSets.count == 3)
-    }
-
-    @Test("RPE nil is allowed (warmup sets)")
-    func rpeNilIsAllowedForWarmup() throws {
-        let context = ModelContext(container)
-        let userId = UUID()
-
-        let workout = Workout(userId: userId, name: "Test")
-        context.insert(workout)
-        let we = WorkoutExercise(workoutId: workout.id, exerciseId: UUID(), orderIndex: 0)
-        context.insert(we)
-        workout.workoutExercises.append(we)
-        try context.save()
-
-        let warmupSet = ExerciseSet(workoutExerciseId: we.id, setNumber: 1)
-        warmupSet.isWarmup = true
-        warmupSet.rpe = nil
-        warmupSet.reps = 10
-        warmupSet.weight = 60.0
-        warmupSet.weightUnit = .kg
-        warmupSet.completedAt = Date()
-        context.insert(warmupSet)
-        we.exerciseSets.append(warmupSet)
-        try context.save()
-
-        #expect(warmupSet.rpe == nil)
-        #expect(we.exerciseSets.count == 1)
-    }
-
-    // MARK: - Bug #88: reanudar residual + finish() atómico
-
-    /// Construye el coordinador real con dependencias reales sobre el `context`
-    /// in-memory. El `SupabaseClient` apunta a un host inválido a propósito: el
-    /// sync remoto falla de verdad (sin mocks), ejercitando el camino best-effort.
-    private func makeCoordinator(_ context: ModelContext, userId: UUID) -> ActiveWorkoutCoordinator {
-        guard let invalidURL = URL(string: "https://test.invalid") else {
-            preconditionFailure("URL de prueba inválido")
-        }
-        let supabase = SupabaseClient(supabaseURL: invalidURL, supabaseKey: "test-key")
-        let monitor = NetworkMonitor()
-        let engine = SyncEngineImpl(modelContext: context, supabase: supabase, networkMonitor: monitor)
-        let repo = WorkoutRepository(modelContext: context, syncEngine: engine)
-        let timer = RestTimerService(
-            supabase: supabase,
-            modelContext: context,
-            liveActivity: LiveActivityController(),
-            networkMonitor: monitor
-        )
-        return ActiveWorkoutCoordinator(
-            userId: userId,
-            workoutRepository: repo,
-            syncEngine: engine,
-            timerService: timer,
-            liveActivity: LiveActivityController(),
-            supabase: supabase,
-            modelContext: context
-        )
-    }
-
-    @Test("start(from:) reanuda un workout activo residual en vez de quedar en idle")
-    func startResumesResidualActiveWorkout() async throws {
-        let context = ModelContext(container)
-        let userId = UUID()
-
-        // Workout residual activo ya persistido (p.ej. la app se cerró a mitad)
-        let residual = Workout(userId: userId, name: "Residual")
-        context.insert(residual)
-        let we = WorkoutExercise(workoutId: residual.id, exerciseId: UUID(), orderIndex: 0)
-        context.insert(we)
-        residual.workoutExercises.append(we)
-        try context.save()
-
-        // Una Session distinta: NO debería usarse porque hay un residual
-        let session = Session(userId: userId, name: "Sesión nueva")
-        context.insert(session)
-        try context.save()
-
-        let coordinator = makeCoordinator(context, userId: userId)
-        try await coordinator.start(from: session)
-
-        // Reanudó el residual (no quedó en .idle ni creó otro workout)
-        #expect(coordinator.phase == .active)
-        #expect(coordinator.workout?.id == residual.id)
-        let count = try context.fetchCount(FetchDescriptor<Workout>())
-        #expect(count == 1)
-    }
-
-    @Test("finish() deja el workout completed y phase .idle aunque el sync remoto falle")
-    func finishIsAtomicEvenWhenRemoteSyncFails() async throws {
-        let context = ModelContext(container)
-        let userId = UUID()
-
-        let session = Session(userId: userId, name: "Sesión")
-        context.insert(session)
-        let se = SessionExercise(sessionId: session.id, exerciseId: UUID(), orderIndex: 0)
-        se.targetSets = 1
-        context.insert(se)
-        session.sessionExercises.append(se)
-        try context.save()
-
-        let coordinator = makeCoordinator(context, userId: userId)
-        try await coordinator.start(from: session)
-        #expect(coordinator.phase == .active)
-
-        // El SupabaseClient apunta a host inválido → pushPendingChanges() falla en
-        // red de verdad. finish() debe absorberlo y cerrar igual.
-        try await coordinator.finish()
-
-        #expect(coordinator.phase == .idle)
-        #expect(coordinator.completedWorkoutId != nil)
-        let workouts = try context.fetch(FetchDescriptor<Workout>())
-        #expect(workouts.first?.status == .completed)
+/// Sync that always fails, to prove `finish()` closes the session anyway.
+private final class FailingSync: SyncEngine {
+    struct Offline: Error {}
+    private(set) var calls = 0
+    func fullSync() async throws {
+        calls += 1
+        throw Offline()
     }
 }
 
-// MARK: - SetLogFormState Tests
+/// The coordinator drives a session through `SessionRepositoryProtocol`:
+/// no SwiftData, no network.
+@Suite("ActiveWorkoutCoordinator", .serialized)
+@MainActor
+struct ActiveWorkoutCoordinatorTests {
+    let fx: TrainingFixtures
 
-@Suite("SetLogFormState")
-struct SetLogFormStateTests {
-    @Test("default state has reps 0, weight 0, no RPE, not warmup")
-    func defaultState() {
-        let state = SetLogFormState()
-        #expect(state.reps == 0)
-        #expect(state.weight == 0.0)
-        #expect(state.rpe == nil)
-        #expect(state.isWarmup == false)
+    init() throws {
+        fx = try TrainingFixtures()
     }
 
-    @Test("isValid requires reps > 0")
-    func isValidRequiresPositiveReps() {
-        var state = SetLogFormState()
-        #expect(!state.isValid)
-
-        state.reps = 5
-        #expect(state.isValid)
+    private func makeCoordinator(sync: any SyncEngine = NoopSyncEngine()) -> ActiveWorkoutCoordinator {
+        let liveActivity = LiveActivityController(requestsActivities: false)
+        return ActiveWorkoutCoordinator(
+            sessions: fx.sessions,
+            routines: fx.routines,
+            exerciseSettings: fx.store.exerciseSettings,
+            changeExerciseRest: { 120 },
+            syncEngine: sync,
+            timerService: RestTimerService(liveActivity: liveActivity),
+            liveActivity: liveActivity,
+            now: { TrainingFixtures.t0 }
+        )
     }
 
-    @Test("isValid allows weight 0 (bodyweight exercises)")
-    func isValidAllowsZeroWeight() {
-        var state = SetLogFormState()
-        state.reps = 10
-        state.weight = 0.0
-        #expect(state.isValid)
+    @Test("start(routineId:) opens a session in progress with the routine's entries")
+    func startFromRoutine() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+
+        #expect(coordinator.phase == .active)
+        #expect(coordinator.session?.routineId == routine.id)
+        #expect(coordinator.session?.name == routine.name)
+        #expect(coordinator.entries.map(\.exerciseId) == [fx.squat.id, fx.press.id])
+        #expect(coordinator.currentEntry?.exerciseId == fx.squat.id)
+        #expect(try fx.sessions.activeSession()?.id == coordinator.activeWorkoutId)
     }
 
-    @Test("RPE clamp: values outside 1–10 are invalid")
-    func rpeValidRange() {
-        var state = SetLogFormState()
-        state.reps = 5
+    @Test("start(routineId:) throws for a routine that does not exist")
+    func startUnknownRoutine() async {
+        let coordinator = makeCoordinator()
+        await #expect(throws: TrainingDataError.notFound) {
+            try await coordinator.start(routineId: UUID())
+        }
+        #expect(coordinator.phase == .idle)
+    }
 
-        // Nil RPE is fine
-        state.rpe = nil
-        #expect(state.isValid)
+    @Test("recordSet logs a manual set on the current entry and rests between sets")
+    func recordSetLogsManualSet() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
 
-        // Valid RPE
-        state.rpe = 8
-        #expect(state.isValid)
+        try await coordinator.recordSet(reps: 8, weight: .kg(16), rir: 2)
 
-        // Edge cases
-        state.rpe = 1
-        #expect(state.isValid)
-        state.rpe = 10
-        #expect(state.isValid)
+        let entry = try #require(coordinator.currentEntry)
+        #expect(entry.status == .done)
+        #expect(entry.manualSets.count == 1)
+        #expect(entry.manualSets.first?.values == SetValues(reps: 8, weight: .kg(16), rir: 2))
+        #expect(coordinator.phase == .restingBetweenSets)
+        await coordinator.skipTimer()
+    }
 
-        // Invalid
-        state.rpe = 0
-        #expect(!state.isValid)
-        state.rpe = 11
-        #expect(!state.isValid)
+    @Test("a warm-up set is stored as warm-up, with its RIR as chosen, and starts no rest")
+    func recordWarmupSet() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+
+        try await coordinator.recordSet(reps: 12, weight: .kg(8), rir: 0, warmup: true)
+
+        let set = try #require(coordinator.currentEntry?.manualSets.first)
+        #expect(set.warmup)
+        #expect(set.values.rir == 0)
+        #expect(coordinator.phase == .active)
+
+        try coordinator.setWarmup(false, setId: set.id)
+        #expect(coordinator.currentEntry?.manualSets.first?.warmup == false)
+    }
+
+    @Test("warm-up sets do not count toward the routine's target sets")
+    func warmupDoesNotCountTowardTarget() async throws {
+        let routine = try fx.makeRoutine()  // squat: 3 target sets
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+
+        try await coordinator.recordSet(reps: 12, weight: .kg(20), rir: 5, warmup: true)
+        try await coordinator.recordSet(reps: 8, weight: .kg(60), rir: 2)
+        await coordinator.skipTimer()
+        try await coordinator.recordSet(reps: 8, weight: .kg(60), rir: 1)
+        #expect(coordinator.phase == .restingBetweenSets)
+        #expect(coordinator.currentEntry?.workingManualSets.count == 2)
+        await coordinator.skipTimer()
+
+        try await coordinator.recordSet(reps: 8, weight: .kg(60), rir: 0)
+        #expect(coordinator.phase == .restingBetweenExercises)
+        await coordinator.skipTimer()
+    }
+
+    @Test("undoLastSet deletes the last set and returns to active")
+    func undoLastSet() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        try await coordinator.recordSet(reps: 8, weight: nil, rir: nil)
+
+        try await coordinator.undoLastSet()
+
+        #expect(coordinator.currentEntry?.manualSets.isEmpty == true)
+        #expect(coordinator.currentEntry?.status == .skipped)
+        #expect(coordinator.phase == .active)
+    }
+
+    @Test("start(routineId:) resumes a session left in progress instead of creating another")
+    func startResumesResidualSession() async throws {
+        let routine = try fx.makeRoutine()
+        let residual = try fx.sessions.startSession(
+            routineId: nil,
+            name: "Residual",
+            at: TrainingFixtures.t0,
+            timeZone: .gmt
+        )
+
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+
+        #expect(coordinator.phase == .active)
+        #expect(coordinator.activeWorkoutId == residual.id)
+        let all = try fx.sessions.completedSessions(in: DateInterval(start: .distantPast, end: .distantFuture))
+        #expect(all.isEmpty)
+    }
+
+    @Test("finish() completes the session and returns to idle even when the sync fails")
+    func finishIsAtomicEvenWhenSyncFails() async throws {
+        let routine = try fx.makeRoutine()
+        let sync = FailingSync()
+        let coordinator = makeCoordinator(sync: sync)
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try await coordinator.recordSet(reps: 8, weight: nil, rir: nil)
+
+        try await coordinator.finish()
+
+        #expect(sync.calls == 1)
+        #expect(coordinator.phase == .idle)
+        #expect(coordinator.completedWorkoutId == id)
+        #expect(try fx.sessions.session(id: id)?.isCompleted == true)
+        #expect(try fx.sessions.activeSession() == nil)
+    }
+
+    // MARK: - T6 (D7): a session with no working sets is never saved
+
+    private func history() throws -> [TrainingSession] {
+        try fx.sessions.completedSessions(in: DateInterval(start: .distantPast, end: .distantFuture))
+    }
+
+    @Test("AC6.1 AC6.2 a routine session with no sets has no working sets, and finishing discards it")
+    func routineWithoutSetsIsDiscarded() async throws {
+        let routine = try fx.makeRoutine()
+        _ = try fx.makeRoutine(name: "Full Body B")
+        let proposedBefore = try fx.routines.nextRoutine()?.id
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        #expect(!coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+
+        #expect(coordinator.lastFinishOutcome == .discarded)
+        #expect(coordinator.phase == .idle)
+        #expect(coordinator.completedWorkoutId == nil, "no summary for a discarded session")
+        #expect(try fx.sessions.session(id: id) == nil)
+        #expect(try fx.sessions.activeSession() == nil)
+        #expect(try history().isEmpty)
+        #expect(try fx.routines.nextRoutine()?.id == proposedBefore, "no effect on Próxima sesión")
+    }
+
+    @Test("AC6.1 AC6.2 warm-up sets are not working sets: a warm-up-only session is discarded")
+    func warmupOnlyIsDiscarded() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try await coordinator.recordSet(reps: 10, weight: .kg(10), rir: nil, warmup: true)
+        await coordinator.skipTimer()
+        #expect(!coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .discarded)
+        #expect(try fx.sessions.session(id: id) == nil)
+        #expect(try history().isEmpty)
+    }
+
+    @Test("AC6.1 AC6.2 a free session with no entries is discarded by the same rule")
+    func emptyFreeSessionIsDiscarded() async throws {
+        let coordinator = makeCoordinator()
+        try await coordinator.startAdHoc(name: "Free")
+        let id = try #require(coordinator.activeWorkoutId)
+        #expect(!coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .discarded)
+        #expect(coordinator.phase == .idle)
+        #expect(try fx.sessions.session(id: id) == nil)
+        #expect(try fx.sessions.activeSession() == nil)
+    }
+
+    @Test("AC6.3 checking for working sets changes nothing: the session stays in progress")
+    func keepTrainingKeepsSession() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let before = try #require(try fx.sessions.activeSession())
+        #expect(!coordinator.hasWorkingSets)
+
+        #expect(coordinator.phase == .active)
+        #expect(try fx.sessions.activeSession() == before)
+    }
+
+    @Test("AC6.4 a session with a working set is saved as before; exercises not done stay skipped")
+    func workingSetSaves() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try await coordinator.recordSet(reps: 10, weight: .kg(10), rir: nil, warmup: true)
+        await coordinator.skipTimer()
+        try await coordinator.recordSet(reps: 8, weight: .kg(20), rir: nil)
+        await coordinator.skipTimer()
+        #expect(coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .saved(id))
+        #expect(coordinator.completedWorkoutId == id)
+        let saved = try #require(try fx.sessions.session(id: id))
+        #expect(saved.isCompleted)
+        #expect(saved.entries.map(\.status) == [.done, .skipped])
+    }
+
+    @Test("D-T6a a cardio-only session is saved without the prompt")
+    func cardioOnlySaves() async throws {
+        let coordinator = makeCoordinator()
+        try await coordinator.startAdHoc(name: "Free")
+        let id = try #require(coordinator.activeWorkoutId)
+        try fx.sessions.logManualSet(
+            SetValues(durationSeconds: 1200, distanceMeters: 4000), exerciseId: fx.rower.id, sessionId: id,
+            at: TrainingFixtures.t0
+        )
+        #expect(coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .saved(id))
+        #expect(try fx.sessions.session(id: id)?.isCompleted == true)
+    }
+
+    @Test("D-T6a an imported set counts as a working set")
+    func importedSetSaves() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try fx.sessions.importEntry(fx.importedSets("e-1", reps: [10], weight: 40), into: id)
+        #expect(coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .saved(id))
+    }
+
+    @Test("M14 a session whose only set is an imported warm-up has no working sets: finishing discards it")
+    func importedWarmupOnlyDiscards() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try fx.sessions.importEntry(fx.importedSets("e-1", reps: [10], weight: 40), into: id)
+        let imported = try #require(try fx.sessions.session(id: id)?.entries.flatMap(\.sets).first)
+        try fx.sessions.setWarmup(true, setId: imported.id)
+        #expect(!coordinator.hasWorkingSets)
+
+        try await coordinator.finish()
+        #expect(coordinator.lastFinishOutcome == .discarded)
+        #expect(try fx.sessions.session(id: id) == nil)
+    }
+
+    @Test("M15 the sets of a removed entry are not working sets")
+    func removedEntrySetsDoNotCount() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        let id = try #require(coordinator.activeWorkoutId)
+        try fx.sessions.importEntry(fx.importedSets("e-1", reps: [10], weight: 40), into: id)
+        let entry = try #require(try fx.sessions.session(id: id)?.entries.first { $0.exerciseId == fx.press.id })
+        try fx.sessions.removeEntry(id: entry.id)
+        #expect(!coordinator.hasWorkingSets)
+    }
+
+    @Test("pause and resume switch the phase")
+    func pauseResume() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        try await coordinator.pause()
+        #expect(coordinator.phase == .paused)
+        try await coordinator.resume()
+        #expect(coordinator.phase == .active)
     }
 }

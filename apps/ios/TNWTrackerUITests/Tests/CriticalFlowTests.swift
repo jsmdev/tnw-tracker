@@ -46,7 +46,9 @@ final class CriticalFlowTests: XCTestCase {
 
         // Step 9 — End workout. tapEnd() calls WorkoutSummaryScreen.waitUntilLoaded(5s).
         // BUG-2 coverage: if fullScreenCover chain is broken, closeButton never appears → timeout.
-        let summary = activeAfterCancel.tapEnd()
+        // T6: a workout with no working set is discarded instead of saved, so one
+        // set is logged first for the summary to show.
+        let summary = activeAfterCancel.tapLogSet().enterReps(8).saveStartingRest().tapSkip().tapEnd()
 
         // Step 10 — BUG-4 (direct): workoutNameLabel must be non-empty.
         summary.assertWorkoutNameVisible()
@@ -60,7 +62,8 @@ final class CriticalFlowTests: XCTestCase {
         )
 
         // Baseline: ~29.2s on iPhone 17 simulator (Xcode 26.4, 2026-05-10). PASS — within NFR2 ≤30s.
-        // SetLog step uses cancel() (not enterReps/enterWeight) to stay within budget.
+        // SetLog step uses cancel() first; since T6 one set is then logged with reps only
+        // (a workout with no working set is discarded, not summarised).
         // typeText() on simulator fields costs ~20s of keyboard idle waits; excluded per NFR2 scope.
         // Full field-entry interaction validated at Page Object struct level (SetLogSheetScreen.swift).
     }

@@ -1,23 +1,22 @@
 import Foundation
 import SwiftData
 
-/// Consulta el próximo Session disponible desde SwiftData.
-/// Usado por el Widget para mostrar la próxima sesión planificada.
+/// Name of the routine the widget proposes next, with the same rule as the
+/// Home card (`NextRoutineRule`, T5 AC5.2–AC5.3).
 public struct NextSessionQuery {
-    private let modelContext: ModelContext
+    private let container: ModelContainer
 
-    public init(modelContext: ModelContext) {
-        self.modelContext = modelContext
+    public init(container: ModelContainer) {
+        self.container = container
     }
 
-    /// Devuelve el nombre de la próxima sesión activa, o nil si no hay ninguna.
-    /// Actualmente devuelve la primera sesión activa ordenada por nombre.
-    /// En una implementación completa consultaría el plan activo del usuario.
+    /// Query over the app's on-disk store, or nil if it cannot be opened.
+    public static func live() -> NextSessionQuery? {
+        guard let container = try? ModelContainerFactory.makeContainer() else { return nil }
+        return NextSessionQuery(container: container)
+    }
+
     public func nextSessionName() -> String? {
-        var descriptor = FetchDescriptor<Session>(
-            sortBy: [SortDescriptor(\.name)]
-        )
-        descriptor.fetchLimit = 1
-        return (try? modelContext.fetch(descriptor))?.first?.name
+        (try? ModelContext(container).nextRoutine())?.name
     }
 }

@@ -1,5 +1,4 @@
 import Foundation
-import SwiftData
 import TNWTrackerKit
 
 // MARK: - WorkoutSummary
@@ -28,76 +27,56 @@ public struct WorkoutSummary: Sendable {
     }
 }
 
-// MARK: - WorkoutSummaryBuilder
+// MARK: - Workou// MARK: - WorkoutSummaryBuilder
 
-/// Pure value-type builder. No SwiftUI dependency.
-/// Input: a `Workout` with its `workoutExercises` and `exerciseSets` wired via
-/// explicit-append (per swiftdata-relationships-bug, engram id 92).
+/// Pure value-type builder. No SwiftUI or persistence dependency.
 ///
-/// PR detection: compares this workout's max weight per exercise against
-/// the previous `PersonalRecord` for that exercise in SwiftData.
-/// If no previous record exists, the workout's max is itself a new PR.
+/// Only counted sets are read: sets of `done` entries that are neither superseded nor warm-up sets.
+/// PR detection: compares this session's max weight per exercise against the
+/// best weight of the sessions completed before it (`previousBests`, in kg).
+/// If no previous best exists, the session's max is itself a new PR.
 public enum WorkoutSummaryBuilder {
-    public static func build(from workout: Workout, context: ModelContext) -> WorkoutSummary {
-        let exercises = workout.workoutExercises.sorted { $0.orderIndex < $1.orderIndex }
-
-        // Resolve exercise names from SwiftData
-        let allExercises = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
-        let exerciseMap = Dictionary(uniqueKeysWithValues: allExercises.map { ($0.id, $0) })
-
-        // Resolve previous PRs
-        let allPRs = (try? context.fetch(FetchDescriptor<PersonalRecord>())) ?? []
-        let prevPRMap: [UUID: Double] = allPRs.reduce(into: [:]) { dict, pr in
-            guard pr.recordType == .maxWeight else { return }
-            dict[pr.exerciseId] = max(dict[pr.exerciseId] ?? 0, pr.value)
-        }
-
-        // Build exercise rows + detect PRs + compute volume
+    public static func build(
+        from session: TrainingSession,
+        exerciseNames: [UUID: String],
+        previousBests: [UUID: Double],
+        now: Date = Date()
+    ) -> WorkoutSummary {
         var totalVolume: Double = 0
         var prRows: [WorkoutSummary.PRRow] = []
         var exerciseRows: [WorkoutSummary.ExerciseRow] = []
 
-        for we in exercises {
-            let exerciseName = exerciseMap[we.exerciseId]?.name ?? we.exerciseId.uuidString
-            let workingSets = we.exerciseSets.filter { !$0.isWarmup }
-            let setCount = we.exerciseSets.count
-
-            let exerciseVolume = workingSets.reduce(0.0) { sum, s in
-                sum + (s.weight ?? 0) * Double(s.reps ?? 0)
-            }
+        for entry in session.entries where entry.status == .done {
+            let exerciseName = exerciseNames[entry.exerciseId] ?? entry.exerciseId.uuidString
+            let counted = entry.countedSets
+            let exerciseVolume = entry.volumeKg
             totalVolume += exerciseVolume
 
             exerciseRows.append(WorkoutSummary.ExerciseRow(
-                id: we.id,
+                id: entry.id,
                 exerciseName: exerciseName,
-                setCount: setCount,
+                setCount: counted.count,
                 totalVolumeKg: exerciseVolume
             ))
 
-            // PR detection: max weight this workout for this exercise
-            let maxWeight = workingSets.compactMap(\.weight).max() ?? 0
+            let maxWeight = counted.compactMap { $0.values.weight?.kilograms }.max() ?? 0
             guard maxWeight > 0 else { continue }
-
-            let previousMax = prevPRMap[we.exerciseId] ?? 0
-            if maxWeight > previousMax {
-                prRows.append(WorkoutSummary.PRRow(
-                    exerciseName: exerciseName,
-                    newValue: maxWeight
-                ))
+            if maxWeight > previousBests[entry.exerciseId] ?? 0 {
+                prRows.append(WorkoutSummary.PRRow(exerciseName: exerciseName, newValue: maxWeight))
             }
         }
 
-        // Duration: prefer coordinator-stored durationSeconds, fall back to wall-clock
-        let durationSeconds: Int = if let stored = workout.durationSeconds, stored > 0 {
+        // Duration: prefer the stored training time, fall back to wall-clock.
+        let durationSeconds: Int = if let stored = session.durationSeconds, stored > 0 {
             stored
-        } else if let completedAt = workout.completedAt {
-            Int(completedAt.timeIntervalSince(workout.startedAt))
+        } else if let startedAt = session.startedAt {
+            Int((session.completedAt ?? now).timeIntervalSince(startedAt))
         } else {
-            Int(Date().timeIntervalSince(workout.startedAt))
+            0
         }
 
         return WorkoutSummary(
-            workoutName: workout.name,
+            workoutName: session.name ?? "",
             durationSeconds: max(0, durationSeconds),
             totalVolumeKg: totalVolume,
             personalRecords: prRows,
