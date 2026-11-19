@@ -115,18 +115,7 @@ struct ActiveWorkoutView: View {
 
     private var headerSection: some View {
         HStack {
-            // Elapsed time — Format as Duration
-            VStack(alignment: .leading, spacing: Spacing.xs) {
-                Text("active-workout.elapsed-label")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                let elapsed = Duration.seconds(coordinator.elapsedSeconds)
-                Text(elapsed, format: .time(pattern: .minuteSecond))
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .monospacedDigit()
-                    .accessibilityIdentifier(AXID.ActiveWorkout.elapsedTimer)
-            }
+            ElapsedTimeView(coordinator: coordinator)
 
             Spacer()
 
@@ -143,7 +132,6 @@ struct ActiveWorkoutView: View {
                 }
             }
         }
-        .animation(reduceMotion ? nil : .smooth, value: coordinator.elapsedSeconds)
     }
 
     // MARK: - Exercise Section
@@ -306,6 +294,32 @@ struct ActiveWorkoutView: View {
             }
             .accessibilityLabel("a11y.dismiss-button")
         }
+    }
+}
+
+// MARK: - ElapsedTimeView
+
+/// The workout's elapsed time. Its own view so that only it reads
+/// `elapsedSeconds`: the screen body would otherwise be rebuilt every second,
+/// and rebuilding the exercise options `Menu` while it is open can drop the
+/// tapped item's action ("Descanso entre series" never opens its sheet).
+private struct ElapsedTimeView: View {
+    let coordinator: ActiveWorkoutCoordinator
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.xs) {
+            Text("active-workout.elapsed-label")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            let elapsed = Duration.seconds(coordinator.elapsedSeconds)
+            Text(elapsed, format: .time(pattern: .minuteSecond))
+                .font(.title3)
+                .fontWeight(.semibold)
+                .monospacedDigit()
+                .accessibilityIdentifier(AXID.ActiveWorkout.elapsedTimer)
+        }
+        .animation(reduceMotion ? nil : .smooth, value: coordinator.elapsedSeconds)
     }
 }
 
