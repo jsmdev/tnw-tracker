@@ -23,9 +23,9 @@
       ]
     },
     {
-      "id": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+      "id": "c3ecc239-b598-5333-89e0-95053069facf",
       "externalRef": {
-        "provider": "gym-machines",
+        "provider": "machines-atlas",
         "id": "1002"
       },
       "name": "Chest press",
@@ -95,7 +95,7 @@
         },
         {
           "order": 2,
-          "exerciseId": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+          "exerciseId": "c3ecc239-b598-5333-89e0-95053069facf",
           "targetSets": 3,
           "targetReps": {
             "min": 8,
@@ -175,7 +175,7 @@
         {
           "id": "8f25ddff-9f29-4e8b-916d-5694c829477b",
           "exerciseId": "0a9fd207-e5e9-4b51-abc5-ee24e5d37f21",
-          "replacedExerciseId": "10b455af-5cd7-5908-b75f-c4ed1c0bd499",
+          "replacedExerciseId": "c3ecc239-b598-5333-89e0-95053069facf",
           "order": 2,
           "status": "done",
           "notes": "Machine was busy.",

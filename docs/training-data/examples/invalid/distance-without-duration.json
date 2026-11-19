@@ -7,9 +7,9 @@
   "locale": "en",
   "exercises": [
     {
-      "id": "0e340229-e383-5ddf-9b75-4e990a4ddccc",
+      "id": "c5e864c9-d28f-5c56-872b-ca234586c66f",
       "externalRef": {
-        "provider": "gym-machines",
+        "provider": "machines-atlas",
         "id": "2001"
       },
       "name": "Treadmill run",
@@ -30,20 +30,20 @@
       "timeZone": "Europe/Madrid",
       "entries": [
         {
-          "id": "51a8b4ee-8946-59c3-b2be-660084de7bbd",
+          "id": "501667fb-abe4-5c0d-88b0-5d11d26db497",
           "externalRef": {
-            "provider": "gym-machines",
+            "provider": "machines-atlas",
             "id": "6001"
           },
-          "exerciseId": "0e340229-e383-5ddf-9b75-4e990a4ddccc",
+          "exerciseId": "c5e864c9-d28f-5c56-872b-ca234586c66f",
           "order": 1,
           "status": "done",
           "completedAt": "2030-03-09T08:50:00Z",
           "sets": [
             {
-              "id": "2ab4fc2c-1029-5cf8-b4ed-1d6fb155536e",
+              "id": "2c8423d4-64cf-5fd2-a24a-e63fcf3d612b",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "6001#1"
               },
               "order": 1,
@@ -52,9 +52,9 @@
               "reps": 1
             },
             {
-              "id": "c6e345f7-a7f1-5e55-80bd-dfc983135459",
+              "id": "14d47e1b-74b7-5d86-a57e-c8b16668e91f",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "6001#2"
               },
               "order": 2,
@@ -63,9 +63,9 @@
               "distanceMeters": 2600
             },
             {
-              "id": "b5e70ee2-5af2-568d-b9db-343e0655926d",
+              "id": "4b8dd19e-e91e-504a-8627-b325a2547d08",
               "externalRef": {
-                "provider": "gym-machines",
+                "provider": "machines-atlas",
                 "id": "6001#3"
               },
               "order": 3,

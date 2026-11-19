@@ -52,7 +52,7 @@
   },
   "$defs": {
     "id": {
-      "description": "Identifier owned by this format: a UUID in canonical lower-case form. Stable across re-imports.",
+      "description": "UUID in canonical lower-case form that links the parts of a bundle. Receivers identify imported items by externalRef, not by this id.",
       "type": "string",
       "format": "uuid"
     },
@@ -459,6 +459,10 @@
         },
         "superseded": {
           "description": "True when reconciliation kept the other source. Superseded sets stay stored but do not count. Defaults to false.",
+          "type": "boolean"
+        },
+        "warmup": {
+          "description": "True for a warm-up set. Warm-up sets stay stored but do not count. Defaults to false.",
           "type": "boolean"
         }
       },
