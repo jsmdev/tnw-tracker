@@ -121,7 +121,9 @@ extension SwiftDataSessionRepository {
 
     /// D8: moves the entry ref `ref` from `source` (in another session) to `entry`.
     /// Returns the source's reconciliation choice, which moves with the ref.
-    private func moveRef(
+    /// Shared with the sync pull, which moves a ref the server holds on another entry.
+    @discardableResult
+    func moveRef(
         _ ref: ExternalRef,
         from source: SessionEntryModel,
         to entry: SessionEntryModel

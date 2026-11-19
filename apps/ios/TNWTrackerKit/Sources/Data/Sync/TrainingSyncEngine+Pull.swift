@@ -10,6 +10,7 @@ struct PulledBatch: Sendable {
     var sessions: [RemoteSessionRow] = []
     var entries: [RemoteEntryRow] = []
     var sets: [RemoteSetRow] = []
+    var exerciseSettings: [RemoteExerciseSettingRow] = []
 }
 
 /// Pull rules (docs/database-schema.md, "Sync"):
@@ -33,6 +34,7 @@ extension TrainingSyncEngine {
         batch.routineItems = try await readAll(RemoteRoutineItemRow.self)
         batch.routines = try await readAll(RemoteRoutineRow.self)
         batch.muscleGroups = try await readAll(RemoteMuscleGroupRow.self)
+        batch.exerciseSettings = try await readAll(RemoteExerciseSettingRow.self)
         batch.exercises = try await readAll(RemoteExerciseRow.self)
         // The store may have changed hands while the pages were read.
         try requireOwner()

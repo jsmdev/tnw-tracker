@@ -40,8 +40,8 @@ struct TrainingSyncEnginePushTests {
         #expect(await world.stored(RemoteSetRow.self) == PushWorld.byId(expected.sets))
         #expect(await server.stored(RemoteExerciseRow.self).map(PushWorld.plain) == [world.squatRow])
         let muscles = [
-            RemoteMuscleGroupRow(exerciseId: world.squat.id, muscle: .quadriceps, role: .primary),
-            RemoteMuscleGroupRow(exerciseId: world.squat.id, muscle: .glutes, role: .secondary)
+            RemoteMuscleGroupRow(exerciseId: world.squat.id, muscle: .quadriceps, role: .primary, position: 1),
+            RemoteMuscleGroupRow(exerciseId: world.squat.id, muscle: .glutes, role: .secondary, position: 2)
         ]
         #expect(await world.stored(RemoteMuscleGroupRow.self) == PushWorld.byId(muscles))
         #expect(await server.stored(RemoteRoutineRow.self).map(PushWorld.plain) == [

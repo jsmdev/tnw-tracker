@@ -7,11 +7,17 @@ import Foundation
 /// (rows written together share it, as in one Postgres statement), keyset
 /// pulls, and the server rules a push can break (parents first, rows only
 /// referring to exercises and routines the server holds, no set on a skipped
-/// entry, one row per user and external ref, no delete of an exercise in
+/// entry, one row per user and external ref, one muscle group per muscle of an
+/// exercise and one item per routine position, no delete of an exercise in
 /// use), refused as `RemoteStoreError.rejected` with the server's SQLSTATE.
-/// Like the server's triggers, every delete (cascades included) records a
-/// tombstone of each deleted session, entry, set, routine and user exercise,
-/// and writing a row again under its id clears its tombstone.
+/// Like the server's triggers, every delete records a tombstone of each deleted
+/// session, entry, set, routine, user exercise, muscle group, routine item and
+/// exercise setting (a session's cascade included; the children deleted with
+/// their exercise or routine leave none), and writing a row again under its id
+/// clears its tombstone.
+///
+/// Exercise settings are stored by their exercise id, which is their key for
+/// the one user a fake serves.
 ///
 /// It can fail the next call of an operation, the next pull of a table, or a
 /// push part way, to simulate the network dropping, and run an action in the
@@ -19,7 +25,7 @@ import Foundation
 /// can jump ahead, to place writes outside the pull's overlap window.
 actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     enum Operation: Hashable, Sendable {
-        case pushSession, upsert, delete, pull
+        case pushSession, upsert, delete, deleteChildren, pull
     }
 
     /// The writes of a push, in the order the real store makes them.
@@ -33,6 +39,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         case pushSession(UUID)
         case upsert(RemoteTable, count: Int)
         case delete(RemoteTable, ids: [UUID])
+        case deleteChildren(RemoteTable, parentId: UUID, keeping: [UUID])
         case pull(RemoteTable, after: RemoteCursor?, limit: Int)
     }
 
@@ -180,6 +187,18 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         try remove(table, ids: ids)
     }
 
+    func deleteChildren(_ table: RemoteTable, of parentId: UUID, keeping ids: [UUID]) async throws {
+        calls.append(.deleteChildren(table, parentId: parentId, keeping: ids))
+        try throwIfFailing(.deleteChildren)
+        let keep = Set(ids)
+        let children: [UUID] = switch table {
+        case .exerciseMuscleGroups: rows(RemoteMuscleGroupRow.self).filter { $0.exerciseId == parentId }.map(\.id)
+        case .routineItems: rows(RemoteRoutineItemRow.self).filter { $0.routineId == parentId }.map(\.id)
+        default: throw RemoteStoreError.invalidAggregate("\(table.rawValue) has no parent to delete children of")
+        }
+        try remove(table, ids: children.filter { !keep.contains($0) })
+    }
+
     func pull<Row: RemoteRow>(
         _ type: Row.Type,
         after cursor: RemoteCursor?,
@@ -221,6 +240,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
             try check(row)
         }
         try checkExternalRefs(rows)
+        try checkNaturalKeys(rows)
         let inserted = rows.map(\.id).filter { tables[Row.table]?[$0] == nil }
         clock += 1
         let now = Self.timestamp(clock)
@@ -247,6 +267,8 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         case let item as RemoteRoutineItemRow:
             try require(item.routineId, in: .routines, "routine_items_routine_fkey")
             try requireExercise(item.exerciseId, "routine_items_exercise_id_fkey")
+        case let setting as RemoteExerciseSettingRow:
+            try requireExercise(setting.exerciseId, "exercise_settings_exercise_id_fkey")
         default:
             break
         }
@@ -269,6 +291,24 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
             if let key = Self.externalRefKey(row) { seen[row.id] = key }
         }
         guard Set(seen.values).count == seen.count else { throw Self.duplicateExternalRef(Row.table) }
+    }
+
+    /// `exercise_muscle_groups_key` and `routine_items_position_key`, checked at
+    /// statement end: a child row under another id holding the same muscle of an
+    /// exercise, or the same position of a routine, refuses the write.
+    private func checkNaturalKeys<Row: RemoteRow>(_ rows: [Row]) throws {
+        let written = Set(rows.map(\.id))
+        let stored = (tables[Row.table]?.values.compactMap { $0 as? Row } ?? []).filter { !written.contains($0.id) }
+        let keys = (rows + stored).compactMap { row -> String? in
+            switch row {
+            case let group as RemoteMuscleGroupRow: "\(group.exerciseId)/\(group.muscle)/\(group.role)"
+            case let item as RemoteRoutineItemRow: "\(item.routineId)/\(item.position)"
+            default: nil
+            }
+        }
+        guard Set(keys).count == keys.count else {
+            throw RemoteStoreError.rejected(code: "23505", message: "\(Row.table.rawValue) natural key")
+        }
     }
 
     private static func externalRefKey(_ row: some RemoteRow) -> String? {

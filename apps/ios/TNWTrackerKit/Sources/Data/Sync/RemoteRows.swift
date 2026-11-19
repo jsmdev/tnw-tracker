@@ -19,11 +19,14 @@ public enum RemoteTable: String, Sendable, CaseIterable {
     case sessions
     case entries
     case sets
+    /// Keyed by `exercise_id` for its owner (`RemoteExerciseSettingRow`).
+    case exerciseSettings = "exercise_settings"
     /// Rows the server deleted from the tables above (`RemoteTombstoneRow`).
     case tombstones
 }
 
-/// A row of a table whose primary key is `id` and that carries `updated_at`.
+/// A row of a table that carries `updated_at`, identified for its owner by
+/// `id`: the table's `keyColumn`, which is `id` except for `exercise_settings`.
 public protocol RemoteRow: Codable, Sendable, Equatable, Identifiable where ID == UUID {
     static var table: RemoteTable { get }
     /// `updated_at` as the server wrote it; `nil` on a row not yet stored.

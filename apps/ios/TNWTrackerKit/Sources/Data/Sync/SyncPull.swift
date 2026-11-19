@@ -19,9 +19,9 @@ public enum SyncConflictRule: Equatable, Sendable {
     /// rows were still merged in.
     case localKept
 
-    /// The conflict rule (S13). An assumption until the owner confirms it: the
-    /// device's pending change wins over the server, field by field for the
-    /// fields a user edits; imported data always merges. A deletion follows the
+    /// The conflict rule (S13, confirmed by the owner): the device's pending
+    /// change wins over the server, field by field for the fields a user edits;
+    /// imported data always merges. A deletion follows the
     /// same rule: a row of an aggregate with a change waiting is kept, and the
     /// next push writes it back, so a delete elsewhere never silently drops an
     /// edit made here. Changing the rule means changing only this function.

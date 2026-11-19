@@ -71,6 +71,14 @@ struct SupabaseTrainingRemoteStoreContractTests {
         try await run(TrainingRemoteStoreContract.exerciseInUseIsRefused)
     }
 
+    @Test func childrenNoLongerListedAreDeleted() async throws {
+        try await run(TrainingRemoteStoreContract.childrenNoLongerListedAreDeleted)
+    }
+
+    @Test func settingsAreKeyedByExercise() async throws {
+        try await run(TrainingRemoteStoreContract.settingsAreKeyedByExercise)
+    }
+
     private func run(_ scenario: (RemoteStoreHarness) async throws -> Void) async throws {
         try await LocalSupabaseStack.withThrowawayUser { client, userId in
             let store = SupabaseTrainingRemoteStore(client: client)

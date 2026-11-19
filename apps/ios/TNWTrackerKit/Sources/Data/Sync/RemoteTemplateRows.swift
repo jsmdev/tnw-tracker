@@ -107,32 +107,48 @@ public struct RemoteMuscleGroupRow: RemoteRow {
     public var exerciseId: UUID
     public var muscle: Muscle
     public var role: MuscleRole
+    /// Order of the muscle in its exercise, from 1.
+    public var position: Int
     public var updatedAt: String?
 
-    public init(id: UUID, exerciseId: UUID, muscle: Muscle, role: MuscleRole, updatedAt: String? = nil) {
+    public init(
+        id: UUID,
+        exerciseId: UUID,
+        muscle: Muscle,
+        role: MuscleRole,
+        position: Int = 1,
+        updatedAt: String? = nil
+    ) {
         self.id = id
         self.exerciseId = exerciseId
         self.muscle = muscle
         self.role = role
+        self.position = position
         self.updatedAt = updatedAt
     }
 
-    /// The device keeps no id for a muscle group, so its row id is derived from
-    /// its natural key (`exercise_muscle_groups_key`): pushing the same exercise
-    /// again updates the same rows instead of colliding with them.
-    public init(exerciseId: UUID, muscle: Muscle, role: MuscleRole) {
+    /// The device keeps no id for a muscle group it created, so its row id is
+    /// derived from its natural key (`exercise_muscle_groups_key`): pushing the
+    /// same exercise again updates the same rows instead of colliding with them.
+    public init(exerciseId: UUID, muscle: Muscle, role: MuscleRole, position: Int = 1) {
         self.init(
-            id: .derived(from: exerciseId, key: "muscle-group/\(muscle.rawValue)/\(role.rawValue)"),
+            id: Self.id(exerciseId: exerciseId, muscle: muscle.rawValue, role: role.rawValue),
             exerciseId: exerciseId,
             muscle: muscle,
-            role: role
+            role: role,
+            position: position
         )
+    }
+
+    /// The derived row id of a muscle group the device created.
+    public static func id(exerciseId: UUID, muscle: String, role: String) -> UUID {
+        .derived(from: exerciseId, key: "muscle-group/\(muscle)/\(role)")
     }
 
     enum CodingKeys: String, CodingKey {
         case id
         case exerciseId = "exercise_id"
-        case muscle, role
+        case muscle, role, position
         case updatedAt = "updated_at"
     }
 
@@ -142,6 +158,7 @@ public struct RemoteMuscleGroupRow: RemoteRow {
         try values.encode(exerciseId, forKey: .exerciseId)
         try values.encode(muscle, forKey: .muscle)
         try values.encode(role, forKey: .role)
+        try values.encode(position, forKey: .position)
     }
 }
 

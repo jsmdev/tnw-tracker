@@ -61,8 +61,10 @@ public enum TrainingSyncError: Error, Equatable, Sendable {
 ///
 /// Push rules (docs/database-schema.md, "Sync"):
 /// - Only when the store's owner is the signed-in user (S10).
-/// - Exercises, then routines, then sessions, so every row a session refers to
-///   is on the server first. Catalogue exercises are already there.
+/// - Exercises, then routines, then exercise settings, then sessions, so every
+///   row a session or setting refers to is on the server first. Catalogue
+///   exercises are already there. An exercise or routine push leaves on the
+///   server exactly the muscle groups or items the device lists (L7).
 /// - An aggregate is read, turned into rows and marked sent in one MainActor
 ///   stretch, then uploaded, then marked synced at the revision it was read
 ///   at: an edit during the upload keeps it pending (S7).
@@ -175,6 +177,7 @@ public final class TrainingSyncEngine: SyncEngine {
         let run = PushRun()
         try await pushPending(.exercise, run: run)
         try await pushPending(.routine, run: run)
+        try await pushPending(.exerciseSetting, run: run)
         try await pushDeletions(.session, run: run)
         try await pushPending(.session, run: run)
         try await pushDeletions(.routine, run: run)
@@ -249,8 +252,9 @@ public final class TrainingSyncEngine: SyncEngine {
             }
             return rows.session(model, completedAt: completedAt, pending: pending)
         case .exerciseSetting:
-            // Pushed with the exercise settings sync (T6).
-            return nil
+            return try context.fetchExerciseSetting(exerciseId: pending.id).map {
+                try rows.setting($0, exercise: context.fetchExercise(id: pending.id))
+            }
         }
     }
 }

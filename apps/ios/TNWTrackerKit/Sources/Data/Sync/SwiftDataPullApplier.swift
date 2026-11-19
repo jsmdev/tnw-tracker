@@ -49,6 +49,7 @@ final class SwiftDataPullApplier {
             try saveCursor(batch.muscleGroups, run)
             try saveCursor(batch.routines, run)
             try saveCursor(batch.routineItems, run)
+            try saveCursor(batch.exerciseSettings, run)
             try saveCursor(batch.sessions, run)
             try saveCursor(batch.entries, run)
             try saveCursor(batch.sets, run)
@@ -116,6 +117,8 @@ final class PullRun {
     private var created: Set<SyncAggregateRef> = []
     /// Rows this pull deleted from the device, by table. They are gone only at the save.
     private var deleted: [RemoteTable: Set<UUID>] = [:]
+    /// Routine items this pull deleted on their own, which their exercise still lists until the save.
+    var removedItems: Set<PersistentIdentifier> = []
     /// Whether each aggregate had a local change waiting when the pull first reached it.
     private var pending: [SyncAggregateRef: Bool] = [:]
 
