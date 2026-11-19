@@ -29,12 +29,16 @@ final class SwiftDataExerciseSettingRepository: ExerciseSettingRepositoryProtoco
         if let model = try fetch(exerciseId: setting.exerciseId) {
             model.restEnabled = setting.restEnabled
             model.restSeconds = setting.restSeconds
+            model.markChanged()
         } else {
-            context.insert(ExerciseSettingModel(
+            let model = ExerciseSettingModel(
                 exerciseId: setting.exerciseId,
                 restEnabled: setting.restEnabled,
                 restSeconds: setting.restSeconds
-            ))
+            )
+            context.insert(model)
+            // The user's setting, also on a catalogue exercise.
+            try context.trackNew(model)
         }
         try context.save()
     }

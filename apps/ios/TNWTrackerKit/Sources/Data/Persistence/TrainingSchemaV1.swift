@@ -28,7 +28,9 @@ public enum TrainingSchemaV1: VersionedSchema {
             EntryExternalRefModel.self,
             ExerciseSetModel.self,
             ExerciseSettingModel.self,
-            WorkoutIntentEvent.self
+            WorkoutIntentEvent.self,
+            StoreOwnerModel.self,
+            SyncTombstoneModel.self
         ]
     }
 }
@@ -62,6 +64,15 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     var instructionsTips: [String]?
     var mediaImageURI: String?
     var mediaVideoURI: String?
+
+    // Sync state (app-local, see `ModelContext+SyncTracking.swift`): the revision
+    // grows with every local change, `syncedRevision` is the last one the server
+    // acknowledged, `syncSent` means it may exist on the server, and
+    // `isSyncable` (fixed at creation) keeps unowned and catalogue data local.
+    var syncRevision: Int = 0
+    var syncedRevision: Int = 0
+    var syncSent: Bool = false
+    var isSyncable: Bool = false
 
     @Relationship(deleteRule: .cascade, inverse: \MuscleGroupModel.exercise)
     var muscleGroups: [MuscleGroupModel] = []
@@ -112,6 +123,15 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     /// Not part of the training data format: imports never change it.
     var isFavorite: Bool = false
 
+    // Sync state (app-local, see `ModelContext+SyncTracking.swift`): the revision
+    // grows with every local change, `syncedRevision` is the last one the server
+    // acknowledged, `syncSent` means it may exist on the server, and
+    // `isSyncable` (fixed at creation) keeps unowned and catalogue data local.
+    var syncRevision: Int = 0
+    var syncedRevision: Int = 0
+    var syncSent: Bool = false
+    var isSyncable: Bool = false
+
     @Relationship(deleteRule: .cascade, inverse: \RoutineItemModel.routine)
     var items: [RoutineItemModel] = []
 
@@ -160,6 +180,15 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     var durationSeconds: Int?
     var routine: RoutineModel?
 
+    // Sync state (app-local, see `ModelContext+SyncTracking.swift`): the revision
+    // grows with every local change, `syncedRevision` is the last one the server
+    // acknowledged, `syncSent` means it may exist on the server, and
+    // `isSyncable` (fixed at creation) keeps unowned and catalogue data local.
+    var syncRevision: Int = 0
+    var syncedRevision: Int = 0
+    var syncSent: Bool = false
+    var isSyncable: Bool = false
+
     @Relationship(deleteRule: .cascade, inverse: \SessionEntryModel.session)
     var entries: [SessionEntryModel] = []
 
@@ -186,6 +215,8 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     var reconciliationDecidedByRaw: String?
     var reconciliationDecidedAt: Date?
     var session: SessionModel?
+    /// The row was part of a session sent to the server (app-local).
+    var syncSent: Bool = false
 
     @Relationship(deleteRule: .cascade, inverse: \ExerciseSetModel.entry)
     var sets: [ExerciseSetModel] = []
@@ -239,6 +270,8 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     /// Format field `warmup`; the user's annotation on an imported set.
     var warmup: Bool = false
     var entry: SessionEntryModel?
+    /// The row was part of a session sent to the server (app-local).
+    var syncSent: Bool = false
 
     init(id: UUID, order: Int, sourceRaw: String) {
         self.id = id
@@ -257,9 +290,53 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     var restEnabled: Bool = true
     var restSeconds: Int
 
+    // Sync state (app-local, see `ModelContext+SyncTracking.swift`): the revision
+    // grows with every local change, `syncedRevision` is the last one the server
+    // acknowledged, `syncSent` means it may exist on the server, and
+    // `isSyncable` (fixed at creation) keeps unowned and catalogue data local.
+    var syncRevision: Int = 0
+    var syncedRevision: Int = 0
+    var syncSent: Bool = false
+    var isSyncable: Bool = false
+
     init(exerciseId: UUID, restEnabled: Bool, restSeconds: Int) {
         self.exerciseId = exerciseId
         self.restEnabled = restEnabled
         self.restSeconds = restSeconds
+    }
+}
+
+// MARK: - Sync (app-local)
+
+/// The user the store's user data belongs to (S10). At most one row.
+@Model final class StoreOwnerModel {
+    @Attribute(.unique) var userId: UUID
+    var claimedAt: Date
+
+    init(userId: UUID, claimedAt: Date) {
+        self.userId = userId
+        self.claimedAt = claimedAt
+    }
+}
+
+/// A row deleted on the device that may exist on the server (S11). A set or
+/// entry tombstone belongs to the session it was removed from (`sessionId`)
+/// and travels with that session's push; the others are propagated on their own.
+@Model final class SyncTombstoneModel {
+    #Index<SyncTombstoneModel>([\.sessionId], [\.kindRaw, \.rowId])
+
+    var kindRaw: String
+    var rowId: UUID
+    var sessionId: UUID?
+    /// Revision of the owning aggregate when the row was removed.
+    var revision: Int
+    var deletedAt: Date
+
+    init(kindRaw: String, rowId: UUID, sessionId: UUID?, revision: Int, deletedAt: Date) {
+        self.kindRaw = kindRaw
+        self.rowId = rowId
+        self.sessionId = sessionId
+        self.revision = revision
+        self.deletedAt = deletedAt
     }
 }

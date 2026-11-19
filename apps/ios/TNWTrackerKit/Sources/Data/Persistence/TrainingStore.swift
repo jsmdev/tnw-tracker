@@ -13,6 +13,10 @@ public final class TrainingStore {
     public let importer: any TrainingImporterProtocol
     public let exerciseSettings: any ExerciseSettingRepositoryProtocol
     public let intentInbox: IntentInbox
+    /// The owner stamp of the store (S10).
+    public let ownership: any StoreOwnershipProtocol
+    /// Change tracking and local tombstones for the sync (S7, S11).
+    public let syncState: any SyncStateRepositoryProtocol
 
     let context: ModelContext
 
@@ -30,10 +34,15 @@ public final class TrainingStore {
         importer = SwiftDataTrainingImporter(context: context, sessions: sessionRepository)
         exerciseSettings = SwiftDataExerciseSettingRepository(context: context)
         intentInbox = IntentInbox(context: context)
+        ownership = SwiftDataStoreOwnership(context: context)
+        syncState = SwiftDataSyncStateRepository(context: context)
     }
 
     /// Deletes every exercise, routine and session, and the exercises' settings.
     /// Intent events are kept.
+    /// A local reset: it leaves no tombstone, forgets the pending ones and the
+    /// owner stamp, so nothing it deletes or writes next is sent to the server
+    /// until a sign-in claims the store again.
     /// Rows are deleted one by one: batch deletes do not support the `deny` rules.
     public func deleteAllTrainingData() throws {
         for session in try context.fetch(FetchDescriptor<SessionModel>()) {
@@ -48,6 +57,12 @@ public final class TrainingStore {
         }
         for setting in try context.fetch(FetchDescriptor<ExerciseSettingModel>()) {
             context.delete(setting)
+        }
+        for tombstone in try context.fetch(FetchDescriptor<SyncTombstoneModel>()) {
+            context.delete(tombstone)
+        }
+        for owner in try context.fetch(FetchDescriptor<StoreOwnerModel>()) {
+            context.delete(owner)
         }
         try context.save()
     }

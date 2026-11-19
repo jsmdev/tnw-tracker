@@ -137,7 +137,7 @@ final class SwiftDataTrainingImporter: TrainingImporterProtocol {
             vacated += try sessions.merge(entry, exercise: exercise, into: session)
         }
         // D8: a session whose refs all moved here is removed once every entry is in.
-        sessions.removeEmptiedImportedSessions(vacated.filter { $0.id != session.id })
+        try sessions.removeEmptiedImportedSessions(vacated.filter { $0.id != session.id })
         return session.id
     }
 
@@ -173,6 +173,7 @@ final class SwiftDataTrainingImporter: TrainingImporterProtocol {
         session.startedAt = incoming.startedAt
         session.completedAt = incoming.completedAt
         context.insert(session)
+        try context.trackNew(session)
         return session
     }
 

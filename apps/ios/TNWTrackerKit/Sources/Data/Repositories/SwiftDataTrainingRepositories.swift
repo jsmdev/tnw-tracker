@@ -65,6 +65,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         session.name = name
         session.startedAt = date
         context.insert(session)
+        try context.trackNew(session)
         if let routineId {
             guard let routine = try context.fetchRoutine(id: routineId) else { throw TrainingDataError.notFound }
             session.routine = routine
@@ -104,6 +105,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         entry.sets.append(set)
         entry.completedAt = date
         applyReconciliationOnMerge(entry, at: date)
+        session.markChanged()
         try context.save()
         return set.snapshot
     }
@@ -112,6 +114,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         let descriptor = FetchDescriptor<ExerciseSetModel>(predicate: #Predicate { $0.id == setId })
         guard let set = try context.fetch(descriptor).first else { throw TrainingDataError.notFound }
         set.warmup = warmup
+        set.entry?.session?.markChanged()
         try context.save()
     }
 
@@ -125,6 +128,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         }
         try Self.validate(values, for: exercise)
         set.apply(values)
+        set.entry?.session?.markChanged()
         try context.save()
     }
 
@@ -136,6 +140,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         guard set.sourceRaw == SetSource.manual.rawValue else {
             throw TrainingDataError.invalidSet("only manual sets can be deleted")
         }
+        try context.recordRemoval(of: set, from: entry.session)
         entry.sets.removeAll { $0.id == set.id }
         context.delete(set)
 
@@ -144,6 +149,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
                 entry.statusRaw = EntryStatus.skipped.rawValue
                 entry.completedAt = nil
             } else {
+                try context.recordRemoval(of: entry, from: entry.session)
                 entry.session?.entries.removeAll { $0.id == entry.id }
                 context.delete(entry)
             }
@@ -161,12 +167,14 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
             entry.replacedExercise = entry.exercise
         }
         entry.exercise = exercise
+        entry.session?.markChanged()
         try context.save()
     }
 
     func removeEntry(id: UUID) throws {
         let entry = try fetchEntry(id)
         entry.statusRaw = EntryStatus.removed.rawValue
+        entry.session?.markChanged()
         try context.save()
     }
 
@@ -176,7 +184,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
             throw TrainingDataError.notFound
         }
         let vacated = try merge(imported, exercise: exercise, into: session)
-        removeEmptiedImportedSessions(vacated)
+        try removeEmptiedImportedSessions(vacated)
         try context.save()
     }
 
@@ -184,11 +192,13 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         let entry = try fetchEntry(entryId)
         guard entry.hasBothSources else { throw TrainingDataError.entryNotMixed }
         entry.setReconciliation(keep: keep, decidedBy: .user, at: date)
+        entry.session?.markChanged()
         try context.save()
     }
 
     func discardSession(id: UUID) throws {
         let session = try openSession(id)
+        try context.recordDeletion(of: session)
         context.delete(session)
         try context.save()
     }
@@ -210,6 +220,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         for entry in session.entries where (entry.completedAt ?? date) > date {
             entry.completedAt = nil
         }
+        session.markChanged()
         try context.save()
         return session.snapshot
     }

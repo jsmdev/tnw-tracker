@@ -14,13 +14,13 @@ struct TrainingSchemaTests {
         #expect(TrainingSchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
     }
 
-    @Test("the schema holds every training model and the intent mailbox event")
+    @Test("the schema holds every training model, the intent mailbox event and the sync state")
     func schemaHoldsEveryModel() {
         let names = Set(TrainingSchemaV1.models.map { String(describing: $0) })
         #expect(names == [
             "ExerciseModel", "MuscleGroupModel", "RoutineModel", "RoutineItemModel",
             "SessionModel", "SessionEntryModel", "EntryExternalRefModel", "ExerciseSetModel",
-            "ExerciseSettingModel", "WorkoutIntentEvent"
+            "ExerciseSettingModel", "WorkoutIntentEvent", "StoreOwnerModel", "SyncTombstoneModel"
         ])
     }
 
