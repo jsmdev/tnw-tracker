@@ -22,6 +22,11 @@ struct HomeScreen {
         app.buttons[AXID.Home.settingsButton]
     }
 
+    /// Opens the exercises screen (#137 T2b).
+    var exercisesButton: XCUIElement {
+        app.buttons[AXID.Home.exercisesButton]
+    }
+
     /// "Ver todas" in "Otras rutinas" (T10).
     var seeAllRoutinesButton: XCUIElement {
         app.buttons[AXID.Home.seeAllRoutinesButton]
@@ -56,6 +61,12 @@ struct HomeScreen {
     func tapSettings() -> SettingsScreen {
         settingsButton.tap()
         return SettingsScreen(app: app).waitUntilLoaded()
+    }
+
+    /// Opens the exercises screen from the navigation bar (#137 T2b).
+    func openExercises() -> ExerciseListScreen {
+        exercisesButton.tap()
+        return ExerciseListScreen(app: app).waitUntilLoaded()
     }
 
     /// Opens the routine list with "Ver todas" in "Otras rutinas" (T10).

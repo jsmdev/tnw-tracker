@@ -56,7 +56,10 @@ enum LocalSupabaseStack {
                     storage: InMemoryAuthStorage(),
                     autoRefreshToken: false,
                     emitLocalSessionAsInitialSession: true
-                )
+                ),
+                // As the app's client: no URL cache, which keys responses by URL
+                // only and would answer one user's request with another's (S10).
+                global: .init(session: SupabaseClientProvider.makeURLSession())
             )
         )
         let email = "sync-contract-\(UUID().uuidString.lowercased())@example.test"

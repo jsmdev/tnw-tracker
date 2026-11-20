@@ -14,6 +14,8 @@ public enum AXID {
         public static let settingsButton = "home.settingsButton"
         /// "Ver todas" in "Otras rutinas": opens the routine list (T10).
         public static let seeAllRoutinesButton = "home.seeAllRoutinesButton"
+        /// Opens the exercises screen (#137 T2b).
+        public static let exercisesButton = "home.exercisesButton"
 
         /// A row of "Otras rutinas" (T10).
         public static func otherRoutine(_ routineId: UUID) -> String {
@@ -28,6 +30,37 @@ public enum AXID {
 
         public static func row(_ routineId: UUID) -> String {
             "routineList.row.\(routineId.uuidString)"
+        }
+    }
+
+    /// Exercises screen (`ExerciseListView`, #137 T2b).
+    public enum Exercises {
+        public static func row(_ exerciseId: UUID) -> String {
+            "exercises.row.\(exerciseId.uuidString)"
+        }
+    }
+
+    /// Exercise sheet (`ExerciseSheetView`, #137 S7).
+    public enum ExerciseSheet {
+        public static let closeButton = "exerciseSheet.closeButton"
+        public static let name = "exerciseSheet.name"
+        public static let equipment = "exerciseSheet.equipment"
+        public static let video = "exerciseSheet.video"
+        public static let image = "exerciseSheet.image"
+        public static let placeholder = "exerciseSheet.placeholder"
+        public static let loading = "exerciseSheet.loading"
+        public static let videoNotice = "exerciseSheet.videoNotice"
+        public static let primaryMuscles = "exerciseSheet.primaryMuscles"
+        public static let secondaryMuscles = "exerciseSheet.secondaryMuscles"
+
+        /// The `number`th setup step, from 1.
+        public static func setupStep(_ number: Int) -> String {
+            "exerciseSheet.setupStep.\(number)"
+        }
+
+        /// The `number`th execution step, from 1.
+        public static func executionStep(_ number: Int) -> String {
+            "exerciseSheet.executionStep.\(number)"
         }
     }
 

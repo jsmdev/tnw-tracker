@@ -30,6 +30,9 @@ public final class AppEnvironment {
     /// Live Activity, shared by every account of the app.
     public let liveActivity: LiveActivityController
 
+    /// The account's exercise images and videos, kept in its own folder (#137).
+    public let exerciseMedia: ExerciseMediaLibrary
+
     let store: TrainingStore
     private let intentInbox: IntentInbox
 
@@ -41,9 +44,11 @@ public final class AppEnvironment {
         store: TrainingStore,
         remote: any TrainingRemoteStore,
         intentInbox: IntentInbox,
-        liveActivity: LiveActivityController
+        liveActivity: LiveActivityController,
+        exerciseMedia: ExerciseMediaLibrary
     ) {
         self.userId = userId
+        self.exerciseMedia = exerciseMedia
         self.store = store
         self.intentInbox = intentInbox
         self.liveActivity = liveActivity

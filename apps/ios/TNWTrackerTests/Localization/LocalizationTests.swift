@@ -23,7 +23,13 @@ struct LocalizationTests {
         "session-list.title",
         "summary.title",
         "active-workout.controls.end",
-        "rest-timer.skip-button"
+        "rest-timer.skip-button",
+        // #137 S6: the exercises screen and sheet.
+        "exercises.title",
+        "exercise-sheet.how-to",
+        "exercise-sheet.media.offline",
+        "equipment.free-weights",
+        "muscle.chest"
     ])
     func existingKeysResolveInBothLocales(key: String) {
         let bundle = Bundle.main

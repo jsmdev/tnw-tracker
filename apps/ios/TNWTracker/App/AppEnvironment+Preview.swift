@@ -16,7 +16,8 @@
                     store: store,
                     remote: SupabaseTrainingRemoteStore(client: SupabaseClientProvider.shared.client, userId: userId),
                     intentInbox: IntentInbox.inMemory(),
-                    liveActivity: LiveActivityController(requestsActivities: false)
+                    liveActivity: LiveActivityController(requestsActivities: false),
+                    exerciseMedia: .offlineForTesting()
                 )
             } catch {
                 fatalError("AppEnvironment.preview failed: \(error)")

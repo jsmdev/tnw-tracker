@@ -14,6 +14,8 @@ import SwiftData
 ///   (`completeUntilFirstUserAuthentication`): the app writes to the store while
 ///   locked during a workout (the lock-screen buttons, the rest timer) and the
 ///   sync may run then; `complete` would close the files under them.
+/// - The account's exercise media live beside its store, in `Media`
+///   (`mediaStore(for:source:)`), with the same protection, out of backups.
 /// - The store every account shared before is moved to the folder of the user
 ///   it is stamped with when that user first signs in. One stamped with nobody,
 ///   or that cannot be read, is left where it is and is no one's store.
@@ -61,6 +63,23 @@ public struct AccountStores: Sendable {
     private func folder(for userId: UUID) -> URL {
         root.appending(path: userId.uuidString.lowercased(), directoryHint: .isDirectory)
     }
+
+    /// The account's exercise media (#137 S2), in `<root>/<user id>/Media`:
+    /// beside its store, with the store's protection class on the folder and on
+    /// every file downloaded into it, and excluded from backups (the server
+    /// keeps every object). Another account's folder is never read.
+    public func mediaStore(for userId: UUID, source: any ExerciseMediaSource) throws -> ExerciseMediaStore {
+        var media = folder(for: userId).appending(path: Self.mediaFolderName, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: media, withIntermediateDirectories: true)
+        try protect(media, Self.protection)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try media.setResourceValues(values)
+        let protect = protect
+        return ExerciseMediaStore(folder: media, source: source) { try protect($0, Self.protection) }
+    }
+
+    static let mediaFolderName = "Media"
 
     /// Opens the account's store as it was left, or creates it (`isNew`).
     @MainActor
