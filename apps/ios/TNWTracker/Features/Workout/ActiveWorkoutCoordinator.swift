@@ -41,11 +41,15 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// Asks for a sync and returns at once: finishing never waits for it (S12).
     private let requestSync: @MainActor () -> Void
     let timerService: RestTimerService
-    let liveActivity: LiveActivityController
-    private let now: () -> Date
+    let liveActivity: any LiveActivityControlling
+    /// The name of an exercise, for the Live Activity.
+    let exerciseName: @MainActor (UUID) -> String?
+    let now: () -> Date
+    /// The state the Live Activity shows, to skip updates that change nothing.
+    var publishedLiveActivityState: ActiveWorkoutAttributes.ContentState?
 
     /// The set whose rest timer is running (AC3.8: its rest taken is recorded when the rest ends).
-    private var restingSet: (setId: UUID, timerId: UUID)?
+    var restingSet: (setId: UUID, timerId: UUID)?
     /// The last set after which no timer ran; its rest is the time until the next set.
     private var setWithoutTimer: (setId: UUID, completedAt: Date)?
 
@@ -65,7 +69,8 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         changeExerciseRest: @escaping @MainActor () -> Int?,
         requestSync: @escaping @MainActor () -> Void,
         timerService: RestTimerService,
-        liveActivity: LiveActivityController,
+        liveActivity: any LiveActivityControlling,
+        exerciseName: @escaping @MainActor (UUID) -> String? = { _ in nil },
         now: @escaping () -> Date = Date.init
     ) {
         self.sessions = sessions
@@ -75,10 +80,13 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         self.requestSync = requestSync
         self.timerService = timerService
         self.liveActivity = liveActivity
+        self.exerciseName = exerciseName
         self.now = now
         timerService.onEnded = { [weak self] timer, ranSeconds in
             self?.restEnded(timer, ranSeconds: ranSeconds)
         }
+        timerService.onExpired = { [weak self] in self?.restExpired() }
+        timerService.onTick = { [weak self] _ in self?.publishLiveActivity() }
     }
 
     // MARK: - Lifecycle
@@ -124,7 +132,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         currentExerciseIndex = 0
         elapsedSeconds = 0
         phase = .active
-        liveActivity.start(workoutId: started.id, workoutName: started.name ?? "")
+        startLiveActivity()
         startElapsedTimer()
     }
 
@@ -140,7 +148,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         let startedAt = existing.startedAt ?? now()
         elapsedSeconds = max(0, Int(now().timeIntervalSince(startedAt)))
         phase = .active
-        liveActivity.start(workoutId: existing.id, workoutName: existing.name ?? "")
+        startLiveActivity()
         startElapsedTimer()
         logger.info("Coordinator adoptó sesión residual \(existing.id)")
     }
@@ -152,26 +160,13 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         )
     }
 
-    /// Primer ejercicio cuyas series de trabajo (sin calentamiento) no alcanzan su objetivo; si todos
-    /// están completos (o no hay objetivo), el último ejercicio.
-    private func firstIncompleteExerciseIndex() -> Int {
-        for (idx, entry) in entries.enumerated() {
-            guard let target = target(for: entry)?.targetSets else { continue }
-            if entry.workingManualSets.count < target { return idx }
-        }
-        return max(0, entries.count - 1)
-    }
-
-    func target(for entry: SessionEntry) -> RoutineItem? {
-        targets[entry.exerciseId] ?? entry.replacedExerciseId.flatMap { targets[$0] }
-    }
-
     // MARK: - Set logging
 
     /// Registra una serie manual del ejercicio actual y evalúa la transición de fase.
     /// A warm-up set is stored but does not count, and starts no phase transition.
     public func recordSet(reps: Int, weight: Weight?, rir: Int?, warmup: Bool = false) async throws {
         guard let current = session, let entry = currentEntry else { return }
+        defer { publishLiveActivity() }
         // A rest still running ends with this set and records the time so far.
         let cutShort = restingSet
         await timerService.skip()
@@ -195,15 +190,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         // Until a timer starts after it, the time until the next set is its rest.
         setWithoutTimer = (logged.id, logged.completedAt ?? now())
 
-        // Ventana de undo de 5s
-        undoLastSetId = logged.id
-        undoTask?.cancel()
-        undoTask = Task {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-            guard !Task.isCancelled else { return }
-            self.undoLastSetId = nil
-            self.undoRestore = nil
-        }
+        startUndoWindow(for: logged.id)
 
         let item = target(for: entry)
         guard let outcome = WorkoutPhaseTransition.evaluate(
@@ -242,25 +229,15 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         }
     }
 
-    // MARK: - Rest taken (AC3.8)
-
-    /// A rest ended (finished or skipped): the set before it gets the seconds it ran.
-    private func restEnded(_ timer: RestTimerState, ranSeconds: Int) {
-        guard let resting = restingSet, resting.timerId == timer.id else { return }
-        restingSet = nil
-        recordRest(ranSeconds, setId: resting.setId)
-    }
-
-    /// Writes the rest taken after a manual set (nil clears it) through the
-    /// repository's set update.
-    private func recordRest(_ seconds: Int?, setId: UUID) {
-        guard var values = manualSet(setId)?.values else { return }
-        values.restSeconds = seconds
-        do {
-            try sessions.updateManualSet(values, setId: setId)
-            try refreshSession()
-        } catch {
-            logger.error("recordRest falló: \(error)")
+    /// Ventana de undo de 5s
+    private func startUndoWindow(for setId: UUID) {
+        undoLastSetId = setId
+        undoTask?.cancel()
+        undoTask = Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            guard !Task.isCancelled else { return }
+            self.undoLastSetId = nil
+            self.undoRestore = nil
         }
     }
 
@@ -294,6 +271,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
             phase = .active
             logger.info("Coordinator phase → .active (undoLastSet)")
         }
+        publishLiveActivity()
     }
 
     // MARK: - Navigation
@@ -304,17 +282,29 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         phase = .active
         let advancedTo = currentExerciseIndex
         logger.info("Coordinator phase → .active (advanced to exercise \(advancedTo))")
+        publishLiveActivity()
     }
 
     public func skipTimer() async {
-        let wasRestingBetweenExercises = (phase == .restingBetweenExercises)
         await timerService.skip()
+        restOver("skipTimer")
+    }
+
+    /// The rest ran out on its own: the session moves on exactly as `skipTimer()` (#136 S1).
+    private func restExpired() {
+        guard phase == .restingBetweenSets || phase == .restingBetweenExercises else { return }
+        restOver("rest expired")
+    }
+
+    /// The rest is over: back to `.active`, on the next exercise after a rest between exercises.
+    private func restOver(_ reason: String) {
+        let wasRestingBetweenExercises = (phase == .restingBetweenExercises)
         phase = .active
-        logger
-            .info("Coordinator phase → .active (skipTimer, wasRestingBetweenExercises: \(wasRestingBetweenExercises))")
+        logger.info("Coordinator phase → .active (\(reason), between exercises: \(wasRestingBetweenExercises))")
         if wasRestingBetweenExercises {
             advanceToNextExercise()
         }
+        publishLiveActivity()
     }
 
     // MARK: - Pause / Resume
@@ -324,6 +314,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         elapsedTask?.cancel()
         phase = .paused
         logger.info("Coordinator phase → .paused")
+        publishLiveActivity()
     }
 
     public func resume() async throws {
@@ -331,6 +322,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         phase = .active
         logger.info("Coordinator phase → .active (resumed)")
         startElapsedTimer()
+        publishLiveActivity()
     }
 
     // MARK: - Finish
@@ -379,6 +371,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         currentExerciseIndex = 0
         phase = .idle
         elapsedSeconds = 0
+        publishedLiveActivityState = nil
     }
 
     func refreshSession() throws {

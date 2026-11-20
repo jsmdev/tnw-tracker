@@ -67,7 +67,9 @@ extension ActiveWorkoutView {
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
-        case .active, .restingBetweenSets, .restingBetweenExercises:
+        case .active:
+            // Not during a rest: the rest timer has no pause, so pausing waits for
+            // the rest to end (#136), as on the Live Activity.
             Button {
                 Task { try? await coordinator.pause() }
             } label: {

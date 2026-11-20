@@ -335,7 +335,8 @@ private struct ElapsedTimeView: View {
         changeExerciseRest: { ChangeExerciseRestPreference.defaultSeconds },
         requestSync: {},
         timerService: appEnv.makeRestTimerService(),
-        liveActivity: appEnv.liveActivity
+        liveActivity: appEnv.liveActivity,
+        exerciseName: { try? appEnv.exerciseRepository.exercise(id: $0)?.name }
     )
     NavigationStack {
         ActiveWorkoutView(coordinator: coordinator)

@@ -1,8 +1,9 @@
 import AppIntents
 import Foundation
-import os
 
-public struct EndWorkoutIntent: AppIntent {
+/// "Terminar" on the workout's Live Activity. A `LiveActivityIntent`, so the
+/// system runs `perform()` in the app process (#136 S3).
+public struct EndWorkoutIntent: LiveActivityIntent {
     public static var title: LocalizedStringResource {
         LocalizedStringResource("intent.end-workout.title", defaultValue: "End Workout")
     }
@@ -21,31 +22,30 @@ public struct EndWorkoutIntent: AppIntent {
     /// Not discoverable via Siri suggestions — user must tap explicitly.
     public static let isDiscoverable: Bool = false
 
-    private let logger = Logger(subsystem: "com.tnwtracker", category: "EndWorkoutIntent")
+    /// The workout in progress (`ActiveWorkoutAttributes.workoutId`).
+    @Parameter(title: LocalizedStringResource("intent.workout-id.parameter", defaultValue: "Workout"))
+    public var workoutId: String
 
-    private let mailbox: any IntentMailboxProtocol
-    private let _workoutId: UUID
+    /// Injected in tests; nil uses the device's intent mailbox.
+    private let mailbox: (any IntentMailboxProtocol)?
 
     public init() {
-        _workoutId = UUID()
-        do {
-            let container = try ModelContainerFactory.makeIntentMailboxContainer()
-            mailbox = IntentMailbox(container: container)
-        } catch {
-            fatalError("EndWorkoutIntent.init failed to build ModelContainer: \(error)")
-        }
+        mailbox = nil
     }
 
+    public init(workoutId: UUID) {
+        mailbox = nil
+        self.workoutId = workoutId.uuidString
+    }
+
+    /// Test-injectable init.
     public init(workoutId: UUID, mailbox: any IntentMailboxProtocol) {
-        _workoutId = workoutId
         self.mailbox = mailbox
+        self.workoutId = workoutId.uuidString
     }
 
-    @MainActor
     public func perform() async throws -> some IntentResult {
-        logger.info("EndWorkoutIntent.perform() workoutId: \(_workoutId, privacy: .private)")
-        try await mailbox.enqueue(workoutId: _workoutId, kind: "end")
-        mailbox.postIntentNotification()
+        try await resolveMailbox(mailbox).deliver(kind: "end", workoutId: workoutId)
         return .result()
     }
 }

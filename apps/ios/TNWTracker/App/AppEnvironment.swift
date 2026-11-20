@@ -120,9 +120,9 @@ public final class AppEnvironment {
 
     // MARK: - Factories
 
-    /// Crea un `RestTimerService` vinculado al `LiveActivityController` compartido.
+    /// Crea un `RestTimerService`; the coordinator drives the Live Activity.
     public func makeRestTimerService() -> RestTimerService {
-        RestTimerService(liveActivity: liveActivity)
+        RestTimerService()
     }
 
     /// Factory para el coordinator del workout activo, sobre el store de la cuenta.
@@ -134,7 +134,8 @@ public final class AppEnvironment {
             changeExerciseRest: { ChangeExerciseRestPreference(defaults: .standard).restSeconds },
             requestSync: { [weak syncScheduler] in syncScheduler?.requestSync() },
             timerService: makeRestTimerService(),
-            liveActivity: liveActivity
+            liveActivity: liveActivity,
+            exerciseName: { [exerciseRepository] id in try? exerciseRepository.exercise(id: id)?.name }
         )
     }
 }

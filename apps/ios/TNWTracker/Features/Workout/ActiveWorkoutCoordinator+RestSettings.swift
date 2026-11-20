@@ -19,11 +19,13 @@ extension ActiveWorkoutCoordinator {
     /// −15 s / +15 s on the running rest, the same for both timers.
     public func adjustTimer(by seconds: Int) async {
         await timerService.extend(by: seconds)
+        publishLiveActivity()
     }
 
     /// The user's warm-up annotation on a logged set of the session.
     public func setWarmup(_ warmup: Bool, setId: UUID) throws {
         try sessions.setWarmup(warmup, setId: setId)
         try refreshSession()
+        publishLiveActivity()
     }
 }
