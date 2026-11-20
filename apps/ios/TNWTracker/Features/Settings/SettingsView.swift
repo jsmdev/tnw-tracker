@@ -2,8 +2,8 @@ import SwiftUI
 import TNWTrackerKit
 
 struct SettingsView: View {
+    @Environment(AppEnvironment.self) private var appEnv
     #if DEBUG
-        @Environment(AppEnvironment.self) private var appEnv
         @State private var showReseedConfirmation = false
         @State private var reseedError: String?
     #endif
@@ -39,6 +39,14 @@ struct SettingsView: View {
                 Text("settings.effort-section")
             } footer: {
                 Text("settings.rir-maximum-footer")
+            }
+            if case .storeNotOwned = appEnv.syncScheduler.status {
+                Section {
+                    Text("settings.sync-store-not-owned")
+                        .accessibilityIdentifier(AXID.Settings.syncStatusMessage)
+                } header: {
+                    Text("settings.sync-section")
+                }
             }
             #if DEBUG
                 Section("Developer") {

@@ -16,6 +16,11 @@ struct SettingsScreen {
         app.staticTexts[AXID.Settings.changeExerciseRestDurationLabel]
     }
 
+    /// Shown only while the store holds another account's data.
+    var syncStatusMessage: XCUIElement {
+        app.staticTexts[AXID.Settings.syncStatusMessage]
+    }
+
     var rirMaximumStepper: XCUIElement {
         app.steppers[AXID.Settings.rirMaximumStepper]
     }

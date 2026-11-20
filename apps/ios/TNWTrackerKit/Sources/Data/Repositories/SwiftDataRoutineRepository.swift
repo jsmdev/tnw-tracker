@@ -9,9 +9,13 @@ final class SwiftDataRoutineRepository: RoutineRepositoryProtocol {
     /// The context does not keep its container alive; the adapter does.
     private let container: ModelContainer
 
-    init(context: ModelContext) {
+    /// Refuses the user's writes while the store is not theirs (S10).
+    private let gate: UserWriteGate
+
+    init(context: ModelContext, gate: UserWriteGate = UserWriteGate()) {
         self.context = context
         container = context.container
+        self.gate = gate
     }
 
     func routines(_ query: RoutineQuery) throws -> [Routine] {
@@ -43,12 +47,12 @@ final class SwiftDataRoutineRepository: RoutineRepositoryProtocol {
         guard let model = try context.fetchRoutine(id: routineId) else { throw TrainingDataError.notFound }
         model.isFavorite = favorite
         model.markChanged()
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     func save(_ routine: Routine) throws {
         try write(routine)
-        try context.save()
+        try context.saveUserChange(gate)
     }
 
     /// Validates and writes the routine without saving the context.

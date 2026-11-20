@@ -26,15 +26,25 @@ public final class TrainingStore {
         try self.init(container: ModelContainerFactory.makeContainer(inMemory: inMemory))
     }
 
+    /// Shared by the repositories: refuses the user's writes while the store is not theirs.
+    let userWrites = UserWriteGate()
+
+    /// True while the signed-in user does not own the store (S10): every user
+    /// command throws `TrainingDataError.storeNotOwned` and writes nothing.
+    /// `SyncScheduler` sets it when it claims the store at sign-in.
+    public var userWritesBlocked: Bool {
+        userWrites.isBlocked
+    }
+
     public init(container: ModelContainer) {
         self.container = container
         context = container.mainContext
-        exercises = SwiftDataExerciseRepository(context: context)
-        routines = SwiftDataRoutineRepository(context: context)
-        let sessionRepository = SwiftDataSessionRepository(context: context)
+        exercises = SwiftDataExerciseRepository(context: context, gate: userWrites)
+        routines = SwiftDataRoutineRepository(context: context, gate: userWrites)
+        let sessionRepository = SwiftDataSessionRepository(context: context, gate: userWrites)
         sessions = sessionRepository
-        importer = SwiftDataTrainingImporter(context: context, sessions: sessionRepository)
-        exerciseSettings = SwiftDataExerciseSettingRepository(context: context)
+        importer = SwiftDataTrainingImporter(context: context, sessions: sessionRepository, gate: userWrites)
+        exerciseSettings = SwiftDataExerciseSettingRepository(context: context, gate: userWrites)
         intentInbox = IntentInbox(context: context)
         ownership = SwiftDataStoreOwnership(context: context)
         syncState = SwiftDataSyncStateRepository(context: context)
@@ -48,7 +58,10 @@ public final class TrainingStore {
     /// to the server until a sign-in claims the store again, and the next pull
     /// reads everything again.
     /// Rows are deleted one by one: batch deletes do not support the `deny` rules.
+    /// Refused with `TrainingDataError.storeNotOwned` while `userWritesBlocked`:
+    /// another user signed in never wipes the owner's data.
     public func deleteAllTrainingData() throws {
+        guard !userWritesBlocked else { throw TrainingDataError.storeNotOwned }
         for session in try context.fetch(FetchDescriptor<SessionModel>()) {
             context.delete(session)
         }

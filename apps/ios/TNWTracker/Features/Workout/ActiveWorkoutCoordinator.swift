@@ -38,7 +38,8 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     let exerciseSettings: any ExerciseSettingRepositoryProtocol
     /// "Descanso al cambiar de ejercicio" in seconds, or nil when it is off.
     private let changeExerciseRest: @MainActor () -> Int?
-    private let syncEngine: any SyncEngine
+    /// Asks for a sync and returns at once: finishing never waits for it (S12).
+    private let requestSync: @MainActor () -> Void
     let timerService: RestTimerService
     private let liveActivity: LiveActivityController
     private let now: () -> Date
@@ -62,7 +63,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         routines: any RoutineRepositoryProtocol,
         exerciseSettings: any ExerciseSettingRepositoryProtocol,
         changeExerciseRest: @escaping @MainActor () -> Int?,
-        syncEngine: any SyncEngine,
+        requestSync: @escaping @MainActor () -> Void,
         timerService: RestTimerService,
         liveActivity: LiveActivityController,
         now: @escaping () -> Date = Date.init
@@ -71,7 +72,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         self.routines = routines
         self.exerciseSettings = exerciseSettings
         self.changeExerciseRest = changeExerciseRest
-        self.syncEngine = syncEngine
+        self.requestSync = requestSync
         self.timerService = timerService
         self.liveActivity = liveActivity
         self.now = now
@@ -346,8 +347,8 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         await timerService.skip()
 
         // Cierre LOCAL: la sesión se completa en el store antes de sincronizar.
-        // El sync remoto es best-effort — un fallo NO debe dejar la sesión en
-        // curso ni colgar el coordinador (bug #88).
+        // The sync runs detached: finishing never waits for it nor fails because
+        // of it (bug #88, S12); a failed sync keeps the session pending.
         // T6 (D7): una sesión sin series de trabajo (rutina o libre) nunca se
         // guarda: se descarta, sin resumen.
         let discard = !hasWorkingSets
@@ -360,11 +361,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         } catch {
             logger.error("finish: cierre local falló: \(error)")
         }
-        do {
-            try await syncEngine.fullSync()
-        } catch {
-            logger.error("finish: sync falló; sesión cerrada localmente igual: \(error)")
-        }
+        requestSync()
 
         liveActivity.end()
 

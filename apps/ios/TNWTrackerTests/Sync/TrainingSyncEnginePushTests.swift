@@ -255,7 +255,7 @@ struct TrainingSyncEnginePushTests {
 
         let refusal = TrainingSyncError.storeNotOwned(userId: unowned.userId, owner: otherOwner ? owner : nil)
         await #expect(throws: refusal) {
-            try await unowned.engine.fullSync()
+            try await unowned.engine.sync()
         }
 
         #expect(await unowned.server.calls.isEmpty)
@@ -266,8 +266,8 @@ struct TrainingSyncEnginePushTests {
     func concurrentSyncsDoNotDoublePush() async throws {
         let session = try world.finishedSession()
 
-        async let first: Void = engine.fullSync()
-        async let second: Void = engine.fullSync()
+        async let first = engine.sync()
+        async let second = engine.sync()
         _ = try await (first, second)
 
         #expect(await server.calls.filter { $0 == .pushSession(session.id) }.count == 1)

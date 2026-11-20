@@ -12,12 +12,15 @@ final class SwiftDataTrainingImporter: TrainingImporterProtocol {
     private let exercises: SwiftDataExerciseRepository
     private let routines: SwiftDataRoutineRepository
 
-    init(context: ModelContext, sessions: SwiftDataSessionRepository) {
+    private let gate: UserWriteGate
+
+    init(context: ModelContext, sessions: SwiftDataSessionRepository, gate: UserWriteGate = UserWriteGate()) {
         self.context = context
         container = context.container
         self.sessions = sessions
-        exercises = SwiftDataExerciseRepository(context: context)
-        routines = SwiftDataRoutineRepository(context: context)
+        self.gate = gate
+        exercises = SwiftDataExerciseRepository(context: context, gate: gate)
+        routines = SwiftDataRoutineRepository(context: context, gate: gate)
     }
 
     /// Atomic per session (D13). Bundle-level rules (exercises, routines and their
@@ -35,7 +38,7 @@ final class SwiftDataTrainingImporter: TrainingImporterProtocol {
             for routine in bundle.routines {
                 result.routineIds[routine.id] = try importRoutine(routine, exerciseIds: result.exerciseIds)
             }
-            try context.save()
+            try context.saveUserChange(gate)
         } catch {
             context.rollback()
             throw error
@@ -49,7 +52,7 @@ final class SwiftDataTrainingImporter: TrainingImporterProtocol {
             do {
                 try validate(session, types: types, routineIds: bundleRoutineIds)
                 let localId = try importSession(session, result: result)
-                try context.save()
+                try context.saveUserChange(gate)
                 result.sessionIds[session.id] = localId
             } catch let error as TrainingDataError {
                 context.rollback()

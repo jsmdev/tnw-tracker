@@ -42,6 +42,9 @@ struct TnwTrackerApp: App {
                         // startAuthListener and currentSession are NOT called.
                         appEnv = AppEnvironment.bootstrapForUITesting(store: store)
                         try? SampleTrainingData.loadIfEmpty(into: store)
+                        if ProcessInfo.processInfo.arguments.contains("--uitesting-store-of-another-user") {
+                            appEnv?.signInOnStoreOfAnotherUserForUITesting()
+                        }
                         appEnv?.startIntentObserver()
                         // Live Activities left by an earlier run make the system
                         // relaunch the app in the background, without `--uitesting`,
@@ -52,7 +55,7 @@ struct TnwTrackerApp: App {
                 #endif
                 appEnv = AppEnvironment.bootstrap(store: store)
                 #if DEBUG
-                    try? SampleTrainingData.loadIfEmpty(into: store)
+                    appEnv?.loadSampleDataIfUnowned()
                 #endif
                 // El auth listener maneja la restauración: al suscribirse, Supabase
                 // emite `.initialSession` con la sesión persistida (o nil). `handle`

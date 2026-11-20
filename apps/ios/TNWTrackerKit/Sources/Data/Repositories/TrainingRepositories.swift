@@ -137,16 +137,3 @@ public protocol TrainingImporterProtocol: AnyObject {
     @discardableResult
     func importBundle(_ bundle: TrainingBundle) throws -> ImportResult
 }
-
-/// Placeholder for the remote sync (#135). The app only calls `fullSync()`.
-@MainActor
-public protocol SyncEngine: AnyObject {
-    func fullSync() async throws
-}
-
-/// Sync that does nothing until #135 builds the real one on the new schema.
-@MainActor
-public final class NoopSyncEngine: SyncEngine {
-    public init() {}
-    public func fullSync() async throws {}
-}

@@ -333,7 +333,7 @@ private struct ElapsedTimeView: View {
         routines: appEnv.routineRepository,
         exerciseSettings: appEnv.exerciseSettingRepository,
         changeExerciseRest: { ChangeExerciseRestPreference.defaultSeconds },
-        syncEngine: NoopSyncEngine(),
+        requestSync: {},
         timerService: appEnv.makeRestTimerService(),
         liveActivity: appEnv.liveActivity
     )

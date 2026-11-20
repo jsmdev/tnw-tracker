@@ -55,7 +55,7 @@ public enum TrainingSyncError: Error, Equatable, Sendable {
     case storeNotOwned(userId: UUID, owner: UUID?)
 }
 
-/// The sync between the local store and the server (#135): `fullSync()` pushes
+/// The sync between the local store and the server (#135): `sync()` pushes
 /// local changes, then pulls the server's (`TrainingSyncEngine+Pull.swift`).
 /// A push and a pull never run at the same time: each waits for the other.
 ///
@@ -78,7 +78,7 @@ public enum TrainingSyncError: Error, Equatable, Sendable {
 ///   exercise a session still uses). A tombstone is forgotten only once the
 ///   server acknowledged it (compare and clear); a refusal keeps it.
 @MainActor
-public final class TrainingSyncEngine: SyncEngine {
+public final class TrainingSyncEngine {
     let store: TrainingStore
     let remote: any TrainingRemoteStore
     let userId: UUID
@@ -106,10 +106,6 @@ public final class TrainingSyncEngine: SyncEngine {
         self.userId = userId
         self.pageSize = pageSize
         self.pullOverlap = pullOverlap
-    }
-
-    public func fullSync() async throws {
-        try await sync()
     }
 
     /// Pushes, then pulls: local changes reach the server before its state is
