@@ -80,10 +80,15 @@ case "$cmd" in
     awk '{for (i=2;i<=NF;i++) {split($i,kv,"="); if (kv[1]=="idle") {v=kv[2]+0; n++; t+=v; if (v<5) low++}}}
          END {if (n) printf "CPU idle: average %.0f%%, %d of %d samples under 5%%\n", t/n, low, n}' "$log"
     echo "Crash reports written while sampling (newest last):"
-    find "$HOME/Library/Logs/DiagnosticReports" -type f -newer "$log.start" 2>/dev/null \
-      | xargs -I{} basename {} | sort | uniq -c | sort -n | tail -20
-    echo "Samples with free memory under 20% or load over 6:"
-    awk '{split($3,f,"="); split($2,l,"="); if (f[2]+0<20 || l[2]+0>6) print}' "$log" | head -40
+    if [[ -f "$log.start" ]]; then
+      find "$HOME/Library/Logs/DiagnosticReports" -type f -newer "$log.start" 2>/dev/null \
+        | xargs -I{} basename {} | sort | uniq -c | sort -n | tail -20 || true
+    fi
+    # The load average stays in the hundreds on this runner, so only memory
+    # is a useful filter. awk stops at 40 lines itself: `| head` would close
+    # the pipe early and fail the step.
+    echo "Samples with free memory under 20% (at most 40):"
+    awk '{split($3,f,"="); if (f[2]+0<20 && n++<40) print}' "$log"
     ;;
   *)
     echo "usage: $0 start|stop <log> | settle" >&2
