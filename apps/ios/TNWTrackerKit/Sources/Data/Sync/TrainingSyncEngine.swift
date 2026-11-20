@@ -40,7 +40,11 @@ public struct SyncPushReport: Equatable, Sendable {
     public var pushed: [SyncAggregateRef] = []
     public var skipped: [Skip] = []
     /// Refused by the server; recorded on the aggregate, which stays pending.
+    /// A refused deletion keeps its tombstone and is tried again next push.
     public var rejected: [Rejection] = []
+    /// Sessions, routines and exercises deleted on the device whose deletion the
+    /// server acknowledged, in push order. Their tombstones are gone.
+    public var deleted: [SyncAggregateRef] = []
 
     public init() {}
 }
@@ -66,6 +70,11 @@ public enum TrainingSyncError: Error, Equatable, Sendable {
 ///   on with the next; any other error stops the push and is thrown, leaving
 ///   everything not acknowledged pending (S3, S4).
 /// - Every pending aggregate is tried at most once per push.
+/// - Deletions made on the device (S11) go children first: sessions before the
+///   sessions are uploaded (a re-import may reuse a removed session's refs),
+///   routines and exercises after them (the server refuses to delete an
+///   exercise a session still uses). A tombstone is forgotten only once the
+///   server acknowledged it (compare and clear); a refusal keeps it.
 @MainActor
 public final class TrainingSyncEngine: SyncEngine {
     let store: TrainingStore
@@ -164,10 +173,33 @@ public final class TrainingSyncEngine: SyncEngine {
         let owner = try store.ownership.owner()
         guard owner == userId else { throw TrainingSyncError.storeNotOwned(userId: userId, owner: owner) }
         let run = PushRun()
-        for kind in [SyncAggregateKind.exercise, .routine, .session] {
-            try await pushPending(kind, run: run)
-        }
+        try await pushPending(.exercise, run: run)
+        try await pushPending(.routine, run: run)
+        try await pushDeletions(.session, run: run)
+        try await pushPending(.session, run: run)
+        try await pushDeletions(.routine, run: run)
+        try await pushDeletions(.exercise, run: run)
         return run.report
+    }
+
+    /// Sends every tombstone of `kind` in one delete, once per push. Each is
+    /// cleared at the revision it was read at, so one written again during the
+    /// upload is sent again. A refusal is reported and keeps them; any other
+    /// error stops the push.
+    private func pushDeletions(_ kind: SyncTombstoneKind, run: PushRun) async throws {
+        let tombstones = try store.syncState.tombstones().filter { $0.kind == kind }
+        guard let target = kind.pushTarget, !tombstones.isEmpty else { return }
+        let refs = tombstones.map { SyncAggregateRef(target.kind, id: $0.id) }
+        do {
+            try await remote.delete(target.table, ids: tombstones.map(\.id))
+        } catch let error as RemoteStoreError {
+            run.report.rejected += refs.map { .init(aggregate: $0, error: error) }
+            return
+        }
+        for tombstone in tombstones {
+            try store.syncState.clearTombstone(tombstone)
+        }
+        run.report.deleted += refs
     }
 
     /// Pending aggregates are read again after every upload, so each one is
@@ -219,6 +251,19 @@ public final class TrainingSyncEngine: SyncEngine {
         case .exerciseSetting:
             // Pushed with the exercise settings sync (T6).
             return nil
+        }
+    }
+}
+
+private extension SyncTombstoneKind {
+    /// The aggregate and server table of a tombstone pushed on its own. Entry
+    /// and set tombstones travel with their session's push instead.
+    var pushTarget: (kind: SyncAggregateKind, table: RemoteTable)? {
+        switch self {
+        case .session: (.session, .sessions)
+        case .routine: (.routine, .routines)
+        case .exercise: (.exercise, .exercises)
+        case .entry, .set: nil
         }
     }
 }

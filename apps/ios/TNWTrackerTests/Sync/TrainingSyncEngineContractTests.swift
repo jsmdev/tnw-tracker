@@ -3,9 +3,9 @@ import Supabase
 import Testing
 @testable import TNWTrackerKit
 
-/// S1 and S2 end to end: a session logged through the real repositories
-/// reaches the local Supabase stack through the real adapter, and a set an
-/// importer writes there comes back into the store. Skipped when the stack is
+/// S1, S2 and S11 end to end: a session logged through the real repositories
+/// reaches the local Supabase stack through the real adapter, a set an
+/// importer writes there comes back into the store, and deletions go both ways. Skipped when the stack is
 /// not configured or not running (see `LocalSupabaseStack`).
 @Suite(
     "Sync engine push (local stack)",
@@ -99,5 +99,51 @@ struct TrainingSyncEngineContractTests {
         #expect(entries.first { $0.id == entryId }?.reconciliationKeep == .imported)
         let sets = try await TrainingRemoteStoreContract.pullAll(RemoteSetRow.self, from: remote)
         #expect(sets.filter { $0.entryId == entryId && $0.source == .manual }.allSatisfy { $0.superseded })
+    }
+
+    @Test(
+        "a session the app removes disappears from Supabase, and a set deleted there disappears from the app",
+        .enabled("needs the service role key") { await LocalSupabaseStack.hasServiceRole() }
+    )
+    func deletionsGoBothWays() async throws {
+        try await LocalSupabaseStack.withThrowawayUser { client, userId in
+            try await Self.deletionsGoBothWays(client: client, userId: userId)
+        }
+    }
+
+    @MainActor
+    private static func deletionsGoBothWays(client: SupabaseClient, userId: UUID) async throws {
+        let world = try PushWorld(userId: userId)
+        let remote = SupabaseTrainingRemoteStore(client: client)
+        let engine = TrainingSyncEngine(store: world.store, remote: remote, userId: userId)
+        // The app removes Wednesday, an import-only session it already sent.
+        let ids = try await world.importThenRegroup(using: engine)
+
+        let first = try await engine.sync()
+
+        #expect(first.push.deleted == [SyncAggregateRef(.session, id: ids.wednesday)])
+        #expect(first.push.rejected.isEmpty)
+        let sessions = try await TrainingRemoteStoreContract.pullAll(RemoteSessionRow.self, from: remote)
+        #expect(sessions.map(\.id) == [ids.monday])
+        let tombstones = try await TrainingRemoteStoreContract.pullAll(RemoteTombstoneRow.self, from: remote)
+        #expect(tombstones.contains { $0.deletedTable == .sessions && $0.rowId == ids.wednesday })
+        #expect(try world.store.syncState.tombstones().isEmpty)
+        try world.expectNothingPending()
+
+        // Another client deletes one of Monday's sets, past row-level security.
+        let set = try #require(try world.session(ids.monday).entries.first?.sets.last)
+        let admin = try #require(LocalSupabaseStack.adminClient())
+        try await admin.from("sets").delete(returning: .minimal)
+            .eq("id", value: set.id.uuidString.lowercased())
+            .execute()
+        withExtendedLifetime(admin) {}
+
+        let second = try await engine.sync()
+
+        #expect(second.pull.deletions == [.init(table: .sets, id: set.id, rule: .serverApplied)])
+        #expect(try world.session(ids.monday).entries.flatMap(\.sets).contains { $0.id == set.id } == false)
+        try world.expectNothingPending()
+        let calls = try await engine.sync()
+        #expect(calls.push.pushed.isEmpty, "the deletion is not echoed back")
     }
 }

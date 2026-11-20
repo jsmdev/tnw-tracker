@@ -13,8 +13,11 @@ public protocol TrainingRemoteStore: Sendable {
     /// server's constraints and triggers:
     /// 1. delete `removedSetIds`, then `removedEntryIds` (an entry can only turn
     ///    `skipped` once the server holds none of its sets). A delete only
-    ///    reaches rows that are still in this session on the server, and
-    ///    deleting an entry deletes every set it holds there;
+    ///    reaches rows that are still in this session on the server. A removed
+    ///    entry that still holds a set the aggregate does not list (one an
+    ///    importer added after the device's last pull) is kept, so that set is
+    ///    not lost: it is written again unchanged, with its sets, so the next
+    ///    pull brings it back to the device;
     /// 2. upsert the session, then its entries, then their sets (parents first,
     ///    for the composite foreign keys and the entry `completed_at` check).
     ///
@@ -27,6 +30,14 @@ public protocol TrainingRemoteStore: Sendable {
     /// included, in one statement. For tables pushed on their own: user
     /// exercises with their muscle groups, routines with their items.
     func upsert<Row: RemoteRow>(_ rows: [Row]) async throws
+
+    /// Deletes the rows of `table` with these ids, in one statement: sessions,
+    /// routines and exercises deleted on the device. Ids the server does not
+    /// hold are passed over, so sending the same delete again is harmless.
+    /// Deleting a session deletes its entries and sets; the server records a
+    /// tombstone of every row it deletes. A row other rows still use (an
+    /// exercise in a session) is refused as `RemoteStoreError.rejected`.
+    func delete(_ table: RemoteTable, ids: [UUID]) async throws
 
     /// Rows of `Row.table` the signed-in user can read whose (`updated_at`, `id`)
     /// is after `cursor` (all rows when `nil`), in that order, at most `limit`.

@@ -10,7 +10,9 @@ import SwiftData
 ///   server holds it: synced, never pending.
 /// - A row the device holds follows the conflict rule of its aggregate
 ///   (`SyncConflictRule`); imported sets always merge through the import rules.
-/// - A row the device deleted is not brought back (S11, T5 sends the deletion).
+/// - A row the device deleted is not brought back (S11): its deletion goes up
+///   with the next push. A row the server deleted goes, unless its aggregate has
+///   a change waiting (`SwiftDataPullApplier+Tombstones.swift`).
 /// - A row whose external ref the device holds under another id gives that
 ///   local row the server's id (adoption), so its push stops colliding (23505).
 /// - Catalogue exercises are always the server's.
@@ -36,8 +38,11 @@ final class SwiftDataPullApplier {
     /// Applies every row, parents first, and moves the cursors, in one save. On
     /// any error nothing is kept.
     func apply(_ batch: PulledBatch, userId: UUID) throws -> SyncPullReport {
-        let run = PullRun(userId: userId)
+        let run = PullRun(userId: userId, entries: batch.entries)
         do {
+            // Deletions first: the feed was read before the rows, so a row read
+            // after its tombstone was written again since.
+            try applyTombstones(batch.tombstones, run)
             try applyTemplates(batch, run)
             try applySessions(batch, run)
             try saveCursor(batch.exercises, run)
@@ -47,6 +52,7 @@ final class SwiftDataPullApplier {
             try saveCursor(batch.sessions, run)
             try saveCursor(batch.entries, run)
             try saveCursor(batch.sets, run)
+            try saveCursor(batch.tombstones, run)
             try context.save()
         } catch {
             context.rollback()
@@ -100,27 +106,48 @@ final class PullRun {
     let userId: UUID
     let now = Date()
     var report = SyncPullReport()
+    /// The session of every entry row read, for sets whose entry the device does not hold.
+    let entrySessions: [UUID: UUID]
     /// Rows left for a missing parent, per table.
     var held: [RemoteTable: Set<UUID>] = [:]
     /// Entries whose sets changed, with the entries an imported set left for them (D8).
     var touchedEntries: [SessionEntryModel] = []
     var vacated: [(into: SessionEntryModel, from: SessionEntryModel)] = []
     private var created: Set<SyncAggregateRef> = []
-    private var rules: [SyncAggregateRef: SyncConflictRule] = [:]
+    /// Rows this pull deleted from the device, by table. They are gone only at the save.
+    private var deleted: [RemoteTable: Set<UUID>] = [:]
+    /// Whether each aggregate had a local change waiting when the pull first reached it.
+    private var pending: [SyncAggregateRef: Bool] = [:]
 
-    init(userId: UUID) {
+    init(userId: UUID, entries: [RemoteEntryRow] = []) {
         self.userId = userId
+        entrySessions = Dictionary(entries.map { ($0.id, $0.sessionId) }, uniquingKeysWith: { first, _ in first })
     }
 
-    /// The conflict rule of an aggregate the device holds, decided once per pull
-    /// on its state when the pull first reaches it, and reported. An aggregate
-    /// this pull created has no conflict.
-    func rule(for aggregate: SyncAggregateRef, model: any SyncTrackedModel) -> SyncConflictRule {
+    /// The conflict rule of an aggregate the device holds, for `change`, decided
+    /// on its state when the pull first reaches it. An update is reported in
+    /// `resolved`; the caller reports a deletion. An aggregate this pull
+    /// created has no conflict.
+    func rule(
+        for aggregate: SyncAggregateRef,
+        model: any SyncTrackedModel,
+        change: SyncServerChange = .updated
+    ) -> SyncConflictRule {
         if created.contains(aggregate) { return .serverApplied }
-        if let rule = rules[aggregate] { return rule }
-        let rule = report.resolve(aggregate, localPending: model.syncRevision > model.syncedRevision)
-        rules[aggregate] = rule
+        let localPending = pending[aggregate] ?? (model.syncRevision > model.syncedRevision)
+        pending[aggregate] = localPending
+        let rule = SyncConflictRule.rule(localPending: localPending, change: change)
+        if change == .updated { report.resolve(aggregate, rule: rule) }
         return rule
+    }
+
+    func markDeleted(_ table: RemoteTable, _ id: UUID) {
+        deleted[table, default: []].insert(id)
+    }
+
+    /// True when this pull deleted the row, which its relationships still list until the save.
+    func deletes(_ table: RemoteTable, _ id: UUID?) -> Bool {
+        id.map { deleted[table]?.contains($0) ?? false } ?? false
     }
 
     func create(_ aggregate: SyncAggregateRef) {

@@ -98,7 +98,9 @@ extension SwiftDataPullApplier {
     }
 
     private func applyEntry(_ row: RemoteEntryRow, _ run: PullRun) throws {
-        if try hasTombstone(.entry, row.id) { return run.report.skip(.entries, row.id, .deletedOnDevice) }
+        if try hasTombstone(.entry, row.id) || hasTombstone(.session, row.sessionId) {
+            return run.report.skip(.entries, row.id, .deletedOnDevice)
+        }
         guard let parents = try parents(of: row) else { return run.hold(.entries, row.id) }
         let session = parents.session
         if let entry = try fetchEntryModel(id: row.id) ?? adoptEntry(row, in: session, run) {

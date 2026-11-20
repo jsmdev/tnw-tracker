@@ -1,0 +1,113 @@
+import Foundation
+import SwiftData
+
+// Rows the server deleted, as the pull applies them (S11). Rules in
+// docs/database-schema.md, "Sync":
+//
+// - Children first (sets, entries, sessions, routines, exercises), so a
+//   session's rows go before it.
+// - A deletion follows the conflict rule of the row's aggregate
+//   (`SyncConflictRule`, change `.deleted`): with no local change waiting, the
+//   row goes; with one, it is kept and the next push writes it back.
+// - Applying a deletion is not a local change: it leaves no tombstone and
+//   marks nothing pending, so it is never echoed back.
+// - A row the device does not hold, or holds as data that never leaves it, is
+//   passed over.
+
+extension SwiftDataPullApplier {
+    func applyTombstones(_ rows: [RemoteTombstoneRow], _ run: PullRun) throws {
+        let order: [RemoteTable] = [.sets, .entries, .sessions, .routines, .exercises]
+        for table in order {
+            for row in rows where row.deletedTable == table {
+                try applyTombstone(table, id: row.rowId, run)
+            }
+        }
+    }
+
+    private func applyTombstone(_ table: RemoteTable, id: UUID, _ run: PullRun) throws {
+        switch table {
+        case .sets: try deleteSet(id, run)
+        case .entries: try deleteEntry(id, run)
+        case .sessions: try deleteSession(id, run)
+        case .routines: try deleteRoutine(id, run)
+        case .exercises: try deleteExercise(id, run)
+        default: break
+        }
+    }
+
+    private func deleteSet(_ id: UUID, _ run: PullRun) throws {
+        guard let set = try fetchSetModel(id: id), let entry = set.entry, let session = entry.session,
+              session.isSyncable
+        else { return }
+        guard decide(.sets, id, aggregate: .init(.session, id: session.id), model: session, run) else { return }
+        entry.sets.removeAll { $0.id == id }
+        context.delete(set)
+    }
+
+    private func deleteEntry(_ id: UUID, _ run: PullRun) throws {
+        guard let entry = try fetchEntryModel(id: id), let session = entry.session, session.isSyncable else { return }
+        guard decide(.entries, id, aggregate: .init(.session, id: session.id), model: session, run) else { return }
+        session.entries.removeAll { $0.id == id }
+        context.delete(entry)
+    }
+
+    private func deleteSession(_ id: UUID, _ run: PullRun) throws {
+        guard let session = try context.fetchSession(id: id), session.isSyncable, session.completedAt != nil else {
+            return
+        }
+        guard decide(.sessions, id, aggregate: .init(.session, id: id), model: session, run) else { return }
+        let sessionId: UUID? = id
+        for child in try context.fetch(FetchDescriptor<SyncTombstoneModel>(
+            predicate: #Predicate { $0.sessionId == sessionId }
+        )) {
+            context.delete(child)
+        }
+        context.delete(session)
+    }
+
+    private func deleteRoutine(_ id: UUID, _ run: PullRun) throws {
+        guard let routine = try context.fetchRoutine(id: id), routine.isSyncable else { return }
+        guard decide(.routines, id, aggregate: .init(.routine, id: id), model: routine, run) else { return }
+        // Its sessions keep their rows without it, as on the server (`ON DELETE SET NULL`).
+        context.delete(routine)
+    }
+
+    /// The server only deletes an exercise nothing of it uses. One the device
+    /// still uses (a workout in progress, a session not sent yet) cannot go:
+    /// it is kept and marked changed, so the push writes it back first.
+    private func deleteExercise(_ id: UUID, _ run: PullRun) throws {
+        guard let exercise = try context.fetchExercise(id: id), exercise.isSyncable, !exercise.isCatalogue else {
+            return
+        }
+        // Rows this pull deleted still list the exercise until the save. A
+        // session's entries leave their own tombstones; a routine's items do not.
+        let inUse = exercise.entries.contains { !run.deletes(.entries, $0.id) }
+            || exercise.routineItems.contains { !run.deletes(.routines, $0.routine?.id) }
+        if inUse {
+            exercise.markChanged()
+            return run.report.skip(.exercises, id, .conflict("the device still uses it, so it is sent again"))
+        }
+        guard decide(.exercises, id, aggregate: .init(.exercise, id: id), model: exercise, run) else { return }
+        // The server deletes the exercise's settings with it.
+        for setting in try context.fetch(FetchDescriptor<ExerciseSettingModel>(
+            predicate: #Predicate { $0.exerciseId == id }
+        )) {
+            context.delete(setting)
+        }
+        context.delete(exercise)
+    }
+
+    /// Reports the conflict rule's decision; `true` when the row goes.
+    private func decide(
+        _ table: RemoteTable,
+        _ id: UUID,
+        aggregate: SyncAggregateRef,
+        model: any SyncTrackedModel,
+        _ run: PullRun
+    ) -> Bool {
+        let rule = run.rule(for: aggregate, model: model, change: .deleted)
+        run.report.deletions.append(.init(table: table, id: id, rule: rule))
+        if rule == .serverApplied { run.markDeleted(table, id) }
+        return rule == .serverApplied
+    }
+}
