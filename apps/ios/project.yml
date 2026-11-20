@@ -19,6 +19,9 @@ packages:
   supabase-swift:
     url: https://github.com/supabase/supabase-swift.git
     from: 2.0.0
+  Nuke:
+    url: https://github.com/kean/Nuke.git
+    exactVersion: 13.2.3
 targets:
   TNWTracker:
     type: application
@@ -62,6 +65,8 @@ targets:
     dependencies:
       - package: supabase-swift
         product: Supabase
+      - package: Nuke
+        product: Nuke
   TNWTrackerTests:
     type: bundle.unit-test
     platform: iOS

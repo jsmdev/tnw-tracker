@@ -34,6 +34,8 @@ public final class AppAccounts {
     private let liveActivity: LiveActivityController
     private let openStore: @MainActor (UUID) throws -> (store: TrainingStore, isNew: Bool)
     private let makeRemote: @MainActor (UUID) -> any TrainingRemoteStore
+    /// The account's exercise media, in its own folder (#137).
+    private let openMedia: @MainActor (UUID) throws -> ExerciseMediaLibrary
     private let intentInbox: IntentInbox
     private let widget: NextRoutineSnapshot?
     /// Debug builds: a new store gets the invented sample data before it is claimed.
@@ -59,6 +61,7 @@ public final class AppAccounts {
         liveActivity: LiveActivityController,
         openStore: @escaping @MainActor (UUID) throws -> (store: TrainingStore, isNew: Bool),
         makeRemote: @escaping @MainActor (UUID) -> any TrainingRemoteStore,
+        openMedia: @escaping @MainActor (UUID) throws -> ExerciseMediaLibrary,
         intentInbox: IntentInbox,
         widget: NextRoutineSnapshot?,
         loadsSampleData: Bool,
@@ -70,6 +73,7 @@ public final class AppAccounts {
         self.liveActivity = liveActivity
         self.openStore = openStore
         self.makeRemote = makeRemote
+        self.openMedia = openMedia
         self.intentInbox = intentInbox
         self.widget = widget
         self.loadsSampleData = loadsSampleData
@@ -91,6 +95,11 @@ public final class AppAccounts {
             liveActivity: LiveActivityController(),
             openStore: { try stores.open(for: $0) },
             makeRemote: { SupabaseTrainingRemoteStore(client: supabase, userId: $0) },
+            openMedia: { userId in
+                try ExerciseMediaLibrary(store: stores.mediaStore(
+                    for: userId, source: SupabaseExerciseMediaSource(client: supabase, userId: userId)
+                ))
+            },
             intentInbox: IntentInbox(container: ModelContainerFactory.makeIntentMailboxContainer()),
             widget: .shared(),
             loadsSampleData: true
@@ -178,8 +187,11 @@ public final class AppAccounts {
     /// Opens the account's store and claims it before the screens can write to it.
     private func open(_ userId: UUID) {
         let opened: (store: TrainingStore, isNew: Bool)
+        let media: ExerciseMediaLibrary
         do {
             opened = try openStore(userId)
+            // After the store: its folder exists and is protected before the media folder goes in it.
+            media = try openMedia(userId)
         } catch {
             logger.error("Auth: the account's store could not be opened: \(error, privacy: .private)")
             return
@@ -199,7 +211,8 @@ public final class AppAccounts {
             store: opened.store,
             remote: makeRemote(userId),
             intentInbox: intentInbox,
-            liveActivity: liveActivity
+            liveActivity: liveActivity,
+            exerciseMedia: media
         )
         if syncs { account.syncScheduler.signIn(userId: userId) }
         current = account
@@ -208,8 +221,9 @@ public final class AppAccounts {
 
     /// Closes the signed-in account, if any, and clears what an account leaves
     /// on the device outside its store, even one from an earlier launch: the
-    /// widget's routine, the lock-screen intents, Live Activities and the URL
-    /// cache. Waits for any close still running.
+    /// widget's routine, the lock-screen intents, Live Activities, the URL
+    /// cache and the account's decoded exercise images (its media files stay in
+    /// its own folder, like its store). Waits for any close still running.
     private func closeCurrent() async {
         let account = current
         current = nil
@@ -220,6 +234,7 @@ public final class AppAccounts {
         closing = Task {
             await previous?.value
             await account?.close()
+            account?.exerciseMedia.clearMemory()
             do {
                 try inbox.removeAll()
             } catch {
@@ -304,6 +319,8 @@ public final class AppAccounts {
                     liveActivity: LiveActivityController(requestsActivities: false),
                     openStore: { _ in try (TrainingStore.inMemory(), true) },
                     makeRemote: { SupabaseTrainingRemoteStore(client: supabase, userId: $0) },
+                    // Never the network: the sample image comes from an invented in-memory source.
+                    openMedia: { _ in .sampleForUITesting() },
                     intentInbox: IntentInbox.inMemory(),
                     widget: nil,
                     loadsSampleData: true,
@@ -323,6 +340,7 @@ public final class AppAccounts {
             remote: @escaping @MainActor (UUID) -> any TrainingRemoteStore,
             networkMonitor: any NetworkMonitoring = StubNetworkMonitor(isOnline: true),
             openStore: (@MainActor (UUID) throws -> (store: TrainingStore, isNew: Bool))? = nil,
+            openMedia: (@MainActor (UUID) throws -> ExerciseMediaLibrary)? = nil,
             intentInbox: IntentInbox? = nil,
             widget: NextRoutineSnapshot? = nil,
             loadsSampleData: Bool = false,
@@ -335,6 +353,7 @@ public final class AppAccounts {
                     liveActivity: LiveActivityController(requestsActivities: false),
                     openStore: openStore ?? { _ in try (TrainingStore.inMemory(), true) },
                     makeRemote: remote,
+                    openMedia: openMedia ?? { _ in .offlineForTesting() },
                     intentInbox: intentInbox ?? IntentInbox.inMemory(),
                     widget: widget,
                     loadsSampleData: loadsSampleData,
