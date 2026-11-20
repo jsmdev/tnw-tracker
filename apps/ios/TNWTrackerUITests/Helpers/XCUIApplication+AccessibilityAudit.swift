@@ -6,19 +6,7 @@ extension XCUIApplication {
     ///   header and footer style, shared with the unchanged "Esfuerzo" section;
     /// - the unchanged DEBUG-only "Developer" section of Settings;
     /// - with `only`, any element whose identifier is not listed.
-    /// An audit that runs out of time on a slow CI runner reports no issue, so it
-    /// runs once more; a second timeout, or any real issue, still fails the test.
     func auditAccessibility(screen: String, only: Set<String>? = nil) throws {
-        do {
-            try runAudit(screen: screen, only: only)
-        } catch let error as NSError where error.domain == "com.apple.xcode.xctest.accessibilityAudit"
-            && error.code == -56 {
-            print("Accessibility audit (\(screen)) ran out of time; running it once more.")
-            try runAudit(screen: screen, only: only)
-        }
-    }
-
-    private func runAudit(screen: String, only: Set<String>?) throws {
         let preExisting: Set<String> = ["Developer", "Reset & seed"]
         try performAccessibilityAudit { issue in
             let element = issue.element
