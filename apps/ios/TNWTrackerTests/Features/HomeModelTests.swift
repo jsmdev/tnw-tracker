@@ -166,4 +166,34 @@ struct HomeModelTests {
         await model.load()
         #expect(model.hasSessionToday)
     }
+
+    @Test("a session left in progress is offered to continue")
+    func sessionInProgressToContinue() async throws {
+        let started = try fx.sessions.startSession(
+            routineId: nil, name: "Full Body A", at: now.addingTimeInterval(-600), timeZone: .gmt
+        )
+        let model = makeModel()
+        await model.load()
+        #expect(model.sessionInProgress?.id == started.id)
+        #expect(model.sessionInProgress?.name == "Full Body A")
+    }
+
+    @Test("no session in progress: nothing to continue")
+    func nothingToContinue() async throws {
+        _ = try completedSession(at: now.addingTimeInterval(-3600), sets: [SetValues(reps: 5)], exercise: fx.squat)
+        let model = makeModel()
+        await model.load()
+        #expect(model.sessionInProgress == nil)
+    }
+
+    @Test("a session finished after a load is no longer offered on the next load")
+    func finishedSessionNoLongerOffered() async throws {
+        let started = try fx.sessions.startSession(routineId: nil, name: nil, at: now, timeZone: .gmt)
+        try fx.sessions.logManualSet(SetValues(reps: 5), exerciseId: fx.squat.id, sessionId: started.id, at: now)
+        let model = makeModel()
+        await model.load()
+        _ = try fx.sessions.finishSession(id: started.id, at: now, durationSeconds: nil)
+        await model.load()
+        #expect(model.sessionInProgress == nil)
+    }
 }

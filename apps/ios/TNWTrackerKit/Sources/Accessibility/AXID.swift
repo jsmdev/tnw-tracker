@@ -12,6 +12,8 @@ public enum AXID {
         public static let quickStartButton = "home.quickStartButton"
         /// "Entrenamiento libre": starts a session without a routine (#137 S5).
         public static let freeSessionButton = "home.freeSessionButton"
+        /// "Continuar entrenamiento": reopens the session left in progress.
+        public static let continueButton = "home.continueButton"
         public static let nextSessionTitle = "home.nextSessionTitle"
         public static let settingsButton = "home.settingsButton"
         /// "Ver todas" in "Otras rutinas": opens the routine list (T10).
@@ -84,6 +86,8 @@ public enum AXID {
         public static let setWarmupToggle = "activeWorkout.setWarmupToggle"
         public static let exerciseOptionsMenu = "activeWorkout.exerciseOptionsMenu"
         public static let exerciseRestButton = "activeWorkout.exerciseRestButton"
+        /// Closes the workout screen and leaves the session in progress.
+        public static let minimizeButton = "activeWorkout.minimizeButton"
     }
 
     /// "No has registrado ninguna serie" prompt when ending a workout (T6).

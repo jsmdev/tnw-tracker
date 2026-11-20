@@ -32,6 +32,18 @@ struct HomeScreen {
         app.buttons[AXID.Home.freeSessionButton]
     }
 
+    /// "Continuar entrenamiento": shown while a session is in progress.
+    var continueButton: XCUIElement {
+        app.buttons[AXID.Home.continueButton]
+    }
+
+    /// Reopens the session in progress and returns the validated workout screen.
+    func continueWorkout() -> ActiveWorkoutScreen {
+        continueButton.waitUntilHittable()
+        continueButton.tap()
+        return ActiveWorkoutScreen(app: app).waitUntilLoaded()
+    }
+
     /// Starts a free session and returns the validated workout screen.
     func startFreeSession() -> ActiveWorkoutScreen {
         freeSessionButton.waitUntilHittable()
@@ -56,12 +68,18 @@ struct HomeScreen {
 
     // MARK: - Landing
 
-    /// Waits for the Home landing element. Fails the test with a descriptive message if it times out.
+    /// Waits for the Home landing element: "Iniciar workout", or "Continuar
+    /// entrenamiento" while a session is in progress. Fails the test with a
+    /// descriptive message if it times out.
     @discardableResult
     func waitUntilLoaded(timeout: TimeInterval = 5) -> Self {
-        XCTAssertTrue(
-            quickStartButton.waitForExistence(timeout: timeout),
-            "HomeScreen did not load: quickStartButton not found within \(timeout)s. "
+        let landed = XCTNSPredicateExpectation(
+            predicate: NSPredicate { _, _ in quickStartButton.exists || continueButton.exists },
+            object: nil
+        )
+        XCTAssertEqual(
+            XCTWaiter().wait(for: [landed], timeout: timeout), .completed,
+            "HomeScreen did not load: neither quickStartButton nor continueButton within \(timeout)s. "
                 + "Possible: auth bypass not active, seed not applied, or router did not pop to root."
         )
         return self

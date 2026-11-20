@@ -299,6 +299,7 @@ struct ActiveWorkoutView: View {
                 Image(systemName: "chevron.down")
             }
             .accessibilityLabel("a11y.dismiss-button")
+            .accessibilityIdentifier(AXID.ActiveWorkout.minimizeButton)
         }
     }
 }
