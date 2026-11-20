@@ -22,26 +22,33 @@ public struct RestTimerState: Sendable, Equatable {
     }
 }
 
-/// Gestiona el timer de descanso en memoria: countdown tick a 1 Hz y Live Activity.
+/// Gestiona el timer de descanso en memoria: countdown tick a 1 Hz.
+/// It never touches the Live Activity: the coordinator publishes the session's
+/// state on each tick and ends the Live Activity only with the session (#136).
 /// El timer no forma parte del formato de datos de entrenamiento, así que no se
 /// persiste ni se sincroniza.
 @MainActor
 @Observable
 public final class RestTimerService {
     public private(set) var state: RestTimerState?
-    /// The workout name associated with the active timer; used by the Live Activity tick.
+    /// The workout name of the last timer started.
     public private(set) var workoutName: String = ""
 
     /// Called when a rest ends (finished or skipped) with the seconds it really
     /// ran, −15 s / +15 s included.
     public var onEnded: (@MainActor (_ timer: RestTimerState, _ ranSeconds: Int) -> Void)?
 
+    /// Called after `onEnded` when a rest ran out on its own (not when it was
+    /// skipped or stopped): the session moves on as if it had been skipped.
+    public var onExpired: (@MainActor () async -> Void)?
+
+    /// Called every second while a rest runs, with the seconds left.
+    public var onTick: (@MainActor (_ secondsRemaining: Int) -> Void)?
+
     private var tickTask: Task<Void, Never>?
-    private let liveActivity: LiveActivityController
     private let now: () -> Date
 
-    public init(liveActivity: LiveActivityController, now: @escaping () -> Date = Date.init) {
-        self.liveActivity = liveActivity
+    public init(now: @escaping () -> Date = Date.init) {
         self.now = now
     }
 
@@ -86,7 +93,6 @@ public final class RestTimerService {
         await cancelTick()
 
         state = nil
-        liveActivity.end()
         onEnded?(current, Self.seconds(from: current.startedAt, to: min(now(), current.endsAt)))
     }
 
@@ -103,8 +109,27 @@ public final class RestTimerService {
         logger.info("RestTimerService timer expired: \(current.id.uuidString, privacy: .public)")
         await cancelTick()
         state = nil
-        liveActivity.end()
         onEnded?(current, Self.seconds(from: current.startedAt, to: current.endsAt))
+        await onExpired?()
+    }
+
+    /// One second of the running rest: ends it when its time is up, otherwise
+    /// reports the seconds left. The tick calls it every second.
+    public func tick() async {
+        guard let current = state else { return }
+        let remaining = current.endsAt.timeIntervalSince(now())
+        guard remaining > 0 else {
+            await expireIfDue()
+            return
+        }
+        let seconds = Self.secondsRemaining(until: current.endsAt, from: now())
+        logger.debug("RestTimerService tick: \(seconds)s remaining")
+        onTick?(seconds)
+    }
+
+    /// Whole seconds left until `end`, rounded up so a rest never shows 0 before it ends.
+    public static func secondsRemaining(until end: Date, from start: Date) -> Int {
+        max(0, Int(end.timeIntervalSince(start).rounded(.up)))
     }
 
     private static func seconds(from start: Date, to end: Date) -> Int {
@@ -125,24 +150,8 @@ public final class RestTimerService {
         tickTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
-                guard let self, let current = state else { break }
-
-                if now() >= current.endsAt {
-                    tickTask = nil
-                    await expireIfDue()
-                    break
-                }
-
-                let remaining = current.endsAt.timeIntervalSince(now())
-                logger.debug("RestTimerService tick: \(max(0, Int(remaining)))s remaining")
-                let timerState = ActiveWorkoutAttributes.ContentState(
-                    workoutName: workoutName,
-                    currentExerciseName: nil,
-                    restSecondsRemaining: max(0, Int(remaining)),
-                    completedSets: 0,
-                    totalSets: 0
-                )
-                liveActivity.update(state: timerState)
+                guard !Task.isCancelled, let self, state != nil else { break }
+                await tick()
             }
         }
     }

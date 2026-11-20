@@ -41,6 +41,20 @@ extension ActiveWorkoutCoordinator {
         timerService.state
     }
 
+    /// Primer ejercicio cuyas series de trabajo (sin calentamiento) no alcanzan su objetivo; si todos
+    /// están completos (o no hay objetivo), el último ejercicio.
+    func firstIncompleteExerciseIndex() -> Int {
+        for (idx, entry) in entries.enumerated() {
+            guard let target = target(for: entry)?.targetSets else { continue }
+            if entry.workingManualSets.count < target { return idx }
+        }
+        return max(0, entries.count - 1)
+    }
+
+    func target(for entry: SessionEntry) -> RoutineItem? {
+        targets[entry.exerciseId] ?? entry.replacedExerciseId.flatMap { targets[$0] }
+    }
+
     /// The manual set `id` of the session in progress.
     func manualSet(_ id: UUID) -> ExerciseSet? {
         entries.lazy.flatMap(\.manualSets).first { $0.id == id }

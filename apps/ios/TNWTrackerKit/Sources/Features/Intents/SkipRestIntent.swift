@@ -1,8 +1,9 @@
 import AppIntents
 import Foundation
-import os
 
-public struct SkipRestIntent: AppIntent {
+/// "Saltar" on the workout's Live Activity. A `LiveActivityIntent`, so the
+/// system runs `perform()` in the app process (#136 S3).
+public struct SkipRestIntent: LiveActivityIntent {
     public static var title: LocalizedStringResource {
         LocalizedStringResource("intent.skip-rest.title", defaultValue: "Skip Rest")
     }
@@ -14,34 +15,34 @@ public struct SkipRestIntent: AppIntent {
         ))
     }
 
-    private let logger = Logger(subsystem: "com.tnwtracker", category: "SkipRestIntent")
+    /// Only the Live Activity runs it: it needs the id of the workout in progress.
+    public static let isDiscoverable: Bool = false
 
-    // Injected mailbox — allows test substitution without swizzling.
-    private let mailbox: any IntentMailboxProtocol
-    private let _workoutId: UUID
+    /// The workout in progress (`ActiveWorkoutAttributes.workoutId`). A parameter,
+    /// so it survives the system re-creating the intent for the button.
+    @Parameter(title: LocalizedStringResource("intent.workout-id.parameter", defaultValue: "Workout"))
+    public var workoutId: String
 
-    /// Default init for widget process invocation.
+    /// Injected in tests; nil uses the device's intent mailbox.
+    private let mailbox: (any IntentMailboxProtocol)?
+
     public init() {
-        _workoutId = UUID()
-        do {
-            let container = try ModelContainerFactory.makeIntentMailboxContainer()
-            mailbox = IntentMailbox(container: container)
-        } catch {
-            fatalError("SkipRestIntent.init failed to build ModelContainer: \(error)")
-        }
+        mailbox = nil
+    }
+
+    public init(workoutId: UUID) {
+        mailbox = nil
+        self.workoutId = workoutId.uuidString
     }
 
     /// Test-injectable init.
     public init(workoutId: UUID, mailbox: any IntentMailboxProtocol) {
-        _workoutId = workoutId
         self.mailbox = mailbox
+        self.workoutId = workoutId.uuidString
     }
 
-    @MainActor
     public func perform() async throws -> some IntentResult {
-        logger.info("SkipRestIntent.perform() workoutId: \(_workoutId, privacy: .private)")
-        try await mailbox.enqueue(workoutId: _workoutId, kind: "skip")
-        mailbox.postIntentNotification()
+        try await resolveMailbox(mailbox).deliver(kind: "skip", workoutId: workoutId)
         return .result()
     }
 }

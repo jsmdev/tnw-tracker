@@ -46,12 +46,13 @@ struct ActiveWorkoutLiveActivityView: View {
                 }
             }
 
-            // Interactive buttons — lock screen Live Activity
+            // Interactive buttons — lock screen Live Activity. Each one carries
+            // the workout's id, so the app acts on this session (#136 S3).
             HStack(spacing: 12) {
                 if isResting {
                     // Skip button — only during rest
                     Button(
-                        intent: SkipRestIntent()
+                        intent: context.attributes.skipRestIntent
                     ) {
                         Label(
                             LocalizedStringResource("liveactivity.skip-button"),
@@ -66,7 +67,7 @@ struct ActiveWorkoutLiveActivityView: View {
                 if isPaused {
                     // Resume button — only when paused
                     Button(
-                        intent: PauseWorkoutIntent()
+                        intent: context.attributes.pauseIntent(isPaused: isPaused)
                     ) {
                         Label(
                             LocalizedStringResource("liveactivity.resume-button"),
@@ -79,7 +80,7 @@ struct ActiveWorkoutLiveActivityView: View {
                 } else if !isResting {
                     // Pause button — when active (not resting, not paused)
                     Button(
-                        intent: PauseWorkoutIntent()
+                        intent: context.attributes.pauseIntent(isPaused: isPaused)
                     ) {
                         Label(
                             LocalizedStringResource("liveactivity.pause-button"),
@@ -95,7 +96,7 @@ struct ActiveWorkoutLiveActivityView: View {
 
                 // End button — always available
                 Button(
-                    intent: EndWorkoutIntent()
+                    intent: context.attributes.endWorkoutIntent
                 ) {
                     Label(
                         LocalizedStringResource("liveactivity.end-button"),
@@ -145,7 +146,7 @@ struct ActiveWorkoutLiveActivity: Widget {
                         let isPaused = context.state.isPaused
 
                         if isResting {
-                            Button(intent: SkipRestIntent()) {
+                            Button(intent: context.attributes.skipRestIntent) {
                                 Label(
                                     LocalizedStringResource("liveactivity.skip-button"),
                                     systemImage: "forward.fill"
@@ -157,7 +158,7 @@ struct ActiveWorkoutLiveActivity: Widget {
                         }
 
                         if isPaused {
-                            Button(intent: PauseWorkoutIntent()) {
+                            Button(intent: context.attributes.pauseIntent(isPaused: isPaused)) {
                                 Label(
                                     LocalizedStringResource("liveactivity.resume-button"),
                                     systemImage: "play.fill"
@@ -167,7 +168,7 @@ struct ActiveWorkoutLiveActivity: Widget {
                             .buttonStyle(.bordered)
                             .tint(.green)
                         } else if !isResting {
-                            Button(intent: PauseWorkoutIntent()) {
+                            Button(intent: context.attributes.pauseIntent(isPaused: isPaused)) {
                                 Label(
                                     LocalizedStringResource("liveactivity.pause-button"),
                                     systemImage: "pause.fill"
@@ -180,7 +181,7 @@ struct ActiveWorkoutLiveActivity: Widget {
 
                         Spacer()
 
-                        Button(intent: EndWorkoutIntent()) {
+                        Button(intent: context.attributes.endWorkoutIntent) {
                             Label(
                                 LocalizedStringResource("liveactivity.end-button"),
                                 systemImage: "xmark.circle.fill"

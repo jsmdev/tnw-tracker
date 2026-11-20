@@ -70,6 +70,17 @@ struct WorkoutIntentTests {
         #expect(spy.postNotificationCount == 1)
     }
 
+    @Test("S3 PauseWorkoutIntent that resumes enqueues a resume event")
+    func pauseWorkoutIntentResumes() async throws {
+        let spy = IntentMailboxSpy()
+        let intent = PauseWorkoutIntent(workoutId: workoutId, resumes: true, mailbox: spy)
+
+        _ = try await intent.perform()
+
+        #expect(spy.enqueueCalls == [IntentMailboxSpy.EnqueueCall(workoutId: workoutId, kind: "resume")])
+        #expect(spy.postNotificationCount == 1)
+    }
+
     // MARK: - EndWorkoutIntent
 
     @Test("EndWorkoutIntent.perform() enqueues end event and posts notification")

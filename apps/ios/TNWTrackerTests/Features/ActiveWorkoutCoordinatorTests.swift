@@ -17,15 +17,14 @@ struct ActiveWorkoutCoordinatorTests {
     }
 
     private func makeCoordinator(requestSync: @escaping @MainActor () -> Void = {}) -> ActiveWorkoutCoordinator {
-        let liveActivity = LiveActivityController(requestsActivities: false)
-        return ActiveWorkoutCoordinator(
+        ActiveWorkoutCoordinator(
             sessions: fx.sessions,
             routines: fx.routines,
             exerciseSettings: fx.store.exerciseSettings,
             changeExerciseRest: { 120 },
             requestSync: requestSync,
-            timerService: RestTimerService(liveActivity: liveActivity),
-            liveActivity: liveActivity,
+            timerService: RestTimerService(),
+            liveActivity: LiveActivitySpy(),
             now: { TrainingFixtures.t0 }
         )
     }

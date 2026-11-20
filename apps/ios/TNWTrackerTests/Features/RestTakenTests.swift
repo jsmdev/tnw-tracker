@@ -28,7 +28,7 @@ struct RestTakenTests {
     init() throws {
         fx = try TrainingFixtures()
         let clock = clock
-        timer = RestTimerService(liveActivity: LiveActivityController(requestsActivities: false), now: { clock.now })
+        timer = RestTimerService(now: { clock.now })
         routine = try fx.makeRoutine() // squat: 3 sets, 90 s; then press: 2 sets, 60 s
     }
 
@@ -41,7 +41,7 @@ struct RestTakenTests {
             changeExerciseRest: { changeExerciseRest },
             requestSync: {},
             timerService: timer,
-            liveActivity: LiveActivityController(requestsActivities: false),
+            liveActivity: LiveActivitySpy(),
             now: { clock.now }
         )
     }

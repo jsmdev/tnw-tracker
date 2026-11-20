@@ -7,8 +7,8 @@ private let logger = Logger(subsystem: "com.tnwtracker", category: "liveactivity
 /// Actor boundary for Live Activity updates.
 ///
 /// Lives on the MainActor so `currentActivity` is always mutated on the
-/// main thread (required by ActivityKit). Cross-actor callers — timer ticks,
-/// future AppIntent handlers — use the `nonisolated` overloads that hop to
+/// main thread (required by ActivityKit). Cross-actor callers use the
+/// `nonisolated` overloads that hop to
 /// the MainActor internally via Task, serialising writes through the actor's
 /// FIFO job queue.
 @MainActor
@@ -39,28 +39,39 @@ public final class LiveActivityController {
 
     // MARK: - MainActor face (callers already on MainActor)
 
-    /// Requests a new Live Activity for the given workout.
+    /// Requests a new Live Activity for the given workout, showing `state`.
     /// Only callable from @MainActor context (e.g. ActiveWorkoutCoordinator).
-    public func start(workoutId: UUID, workoutName: String) {
+    public func start(workoutId: UUID, state: ActiveWorkoutAttributes.ContentState) {
         guard requestsActivities else { return }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             logger.info("Live Activities disabled on this device — skipping start")
             return
         }
 
+        // The activity lasts the whole session and outlives the process: a relaunch
+        // that resumes the session reattaches to it instead of showing a second one,
+        // and ends any activity left by another session.
+        var reattached: Activity<ActiveWorkoutAttributes>?
+        for activity in Activity<ActiveWorkoutAttributes>.activities {
+            if reattached == nil, activity.attributes.workoutId == workoutId {
+                reattached = activity
+            } else {
+                Task { await activity.end(nil, dismissalPolicy: .immediate) }
+            }
+        }
+        if let reattached {
+            currentActivity = reattached
+            Task { await reattached.update(.init(state: state, staleDate: nil)) }
+            logger.info("Live Activity reattached for workout \(workoutId, privacy: .public)")
+            return
+        }
+
         let attributes = ActiveWorkoutAttributes(workoutId: workoutId, startedAt: Date())
-        let contentState = ActiveWorkoutAttributes.ContentState(
-            workoutName: workoutName,
-            currentExerciseName: nil,
-            restSecondsRemaining: nil,
-            completedSets: 0,
-            totalSets: 0
-        )
 
         do {
             currentActivity = try Activity.request(
                 attributes: attributes,
-                content: .init(state: contentState, staleDate: nil)
+                content: .init(state: state, staleDate: nil)
             )
             logger.info("Live Activity started for workout \(workoutId, privacy: .public)")
         } catch {
@@ -113,18 +124,6 @@ public final class LiveActivityController {
     }
 }
 
-// MARK: - LiveActivityRendering conformance
+// MARK: - LiveActivityControlling conformance
 
-extension LiveActivityController: LiveActivityRendering {
-    func start(
-        attributes: ActiveWorkoutAttributes,
-        contentState: ActiveWorkoutAttributes.ContentState
-    ) async throws {
-        guard requestsActivities, ActivityAuthorizationInfo().areActivitiesEnabled else { return }
-        currentActivity = try Activity.request(
-            attributes: attributes,
-            content: .init(state: contentState, staleDate: nil)
-        )
-        logger.info("Live Activity started via protocol: \(attributes.workoutId, privacy: .public)")
-    }
-}
+extension LiveActivityController: LiveActivityControlling {}
