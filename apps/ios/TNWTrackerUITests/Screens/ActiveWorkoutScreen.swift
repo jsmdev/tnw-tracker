@@ -99,6 +99,14 @@ struct ActiveWorkoutScreen {
         return ExerciseRestSheetScreen(app: app).waitUntilLoaded()
     }
 
+    /// Closes the workout screen, leaving the session in progress, back to Home.
+    func minimize() -> HomeScreen {
+        let button = app.buttons[AXID.ActiveWorkout.minimizeButton]
+        button.waitUntilHittable()
+        button.tap()
+        return HomeScreen(app: app).waitUntilLoaded()
+    }
+
     /// "Añadir ejercicio" (#137 S5).
     var addExerciseButton: XCUIElement {
         app.buttons[AXID.ActiveWorkout.addExerciseButton]

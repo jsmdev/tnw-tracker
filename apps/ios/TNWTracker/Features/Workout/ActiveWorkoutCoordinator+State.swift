@@ -52,6 +52,18 @@ extension ActiveWorkoutCoordinator {
         return max(0, entries.count - 1)
     }
 
+    /// Where a session left in progress is resumed: the exercise of its most
+    /// recent manual set, so planned exercises the user skipped are not shown
+    /// again. Without any set, the first exercise still short of its target.
+    func resumeExerciseIndex() -> Int {
+        let latest = entries.enumerated()
+            .compactMap { index, entry in
+                entry.manualSets.compactMap(\.completedAt).max().map { (index, $0) }
+            }
+            .max { $0.1 < $1.1 }
+        return latest?.0 ?? firstIncompleteExerciseIndex()
+    }
+
     func target(for entry: SessionEntry) -> RoutineItem? {
         targets[entry.exerciseId] ?? entry.replacedExerciseId.flatMap { targets[$0] }
     }

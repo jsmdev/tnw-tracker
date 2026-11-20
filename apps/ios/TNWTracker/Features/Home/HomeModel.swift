@@ -26,6 +26,10 @@ final class HomeModel {
     /// routine list's order (favourites first, then by name).
     private(set) var otherRoutines: [Routine] = []
 
+    /// The session left in progress, if any: Home offers to continue it and
+    /// hides the buttons that would start another.
+    private(set) var sessionInProgress: TrainingSession?
+
     /// True when a session is in progress or a routine exists to start.
     /// Drives the Quick Start button visibility (REQ-HOME-03).
     private(set) var hasSessionToday: Bool = false
@@ -73,7 +77,7 @@ final class HomeModel {
         // The routine list's own order (favourites first, then by name).
         let all = (try? routines.routines(RoutineQuery())) ?? []
         otherRoutines = all.filter { $0.id != nextSession?.id }
-        let hasActive = ((try? sessions.activeSession()) ?? nil) != nil
-        hasSessionToday = hasActive || nextSession != nil
+        sessionInProgress = (try? sessions.activeSession()) ?? nil
+        hasSessionToday = sessionInProgress != nil || nextSession != nil
     }
 }

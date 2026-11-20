@@ -16,9 +16,12 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading) {
+                continueSection
                 weeklyProgressSection
                 nextSessionSection
-                freeSessionButton
+                if model.sessionInProgress == nil {
+                    freeSessionButton
+                }
                 otherRoutinesSection
             }
             .padding(.horizontal, Spacing.md)
@@ -31,6 +34,13 @@ struct HomeView: View {
         }
         .refreshable {
             await model.load()
+        }
+        // The workout screen closed: the session may have ended, so the card
+        // to continue it and the week's numbers change.
+        .onChange(of: appEnv.router.presentedActiveWorkout == nil) { _, closed in
+            if closed {
+                Task { await model.load() }
+            }
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -133,7 +143,7 @@ struct HomeView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                if model.hasSessionToday {
+                if model.hasSessionToday, model.sessionInProgress == nil {
                     PrimaryButton(title: "home.quick-start.button") {
                         appEnv.router.presentedActiveWorkout = ActiveWorkoutPresentation(id: session.id)
                     }
@@ -141,6 +151,45 @@ struct HomeView: View {
                     .padding(.top, Spacing.xs)
                 }
             }
+        }
+    }
+}
+
+// MARK: - Continue Section
+
+extension HomeView {
+    /// "Entrenamiento en curso": a session left in progress (the app closed, or
+    /// the user signed in again) is offered first, and replaces the buttons that
+    /// would start another one.
+    @ViewBuilder
+    private var continueSection: some View {
+        if let session = model.sessionInProgress {
+            VStack(alignment: .leading) {
+                SectionHeader(title: "home.continue.title")
+                Card {
+                    VStack(alignment: .leading, spacing: Spacing.sm) {
+                        Group {
+                            if let name = session.name {
+                                Text(verbatim: name)
+                            } else {
+                                Text("free-session.name")
+                            }
+                        }
+                        .font(.headline)
+                        if let startedAt = session.startedAt {
+                            Text("home.continue.started \(startedAt, style: .time)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        PrimaryButton(title: "home.continue.button") {
+                            appEnv.router.presentedActiveWorkout = ActiveWorkoutPresentation(id: session.id)
+                        }
+                        .accessibilityIdentifier(AXID.Home.continueButton)
+                        .padding(.top, Spacing.xs)
+                    }
+                }
+            }
+            .padding(.bottom, Spacing.sm)
         }
     }
 }

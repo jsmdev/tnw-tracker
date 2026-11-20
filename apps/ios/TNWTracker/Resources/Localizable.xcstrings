@@ -348,8 +348,7 @@
         }
       }
     },
-    "home.next-session.exercises-count": {
-      "extractionState": "stale",
+    "home.next-session.exercises-count %lld": {
       "localizations": {
         "en": {
           "variations": {
@@ -389,7 +388,6 @@
         }
       }
     },
-    "home.next-session.exercises-count %lld": {},
     "home.next-session.loading": {
       "localizations": {
         "en": {
@@ -895,8 +893,7 @@
         }
       }
     },
-    "session-detail.rest-between-exercises": {
-      "extractionState": "stale",
+    "session-detail.rest-between-exercises %lld": {
       "localizations": {
         "en": {
           "variations": {
@@ -936,7 +933,6 @@
         }
       }
     },
-    "session-detail.rest-between-exercises %lld": {},
     "session-detail.sets-reps": {
       "extractionState": "manual",
       "localizations": {
@@ -1083,8 +1079,7 @@
         }
       }
     },
-    "session-list.row.exercises-count": {
-      "extractionState": "stale",
+    "session-list.row.exercises-count %lld": {
       "localizations": {
         "en": {
           "variations": {
@@ -1124,7 +1119,6 @@
         }
       }
     },
-    "session-list.row.exercises-count %lld": {},
     "session-list.search-placeholder": {
       "localizations": {
         "en": {
@@ -1237,8 +1231,7 @@
         }
       }
     },
-    "set-log.set-section-header": {
-      "extractionState": "stale",
+    "set-log.set-section-header %lld": {
       "localizations": {
         "en": {
           "stringUnit": {
@@ -1254,7 +1247,6 @@
         }
       }
     },
-    "set-log.set-section-header %lld": {},
     "set-log.title": {
       "localizations": {
         "en": {
@@ -1625,8 +1617,7 @@
         }
       }
     },
-    "summary.sets-count": {
-      "extractionState": "stale",
+    "summary.sets-count %lld": {
       "localizations": {
         "en": {
           "variations": {
@@ -1666,7 +1657,6 @@
         }
       }
     },
-    "summary.sets-count %lld": {},
     "summary.title": {
       "localizations": {
         "en": {
@@ -2608,6 +2598,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Entrenamiento libre"
+          }
+        }
+      }
+    },
+    "home.continue.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workout in progress"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenamiento en curso"
+          }
+        }
+      }
+    },
+    "home.continue.button": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue workout"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continuar entrenamiento"
+          }
+        }
+      }
+    },
+    "home.continue.started %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Started at %@"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empezado a las %@"
           }
         }
       }
