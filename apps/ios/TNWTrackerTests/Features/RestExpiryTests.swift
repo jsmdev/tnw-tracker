@@ -131,4 +131,71 @@ struct RestExpiryTests {
         #expect(spy.shownState?.restSecondsRemaining == nil)
         await coordinator.abandon()
     }
+
+    // MARK: - Expiry around finish, abandon, skip and logged sets
+
+    @Test("expiry after finish changes nothing and ends the Live Activity once")
+    func expiryAfterFinish() async throws {
+        let spy = LiveActivitySpy()
+        let clock = clock
+        let coordinator = ActiveWorkoutCoordinator(
+            sessions: fx.sessions, routines: fx.routines, exerciseSettings: fx.store.exerciseSettings,
+            changeExerciseRest: { 120 }, requestSync: {}, timerService: timer, liveActivity: spy,
+            now: { clock.now }
+        )
+        try await coordinator.start(routineId: routine.id)
+        try await logSet(coordinator)
+        try await coordinator.finish()
+        clock.advance(200)
+        await timer.expireIfDue()
+        #expect(coordinator.phase == .idle)
+        #expect(coordinator.session == nil)
+        #expect(spy.endCount == 1)
+    }
+
+    @Test("skip right after an expiry between exercises does not advance twice")
+    func noDoubleAdvance() async throws {
+        let coordinator = try await start()
+        for _ in 0 ..< 2 {
+            try await logSet(coordinator)
+            await coordinator.skipTimer()
+        }
+        try await logSet(coordinator)
+        clock.advance(120)
+        await timer.expireIfDue()
+        await coordinator.skipTimer() // a stale Skip from the Live Activity
+        #expect(coordinator.currentEntry?.exerciseId == fx.press.id)
+        #expect(coordinator.phase == .active)
+    }
+
+    @Test("expiry on the same tick as a logged set: the set wins, rest restarts")
+    func setAtExpiry() async throws {
+        let coordinator = try await start()
+        try await logSet(coordinator)
+        clock.advance(90)
+        try await logSet(coordinator) // logged at the moment the rest runs out
+        await timer.expireIfDue()
+        #expect(coordinator.phase == .restingBetweenSets)
+        #expect(timer.state != nil)
+        await coordinator.skipTimer()
+    }
+
+    @Test("abandon during a rest: no expiry afterwards, Live Activity ended")
+    func abandonDuringRest() async throws {
+        let spy = LiveActivitySpy()
+        let clock = clock
+        let coordinator = ActiveWorkoutCoordinator(
+            sessions: fx.sessions, routines: fx.routines, exerciseSettings: fx.store.exerciseSettings,
+            changeExerciseRest: { 120 }, requestSync: {}, timerService: timer, liveActivity: spy,
+            now: { clock.now }
+        )
+        try await coordinator.start(routineId: routine.id)
+        try await logSet(coordinator)
+        await coordinator.abandon()
+        clock.advance(200)
+        await timer.expireIfDue()
+        #expect(coordinator.phase == .idle)
+        #expect(spy.endCount == 1)
+        #expect(timer.state == nil)
+    }
 }
