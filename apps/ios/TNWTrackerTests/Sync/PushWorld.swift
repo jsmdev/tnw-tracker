@@ -42,7 +42,7 @@ struct PushWorld {
         self.userId = other?.userId ?? userId
         server = other?.server ?? InMemoryTrainingRemoteStore()
         squat = other?.squat ?? Self.makeSquat()
-        store = try TrainingStore(inMemory: true)
+        store = try TrainingStore.inMemory()
         engine = TrainingSyncEngine(store: store, remote: server, userId: self.userId)
         if claimed { try claim() }
         try store.exercises.save(squat)

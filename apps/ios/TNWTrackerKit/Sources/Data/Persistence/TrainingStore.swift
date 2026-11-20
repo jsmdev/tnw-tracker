@@ -1,9 +1,10 @@
 import Foundation
 import SwiftData
 
-/// The app's local training store: one SwiftData container and the repositories
-/// built on it. It is the only thing the app target needs to know about
-/// persistence; nothing outside this module touches `ModelContext`.
+/// One account's local training store: one SwiftData container and the
+/// repositories built on it (`AccountStores` opens it). It is the only thing the
+/// app target needs to know about persistence; nothing outside this module
+/// touches `ModelContext`.
 @MainActor
 public final class TrainingStore {
     public let container: ModelContainer
@@ -12,7 +13,6 @@ public final class TrainingStore {
     public let sessions: any SessionRepositoryProtocol
     public let importer: any TrainingImporterProtocol
     public let exerciseSettings: any ExerciseSettingRepositoryProtocol
-    public let intentInbox: IntentInbox
     /// The owner stamp of the store (S10).
     public let ownership: any StoreOwnershipProtocol
     /// Change tracking and local tombstones for the sync (S7, S11).
@@ -22,46 +22,37 @@ public final class TrainingStore {
 
     let context: ModelContext
 
-    public convenience init(inMemory: Bool = false) throws {
-        try self.init(container: ModelContainerFactory.makeContainer(inMemory: inMemory))
+    /// The store in the file at `url`, created when it does not exist.
+    public convenience init(url: URL) throws {
+        try self.init(container: ModelContainerFactory.makeContainer(url: url))
     }
 
-    /// Shared by the repositories: refuses the user's writes while the store is not theirs.
-    let userWrites = UserWriteGate()
-
-    /// True while the signed-in user does not own the store (S10): every user
-    /// command throws `TrainingDataError.storeNotOwned` and writes nothing.
-    /// `SyncScheduler` sets it when it claims the store at sign-in.
-    public var userWritesBlocked: Bool {
-        userWrites.isBlocked
+    /// A store in memory: tests, previews and UI testing.
+    public static func inMemory() throws -> TrainingStore {
+        try TrainingStore(container: ModelContainerFactory.makeContainer(url: nil))
     }
 
     public init(container: ModelContainer) {
         self.container = container
         context = container.mainContext
-        exercises = SwiftDataExerciseRepository(context: context, gate: userWrites)
-        routines = SwiftDataRoutineRepository(context: context, gate: userWrites)
-        let sessionRepository = SwiftDataSessionRepository(context: context, gate: userWrites)
+        exercises = SwiftDataExerciseRepository(context: context)
+        routines = SwiftDataRoutineRepository(context: context)
+        let sessionRepository = SwiftDataSessionRepository(context: context)
         sessions = sessionRepository
-        importer = SwiftDataTrainingImporter(context: context, sessions: sessionRepository, gate: userWrites)
-        exerciseSettings = SwiftDataExerciseSettingRepository(context: context, gate: userWrites)
-        intentInbox = IntentInbox(context: context)
+        importer = SwiftDataTrainingImporter(context: context, sessions: sessionRepository)
+        exerciseSettings = SwiftDataExerciseSettingRepository(context: context)
         ownership = SwiftDataStoreOwnership(context: context)
         syncState = SwiftDataSyncStateRepository(context: context)
         pulled = SwiftDataPullApplier(context: context, sessions: sessionRepository)
     }
 
     /// Deletes every exercise, routine and session, and the exercises' settings.
-    /// Intent events are kept.
     /// A local reset: it leaves no tombstone, forgets the pending ones, the pull
     /// cursors and the owner stamp, so nothing it deletes or writes next is sent
     /// to the server until a sign-in claims the store again, and the next pull
     /// reads everything again.
     /// Rows are deleted one by one: batch deletes do not support the `deny` rules.
-    /// Refused with `TrainingDataError.storeNotOwned` while `userWritesBlocked`:
-    /// another user signed in never wipes the owner's data.
     public func deleteAllTrainingData() throws {
-        guard !userWritesBlocked else { throw TrainingDataError.storeNotOwned }
         for session in try context.fetch(FetchDescriptor<SessionModel>()) {
             context.delete(session)
         }
@@ -93,19 +84,28 @@ public final class TrainingStore {
     }
 }
 
-/// Reads the intent events the widget process writes through `IntentMailbox`.
+/// Reads the intent events the widget process writes through `IntentMailbox`,
+/// in the device's intent mailbox (`ModelContainerFactory.makeIntentMailboxContainer`).
 @MainActor
 public final class IntentInbox {
     private let context: ModelContext
     private let container: ModelContainer
 
-    init(context: ModelContext) {
-        self.context = context
-        container = context.container
+    public init(container: ModelContainer) {
+        self.container = container
+        context = container.mainContext
     }
 
-    public convenience init(container: ModelContainer) {
-        self.init(context: container.mainContext)
+    /// An inbox on a mailbox in memory: tests, previews and UI testing.
+    public static func inMemory() throws -> IntentInbox {
+        try IntentInbox(container: ModelContainerFactory.makeIntentMailboxContainer(inMemory: true))
+    }
+
+    /// Forgets every event, consumed or not: the workouts they were sent for
+    /// belong to the account that signed out.
+    public func removeAll() throws {
+        try context.delete(model: WorkoutIntentEvent.self)
+        try context.save()
     }
 
     /// Hands every unconsumed event of `workoutId` to `handle`, oldest first,

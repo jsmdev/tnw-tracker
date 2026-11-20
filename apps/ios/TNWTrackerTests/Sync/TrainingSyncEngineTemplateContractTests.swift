@@ -22,7 +22,7 @@ struct TrainingSyncEngineTemplateContractTests {
     @MainActor
     private static func templatesGoUp(client: SupabaseClient, userId: UUID) async throws {
         let world = try PushWorld(userId: userId)
-        let remote = SupabaseTrainingRemoteStore(client: client)
+        let remote = SupabaseTrainingRemoteStore(client: client, userId: userId)
         let engine = TrainingSyncEngine(store: world.store, remote: remote, userId: userId)
         let routine = try world.saveRoutine()
         try world.store.exerciseSettings.save(ExerciseSetting(exerciseId: world.bench.id, restSeconds: 60))
@@ -77,7 +77,7 @@ struct TrainingSyncEngineTemplateContractTests {
     private static func templatesComeDown(client: SupabaseClient, userId: UUID) async throws {
         let phone = try PushWorld(userId: userId)
         let tablet = try PushWorld(sharing: phone)
-        let remote = SupabaseTrainingRemoteStore(client: client)
+        let remote = SupabaseTrainingRemoteStore(client: client, userId: userId)
         let phoneEngine = TrainingSyncEngine(store: phone.store, remote: remote, userId: userId)
         let tabletEngine = TrainingSyncEngine(store: tablet.store, remote: remote, userId: userId)
         let routine = try phone.saveRoutine()
@@ -131,7 +131,7 @@ struct TrainingSyncEngineTemplateContractTests {
     private static func favouriteKeepsAnotherDevicesItem(client: SupabaseClient, userId: UUID) async throws {
         let phone = try PushWorld(userId: userId)
         let tablet = try PushWorld(sharing: phone)
-        let remote = SupabaseTrainingRemoteStore(client: client)
+        let remote = SupabaseTrainingRemoteStore(client: client, userId: userId)
         let phoneEngine = TrainingSyncEngine(store: phone.store, remote: remote, userId: userId)
         let tabletEngine = TrainingSyncEngine(store: tablet.store, remote: remote, userId: userId)
         let routine = try phone.saveRoutine()

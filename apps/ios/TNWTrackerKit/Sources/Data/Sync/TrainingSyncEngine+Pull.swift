@@ -11,6 +11,20 @@ struct PulledBatch: Sendable {
     var entries: [RemoteEntryRow] = []
     var sets: [RemoteSetRow] = []
     var exerciseSettings: [RemoteExerciseSettingRow] = []
+
+    /// Every user a row of the batch belongs to. Catalogue exercises belong to
+    /// nobody; muscle groups follow their exercise.
+    var userIds: Set<UUID> {
+        var ids = Set(tombstones.map(\.userId))
+        ids.formUnion(exercises.compactMap(\.userId))
+        ids.formUnion(routines.map(\.userId))
+        ids.formUnion(routineItems.map(\.userId))
+        ids.formUnion(sessions.map(\.userId))
+        ids.formUnion(entries.map(\.userId))
+        ids.formUnion(sets.map(\.userId))
+        ids.formUnion(exerciseSettings.map(\.userId))
+        return ids
+    }
 }
 
 /// Pull rules (docs/database-schema.md, "Sync"):
@@ -23,6 +37,8 @@ struct PulledBatch: Sendable {
 /// - Nothing is applied until every table is read; then everything, cursors
 ///   included, is applied in one save, parents first. A failure anywhere leaves
 ///   the store and the cursors as they were (S4).
+/// - A batch with any row of another user is not applied at all (S10), nor is
+///   one read by an engine stopped meanwhile (a sign-out).
 extension TrainingSyncEngine {
     func pullChanges() async throws -> SyncPullReport {
         try requireOwner()
@@ -38,6 +54,8 @@ extension TrainingSyncEngine {
         batch.exercises = try await readAll(RemoteExerciseRow.self)
         // The store may have changed hands while the pages were read.
         try requireOwner()
+        try checkRunning()
+        guard batch.userIds.isSubset(of: [userId]) else { throw TrainingSyncError.pulledRowsOfAnotherUser }
         return try store.pulled.apply(batch, userId: userId)
     }
 
@@ -51,6 +69,7 @@ extension TrainingSyncEngine {
         var cursor = stored.map { $0.rewound(by: pullOverlap) ?? $0 }
         var rows: [Row] = []
         while true {
+            try checkRunning()
             let page = try await remote.pull(type, after: cursor, limit: pageSize)
             rows += page.rows
             guard page.mayHaveMore, let next = page.next else { return rows }

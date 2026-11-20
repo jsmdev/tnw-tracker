@@ -9,7 +9,7 @@ struct ExerciseRepositoryTests {
     let store: TrainingStore
 
     init() throws {
-        store = try TrainingStore(inMemory: true)
+        store = try TrainingStore.inMemory()
     }
 
     private var full: Exercise {

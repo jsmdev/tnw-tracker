@@ -14,27 +14,27 @@ public enum SyncStatus: Equatable, Sendable {
     /// The last sync failed (no network, a timeout, a server fault). Nothing
     /// that was not acknowledged was marked synced; the next trigger retries (S4).
     case failed
-    /// The store holds the data of `owner`, not the signed-in user's: the sync
-    /// never runs and the user's writes are refused, so nothing of theirs reaches
-    /// the owner's data or account. Nothing is deleted (S10).
+    /// The account's store is stamped with `owner`, not the signed-in user
+    /// (each account has its own store, so this should never happen): the sync
+    /// never runs and nothing is deleted (S10).
     case storeNotOwned(owner: UUID?)
 }
 
-/// Runs `TrainingSyncEngine.sync()` for the signed-in user when something asks
-/// for it: a sign-in, a finished workout, the app coming to the foreground, the
-/// network coming back (S3, S12).
+/// Runs `TrainingSyncEngine.sync()` for the signed-in user on their own store
+/// when something asks for it: a sign-in, a finished workout, the app coming to
+/// the foreground, the network coming back (S3, S12). Each account's store has
+/// its own scheduler (S10).
 ///
 /// - Signing in claims the store for the user before anything else, so the
-///   user's writes are their own data from the first one (S10). A store that
-///   holds another user's data is not claimed: the sync stays off and the
-///   user's writes are refused until that user signs out.
+///   user's writes are their own data from the first one. A store stamped with
+///   another user is not claimed and never syncs.
 /// - `requestSync()` never waits for the sync and never throws: callers such as
 ///   finishing a workout carry on at once.
 /// - Never two syncs at once: a request made while one runs makes exactly one
 ///   more run after it, however many requests arrive, so the changes made
 ///   during a sync are sent too.
-/// - Signed out, a request does nothing; a run already going finishes, and no
-///   further run follows it.
+/// - Signed out, a request does nothing; a run already going is stopped, and the
+///   sign-out waits until it has.
 @MainActor
 @Observable
 public final class SyncScheduler {
@@ -54,17 +54,15 @@ public final class SyncScheduler {
         self.now = now
     }
 
-    /// Claims the store for `userId` and starts a sync. When the store holds
-    /// another user's data, it is left as it is: no sync, and the user's writes
-    /// are refused (`TrainingDataError.storeNotOwned`). A store that cannot be
-    /// read is treated the same way, as its owner is unknown.
+    /// Claims the store for `userId` and starts a sync. A store stamped with
+    /// another user is left as it is and never syncs; one that cannot be read is
+    /// treated the same way, as its owner is unknown.
     public func signIn(userId: UUID) {
         engine = nil
         runAgain = false
         do {
             switch try store.ownership.claim(userId: userId, at: now()) {
             case .claimed, .owned:
-                store.userWrites.setBlocked(false)
                 engine = TrainingSyncEngine(store: store, remote: remote, userId: userId)
                 status = .idle
                 requestSync()
@@ -77,12 +75,16 @@ public final class SyncScheduler {
         }
     }
 
-    /// Stops syncing for the user who signed out. The store keeps its data and its owner.
-    public func signOut() {
-        // A run already going stops after this sync: it finds no engine.
-        engine = nil
-        store.userWrites.setBlocked(false)
+    /// Stops syncing for the user who signed out, and returns once a sync that
+    /// was running has stopped: from then on nothing reads or writes the store
+    /// for the sync, nor talks to the server. The store keeps its data and owner.
+    public func signOut() async {
+        let engine = engine
+        self.engine = nil
+        runAgain = false
         status = .signedOut
+        engine?.stop()
+        await waitUntilIdle()
     }
 
     /// Asks for a sync and returns at once. Does nothing while signed out or
@@ -131,7 +133,7 @@ public final class SyncScheduler {
     }
 
     private func refuse(owner: UUID?) {
-        store.userWrites.setBlocked(true)
+        logger.error("Sync: the account's store is stamped with another user; it is not synced")
         status = .storeNotOwned(owner: owner)
     }
 }

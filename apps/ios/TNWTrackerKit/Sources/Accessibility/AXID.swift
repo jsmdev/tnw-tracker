@@ -69,7 +69,6 @@ public enum AXID {
         public static let changeExerciseRestDurationLabel = "settings.changeExerciseRestDurationLabel"
         public static let changeExerciseRestDecreaseButton = "settings.changeExerciseRestDecreaseButton"
         public static let changeExerciseRestIncreaseButton = "settings.changeExerciseRestIncreaseButton"
-        public static let syncStatusMessage = "settings.syncStatusMessage"
     }
 
     public enum SetLog {

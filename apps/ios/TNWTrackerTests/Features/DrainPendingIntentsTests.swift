@@ -36,6 +36,10 @@ final class CoordinatorSpy: DrainCoordinatorProtocol {
     func finish() async throws {
         calls.append("end")
     }
+
+    func abandon() async {
+        calls.append("abandon")
+    }
 }
 
 // MARK: - DrainPendingIntentsTests
@@ -47,7 +51,7 @@ struct DrainPendingIntentsTests {
     let workoutId: UUID
 
     init() throws {
-        container = try ModelContainerFactory.makeContainer(inMemory: true)
+        container = try ModelContainerFactory.makeIntentMailboxContainer(inMemory: true)
         workoutId = UUID()
     }
 

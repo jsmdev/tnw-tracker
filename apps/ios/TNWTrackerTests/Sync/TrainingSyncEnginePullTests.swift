@@ -282,8 +282,8 @@ struct TrainingSyncEnginePullTests {
         #expect(try world.completedSessions().count == 1)
     }
 
-    @Test("claiming the store for another user forgets the previous user's cursors")
-    func claimForgetsOtherCursors() async throws {
+    @Test("S10 a store stamped with its user is never claimed for another: its cursors stay")
+    func claimByAnotherUserKeepsCursors() async throws {
         let fresh = try PushWorld(claimed: false)
         try fresh.claim()
         try await fresh.server.insertOnServer(
@@ -293,9 +293,9 @@ struct TrainingSyncEnginePullTests {
         try await fresh.engine.pull()
         #expect(try fresh.store.pulled.cursor(.exercises, userId: fresh.userId) != nil)
 
-        #expect(try fresh.store.ownership.claim(userId: UUID(), at: fresh.t0) == .claimed)
+        #expect(try fresh.store.ownership.claim(userId: UUID(), at: fresh.t0) == .mismatch(ownerId: fresh.userId))
 
-        #expect(try fresh.store.pulled.cursor(.exercises, userId: fresh.userId) == nil)
+        #expect(try fresh.store.pulled.cursor(.exercises, userId: fresh.userId) != nil)
     }
 
     // MARK: - S4: failures

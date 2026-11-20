@@ -1431,40 +1431,6 @@
         }
       }
     },
-    "settings.sync-section": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sync"
-          }
-        },
-        "es-ES": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sincronización"
-          }
-        }
-      }
-    },
-    "settings.sync-store-not-owned": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This device holds another account's training data. While you are signed in, nothing syncs and your changes are not saved."
-          }
-        },
-        "es-ES": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Este dispositivo guarda los entrenamientos de otra cuenta. Con tu sesión no se sincroniza nada ni se guardan tus cambios."
-          }
-        }
-      }
-    },
     "settings.title": {
       "localizations": {
         "en": {

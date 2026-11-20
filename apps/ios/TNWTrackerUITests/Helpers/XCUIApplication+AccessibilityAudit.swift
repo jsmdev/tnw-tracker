@@ -5,16 +5,8 @@ extension XCUIApplication {
     /// - "Contrast nearly passed" on static text: the system `Form` section
     ///   header and footer style, shared with the unchanged "Esfuerzo" section;
     /// - the unchanged DEBUG-only "Developer" section of Settings;
-    /// - with `only`, any element whose identifier is not listed;
-    /// - "Dynamic Type partially unsupported" on the elements in `scrollsAtLargeSizes`:
-    ///   the audit flags whichever multi-line text sits lowest on a full `Form`
-    ///   (any of them, moved there), as it would leave the screen at the largest
-    ///   sizes; the form scrolls, so the text stays readable.
-    func auditAccessibility(
-        screen: String,
-        only: Set<String>? = nil,
-        scrollsAtLargeSizes: Set<String> = []
-    ) throws {
+    /// - with `only`, any element whose identifier is not listed.
+    func auditAccessibility(screen: String, only: Set<String>? = nil) throws {
         let preExisting: Set<String> = ["Developer", "Reset & seed"]
         try performAccessibilityAudit { issue in
             let element = issue.element
@@ -26,9 +18,7 @@ extension XCUIApplication {
                 && issue.compactDescription == "Contrast nearly passed"
                 && (element == nil || element?.elementType == .staticText)
             let outOfScope = only.map { !$0.contains(element?.identifier ?? "") } ?? false
-            let scrolls = issue.auditType == .dynamicType
-                && scrollsAtLargeSizes.contains(element?.identifier ?? "")
-            let ignored = systemFormText || preExisting.contains(label) || outOfScope || scrolls
+            let ignored = systemFormText || preExisting.contains(label) || outOfScope
             if ignored {
                 print("Accessibility audit (\(screen)) ignored: \(issue.compactDescription) on \"\(label)\"")
             }

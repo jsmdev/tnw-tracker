@@ -1,9 +1,11 @@
 import Foundation
 import Supabase
 
-/// `TrainingRemoteStore` over PostgREST. Every request runs as the signed-in
-/// user of `client`, so row-level security limits it to that user's rows and
-/// the read-only catalogue.
+/// `TrainingRemoteStore` over PostgREST for one account. Every request runs as
+/// the signed-in user of `client`, so row-level security limits it to that
+/// user's rows and the read-only catalogue; and it is sent only while that user
+/// is `userId` (S10). The client is shared by every account of the device: once
+/// another account signs in, the store of the previous one sends nothing more.
 ///
 /// A push is several requests, not one transaction. The order documented on
 /// `TrainingRemoteStore.pushSession` keeps every intermediate state valid for
@@ -11,9 +13,18 @@ import Supabase
 /// (client ids, upsert by id), so retrying the whole aggregate converges.
 public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
     private let client: SupabaseClient
+    private let userId: UUID
 
-    public init(client: SupabaseClient) {
+    public init(client: SupabaseClient, userId: UUID) {
         self.client = client
+        self.userId = userId
+    }
+
+    /// Every request starts here: it throws `RemoteSessionError` and sends
+    /// nothing unless the client is signed in as this store's account.
+    private func from(_ table: String) throws -> PostgrestQueryBuilder {
+        guard client.auth.currentSession?.user.id == userId else { throw RemoteSessionError.notSignedInAsAccount }
+        return client.from(table)
     }
 
     public func pushSession(_ aggregate: RemoteSessionAggregate) async throws {
@@ -25,7 +36,7 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
 
     private func write(_ aggregate: RemoteSessionAggregate) async throws {
         if !aggregate.removedSetIds.isEmpty {
-            try await client.from(RemoteTable.sets.rawValue)
+            try await from(RemoteTable.sets.rawValue)
                 .delete(returning: .minimal)
                 .in("id", values: Self.text(aggregate.removedSetIds))
                 .in("entry_id", values: Self.text(aggregate.entries.map(\.id) + aggregate.removedEntryIds))
@@ -48,7 +59,7 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
     private func deleteEntries(of aggregate: RemoteSessionAggregate) async throws {
         let session = aggregate.session.id.uuidString.lowercased()
         let removed = Self.text(aggregate.removedEntryIds)
-        let held: [HeldSet] = try await client.from(RemoteTable.sets.rawValue)
+        let held: [HeldSet] = try await from(RemoteTable.sets.rawValue)
             .select("id,entry_id")
             .in("entry_id", values: removed)
             .execute()
@@ -57,7 +68,7 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
         let kept = Set(held.filter { !listed.contains($0.id) }.map(\.entryId))
         let deletable = aggregate.removedEntryIds.filter { !kept.contains($0) }
         if !deletable.isEmpty {
-            try await client.from(RemoteTable.entries.rawValue)
+            try await from(RemoteTable.entries.rawValue)
                 .delete(returning: .minimal)
                 .in("id", values: Self.text(deletable))
                 .eq("session_id", value: session)
@@ -65,12 +76,12 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
         }
         guard !kept.isEmpty else { return }
         let owner = ["user_id": aggregate.session.userId.uuidString.lowercased()]
-        try await client.from(RemoteTable.entries.rawValue)
+        try await from(RemoteTable.entries.rawValue)
             .update(owner, returning: .minimal)
             .in("id", values: Self.text(Array(kept)))
             .eq("session_id", value: session)
             .execute()
-        try await client.from(RemoteTable.sets.rawValue)
+        try await from(RemoteTable.sets.rawValue)
             .update(owner, returning: .minimal)
             .in("entry_id", values: Self.text(Array(kept)))
             .execute()
@@ -86,7 +97,7 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
 
     private func upsertRows<Row: RemoteRow>(_ rows: [Row]) async throws {
         guard !rows.isEmpty else { return }
-        try await client.from(Row.table.rawValue)
+        try await from(Row.table.rawValue)
             .upsert(rows, onConflict: Row.table.conflictTarget, returning: .minimal)
             .execute()
     }
@@ -96,7 +107,7 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
             throw RemoteStoreError.invalidAggregate("\(table.rawValue) has no parent to delete children of")
         }
         try await Self.reportingRejections {
-            var query = client.from(table.rawValue)
+            var query = try from(table.rawValue)
                 .delete(returning: .minimal)
                 .eq(parent, value: parentId.uuidString.lowercased())
             // An empty list keeps nothing: every child of the parent goes.
@@ -108,7 +119,7 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
     public func delete(_ table: RemoteTable, ids: [UUID]) async throws {
         guard !ids.isEmpty else { return }
         try await Self.reportingRejections {
-            try await client.from(table.rawValue)
+            try await from(table.rawValue)
                 .delete(returning: .minimal)
                 .in(table.keyColumn, values: Self.text(ids))
                 .execute()
@@ -121,7 +132,7 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
         limit: Int
     ) async throws -> RemotePage<Row> {
         let key = Row.table.keyColumn
-        var query = client.from(Row.table.rawValue).select()
+        var query = try from(Row.table.rawValue).select()
         if let cursor {
             // Keyset: (updated_at, key) > cursor. The timestamp is quoted, as it
             // holds reserved characters of the filter grammar (":", ".", "+").
