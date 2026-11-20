@@ -43,4 +43,5 @@ npm-debug.log*
 pnpm-debug.log*
 
 .atl/
-.claude/
+.claude/*
+!.claude/skills/
