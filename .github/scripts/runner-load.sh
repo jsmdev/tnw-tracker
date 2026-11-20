@@ -15,6 +15,9 @@ sample() {
   while true; do
     ts=$(date -u +%Y-%m-%dT%H:%M:%SZ)
     load=$(sysctl -n vm.loadavg | tr -d '{}' | awk '{print $1}')
+    # CPU idle over one second, and disk MB/s summed over all disks.
+    idle=$(top -l 2 -n 0 -s 1 | awk '/CPU usage/ {v=$7} END {gsub("%","",v); print v}')
+    disk=$(iostat -d -K -c 2 -w 1 | tail -1 | awk '{for (i=3;i<=NF;i+=3) s+=$i; printf "%.1f", s}')
     free=$(memory_pressure -Q 2>/dev/null | awk -F': ' '/free percentage/ {gsub("%","",$2); print $2}')
     swap=$(sysctl -n vm.swapusage | awk '{print $6}')
     pageouts=$(vm_stat | awk '/Pageouts/ {gsub("\\.","",$2); print $2}')
@@ -22,8 +25,8 @@ sample() {
     top=$(ps -Ao pcpu=,rss=,comm= -r 2>/dev/null | head -4 \
       | awk '{cpu=$1; mem=$2; $1=""; $2=""; n=$0; sub(".*/","",n); printf "%s:%s%%/%dMB ", n, cpu, mem/1024}')
     crashes=$(find "$HOME/Library/Logs/DiagnosticReports" -type f 2>/dev/null | wc -l | tr -d ' ')
-    echo "$ts load=$load free=${free:-?}% swap_used=$swap pageouts=$pageouts crashes=$crashes top=$top"
-    sleep 5
+    echo "$ts load=$load free=${free:-?}% swap_used=$swap pageouts=$pageouts crashes=$crashes idle=${idle:-?}% disk=${disk:-?}MB/s top=$top"
+    sleep 3
   done
 }
 
@@ -46,6 +49,8 @@ case "$cmd" in
           l=v["load"]+0; f=v["free"]+0; s=v["swap_used"]+0
           if (l>ml) ml=l; if (NR==1 || f<mf) mf=f; if (s>ms) ms=s}
          END {printf "Max load: %.2f  Min free memory: %d%%  Max swap used: %.0fM\n", ml, mf, ms}' "$log"
+    awk '{for (i=2;i<=NF;i++) {split($i,kv,"="); if (kv[1]=="idle") {v=kv[2]+0; n++; t+=v; if (v<5) low++}}}
+         END {if (n) printf "CPU idle: average %.0f%%, %d of %d samples under 5%%\n", t/n, low, n}' "$log"
     echo "Crash reports written while sampling (newest last):"
     find "$HOME/Library/Logs/DiagnosticReports" -type f -newer "$log.start" 2>/dev/null \
       | xargs -I{} basename {} | sort | uniq -c | sort -n | tail -20
