@@ -27,6 +27,18 @@ struct HomeScreen {
         app.buttons[AXID.Home.exercisesButton]
     }
 
+    /// "Entrenamiento libre": a session without a routine (#137 S5).
+    var freeSessionButton: XCUIElement {
+        app.buttons[AXID.Home.freeSessionButton]
+    }
+
+    /// Starts a free session and returns the validated workout screen.
+    func startFreeSession() -> ActiveWorkoutScreen {
+        freeSessionButton.waitUntilHittable()
+        freeSessionButton.tap()
+        return ActiveWorkoutScreen(app: app).waitUntilLoaded()
+    }
+
     /// "Ver todas" in "Otras rutinas" (T10).
     var seeAllRoutinesButton: XCUIElement {
         app.buttons[AXID.Home.seeAllRoutinesButton]

@@ -24,7 +24,7 @@ struct RootView: View {
             // solo activa el primer fullScreenCover en cadena, así que para
             // que el summary aparezca encima del active workout debe vivir
             // como modifier sobre el cover activo.
-            ActiveWorkoutCover(sessionID: presentation.id)
+            ActiveWorkoutCover(sessionID: presentation.id, isFree: presentation.isFree)
                 .fullScreenCover(item: $router.presentedWorkoutSummary) { summary in
                     WorkoutSummaryView(workoutId: summary.id)
                 }
@@ -68,10 +68,11 @@ struct RootView: View {
 }
 
 /// Contenedor del cover que crea el coordinator y arranca el workout
-/// desde la rutina referida en `sessionID`. El `@State` propio evita el
-/// race que sufría el patrón `@State` en el padre + `.onChange`.
+/// desde la rutina referida en `sessionID`, o sin rutina cuando `isFree`.
+/// El `@State` propio evita el race que sufría el patrón `@State` en el padre + `.onChange`.
 private struct ActiveWorkoutCover: View {
     let sessionID: UUID
+    let isFree: Bool
     @Environment(AppEnvironment.self) private var appEnv
     @State private var coordinator: ActiveWorkoutCoordinator?
 
@@ -93,7 +94,11 @@ private struct ActiveWorkoutCover: View {
             // Arrancar el workout desde la rutina. Si la rutina no existe o el
             // start falla, cerramos el cover para volver al Home.
             do {
-                try await c.start(routineId: sessionID)
+                if isFree {
+                    try await c.startAdHoc(name: String(localized: "free-session.name"))
+                } else {
+                    try await c.start(routineId: sessionID)
+                }
             } catch {
                 appEnv.router.presentedActiveWorkout = nil
                 appEnv.activeCoordinator = nil

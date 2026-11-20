@@ -87,6 +87,9 @@ struct SecondaryButton: View {
         }
         .disabled(isLoading)
         .buttonStyle(.bordered)
+        // Primary colour: the default tint on the bordered fill does not reach
+        // the contrast minimum.
+        .tint(.primary)
     }
 }
 
