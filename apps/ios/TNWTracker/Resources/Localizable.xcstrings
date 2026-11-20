@@ -2526,6 +2526,91 @@
           }
         }
       }
+    },
+    "active-workout.add-exercise": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add exercise"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir ejercicio"
+          }
+        }
+      }
+    },
+    "active-workout.no-exercises.message": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add an exercise to log its sets."
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añade un ejercicio para registrar sus series."
+          }
+        }
+      }
+    },
+    "active-workout.no-exercises.title": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No exercises yet"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay ejercicios"
+          }
+        }
+      }
+    },
+    "free-session.name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free workout"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenamiento libre"
+          }
+        }
+      }
+    },
+    "home.free-session.button": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free workout"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Entrenamiento libre"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

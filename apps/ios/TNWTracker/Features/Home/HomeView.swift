@@ -18,6 +18,7 @@ struct HomeView: View {
             VStack(alignment: .leading) {
                 weeklyProgressSection
                 nextSessionSection
+                freeSessionButton
                 otherRoutinesSection
             }
             .padding(.horizontal, Spacing.md)
@@ -51,6 +52,19 @@ struct HomeView: View {
                 .accessibilityIdentifier(AXID.Home.settingsButton)
             }
         }
+    }
+
+    // MARK: - Free Session
+
+    /// "Entrenamiento libre" (#137 S5): a session without a routine, shown even
+    /// with no routine, so a new install can start training.
+    private var freeSessionButton: some View {
+        SecondaryButton(title: "home.free-session.button") {
+            appEnv.router.presentedActiveWorkout = .free()
+        }
+        .accessibilityIdentifier(AXID.Home.freeSessionButton)
+        .padding(.top, Spacing.sm)
+        .padding(.bottom, Spacing.md)
     }
 
     // MARK: - Weekly Progress Section

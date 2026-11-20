@@ -10,6 +10,8 @@ import Foundation
 public enum AXID {
     public enum Home {
         public static let quickStartButton = "home.quickStartButton"
+        /// "Entrenamiento libre": starts a session without a routine (#137 S5).
+        public static let freeSessionButton = "home.freeSessionButton"
         public static let nextSessionTitle = "home.nextSessionTitle"
         public static let settingsButton = "home.settingsButton"
         /// "Ver todas" in "Otras rutinas": opens the routine list (T10).
@@ -74,6 +76,9 @@ public enum AXID {
         public static let elapsedTimer = "activeWorkout.elapsedTimer"
         public static let endButton = "activeWorkout.endButton"
         public static let logSetButton = "activeWorkout.logSetButton"
+        /// "Añadir ejercicio": opens the exercise list to pick one (#137 S5).
+        public static let addExerciseButton = "activeWorkout.addExerciseButton"
+        public static let exercisePickerCancelButton = "activeWorkout.exercisePickerCancelButton"
         public static let exerciseTitle = "activeWorkout.exerciseTitle"
         public static let progressIndicator = "activeWorkout.progressIndicator"
         public static let setWarmupToggle = "activeWorkout.setWarmupToggle"

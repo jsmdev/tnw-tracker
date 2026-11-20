@@ -17,7 +17,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
 
     /// Snapshot of the session in progress.
     public private(set) var session: TrainingSession?
-    public private(set) var currentExerciseIndex: Int = 0
+    public internal(set) var currentExerciseIndex: Int = 0
     public private(set) var phase: WorkoutPhase = .idle
     public private(set) var elapsedSeconds: Int = 0
     public var timerTriggerMode: TimerTriggerMode = .auto
@@ -28,6 +28,9 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
 
     /// Targets of the routine the session was started from, by exercise.
     private(set) var targets: [UUID: RoutineItem] = [:]
+
+    /// The exercise picked from the list that has no set yet (see `addExercise`).
+    var picked: PickedExercise?
 
     // MARK: - Dependencies
 
@@ -253,6 +256,8 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         let exerciseId = entries.first { $0.sets.contains { $0.id == setId } }?.exerciseId
         try sessions.deleteManualSet(id: setId)
         try refreshSession()
+        // An exercise the user picked stays in the session when its only set is undone.
+        keepPickedIfUnsaved(exerciseId)
         // The undone set's own rest stops; a rest it cut short is not resumed (D-T3k).
         await timerService.skip()
         if let restore {
@@ -368,6 +373,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     func clearWorkout() {
         session = nil
         targets = [:]
+        picked = nil
         currentExerciseIndex = 0
         phase = .idle
         elapsedSeconds = 0

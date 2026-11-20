@@ -99,6 +99,29 @@ struct ActiveWorkoutScreen {
         return ExerciseRestSheetScreen(app: app).waitUntilLoaded()
     }
 
+    /// "Añadir ejercicio" (#137 S5).
+    var addExerciseButton: XCUIElement {
+        app.buttons[AXID.ActiveWorkout.addExerciseButton]
+    }
+
+    /// Opens the exercise list from the workout and picks `exerciseId`; returns
+    /// this screen once the picked exercise is the current one.
+    func addExercise(_ exerciseId: UUID, named name: String) -> Self {
+        addExerciseButton.waitUntilHittable()
+        addExerciseButton.tap()
+        let row = app.buttons[AXID.Exercises.row(exerciseId)]
+        if !row.waitForExistence(timeout: 5) || !row.isHittable {
+            app.swipeUp()
+        }
+        row.waitUntilHittable()
+        row.tap()
+        XCTAssertTrue(
+            exerciseTitle.waitForExistence(timeout: 3) && exerciseTitle.label == name,
+            "The picked exercise \(name) is not the current one."
+        )
+        return self
+    }
+
     /// Taps the log-set button and returns an already-validated SetLogSheetScreen.
     func tapLogSet() -> SetLogSheetScreen {
         logSetButton.tap()

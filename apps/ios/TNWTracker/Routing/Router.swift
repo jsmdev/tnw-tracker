@@ -3,7 +3,15 @@ import Observation
 import SwiftUI
 
 public struct ActiveWorkoutPresentation: Identifiable, Equatable {
+    /// The routine to start from, or any id for a free session.
     public let id: UUID
+    /// A free session: no routine, the user picks the exercises (#137 S5).
+    public var isFree = false
+
+    /// A free session, started without a routine.
+    public static func free() -> ActiveWorkoutPresentation {
+        ActiveWorkoutPresentation(id: UUID(), isFree: true)
+    }
 }
 
 public struct WorkoutSummaryPresentation: Identifiable, Equatable {

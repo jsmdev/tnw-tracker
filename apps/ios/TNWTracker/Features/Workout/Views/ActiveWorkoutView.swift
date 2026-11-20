@@ -62,7 +62,7 @@ struct ActiveWorkoutView: View {
         .task {
             await loadExerciseNames()
         }
-        .onChange(of: coordinator.entries.count) {
+        .onChange(of: coordinator.entries.map(\.exerciseId)) {
             Task { await loadExerciseNames() }
         }
         .onChange(of: coordinator.lastFinishOutcome) { _, outcome in
@@ -100,7 +100,14 @@ struct ActiveWorkoutView: View {
                 phaseSection
                 if let exercise = coordinator.currentEntry {
                     exerciseSection(exercise: exercise)
+                } else {
+                    EmptyState(
+                        systemImage: "dumbbell",
+                        title: "active-workout.no-exercises.title",
+                        message: "active-workout.no-exercises.message"
+                    )
                 }
+                AddExerciseButton(coordinator: coordinator)
                 controlsSection
             }
             .padding(.horizontal, Spacing.md)
@@ -191,7 +198,6 @@ struct ActiveWorkoutView: View {
 
     @MainActor
     private func loadExerciseNames() async {
-        guard !coordinator.entries.isEmpty else { return }
         let allExercises = (try? appEnv.exerciseRepository.exercises()) ?? []
         let map = Dictionary(uniqueKeysWithValues: allExercises.map { ($0.id, $0.name) })
         exerciseNames = map

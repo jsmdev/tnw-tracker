@@ -25,9 +25,10 @@ extension ActiveWorkoutCoordinator {
         session?.id
     }
 
-    /// Entries the user works through, in session order. Removed entries are hidden.
+    /// Entries the user works through, in session order, then the exercise picked
+    /// from the list that has no set yet. Removed entries are hidden.
     public var entries: [SessionEntry] {
-        (session?.entries ?? []).filter { $0.status != .removed }
+        savedEntries + (pickedEntry.map { [$0] } ?? [])
     }
 
     public var currentEntry: SessionEntry? {
