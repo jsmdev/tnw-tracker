@@ -45,6 +45,9 @@ runs:
         restore-keys: |
           spm-${{ runner.os }}-xcode${{ inputs.xcode-version }}-
 
+    # Boot and wait until the simulator has finished booting. A plain
+    # `simctl boot` returns at once, and the first-boot work of the simulator
+    # (background daemons) then competes with the tests for the 3 vCPU.
     - name: Pre-boot iPhone 17 simulator
       shell: bash
-      run: xcrun simctl boot "iPhone 17" || true
+      run: xcrun simctl bootstatus "iPhone 17" -b

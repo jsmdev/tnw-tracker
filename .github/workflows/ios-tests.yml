@@ -29,6 +29,7 @@ jobs:
           if git diff --quiet HEAD^1 HEAD -- \
             apps/ios \
             .github/workflows/ios-tests.yml \
+            .github/scripts/runner-load.sh \
             .github/actions/ios-setup; then
             echo "ios=false" >> "$GITHUB_OUTPUT"
           else
@@ -86,16 +87,54 @@ jobs:
       - uses: ./.github/actions/ios-setup
         if: steps.ios-check.outputs.count != '0'
 
+      # Runner load (CPU, memory, swap, busiest processes) every 3 s while the
+      # UI tests run, to explain stalls such as accessibility audits that run
+      # out of time. The standard macOS runner has 3 vCPU and 7 GB of RAM.
+      - name: Empezar a medir la carga del runner
+        if: steps.ios-check.outputs.count != '0'
+        run: .github/scripts/runner-load.sh start build/runner-load.log
+
+      # Build first, let the simulator finish its post-boot work, then test:
+      # with 3 vCPU, a busy simulator makes accessibility audits run out of
+      # time (XCTest error -56, whose time limit cannot be configured).
+      - name: Compilar UI tests
+        if: steps.ios-check.outputs.count != '0'
+        run: |
+          xcodebuild build-for-testing \
+            -project apps/ios/TnwTracker.xcodeproj \
+            -scheme TNWTracker \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
+            -only-testing:TNWTrackerUITests \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+      - name: Esperar a que el runner repose
+        if: steps.ios-check.outputs.count != '0'
+        run: .github/scripts/runner-load.sh settle
+
       - name: Ejecutar UI tests
         if: steps.ios-check.outputs.count != '0'
         run: |
-          xcodebuild test \
+          xcodebuild test-without-building \
             -project apps/ios/TnwTracker.xcodeproj \
             -scheme TNWTracker \
             -destination 'platform=iOS Simulator,name=iPhone 17,OS=latest' \
             -only-testing:TNWTrackerUITests \
             -resultBundlePath build/TestResults.xcresult \
             CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
+
+      - name: Resumen de la carga del runner
+        if: always() && steps.ios-check.outputs.count != '0'
+        run: .github/scripts/runner-load.sh stop build/runner-load.log
+
+      - name: Subir la carga del runner
+        if: always() && steps.ios-check.outputs.count != '0'
+        uses: actions/upload-artifact@v5
+        with:
+          name: ios-ui-tests-runner-load
+          path: |
+            build/runner-load.log
+            ~/Library/Logs/DiagnosticReports/
+          if-no-files-found: ignore
 
       - name: Subir resultados de test en fallo
         if: failure() && steps.ios-check.outputs.count != '0'
