@@ -51,8 +51,9 @@ public enum TrainingSyncError: Error, Equatable, Sendable {
     case storeNotOwned(userId: UUID, owner: UUID?)
 }
 
-/// The sync between the local store and the server (#135). This half pushes
-/// local changes; the pull is added on top of it.
+/// The sync between the local store and the server (#135): `fullSync()` pushes
+/// local changes, then pulls the server's (`TrainingSyncEngine+Pull.swift`).
+/// A push and a pull never run at the same time: each waits for the other.
 ///
 /// Push rules (docs/database-schema.md, "Sync"):
 /// - Only when the store's owner is the signed-in user (S10).
@@ -67,31 +68,79 @@ public enum TrainingSyncError: Error, Equatable, Sendable {
 /// - Every pending aggregate is tried at most once per push.
 @MainActor
 public final class TrainingSyncEngine: SyncEngine {
-    private let store: TrainingStore
-    private let remote: any TrainingRemoteStore
-    private let userId: UUID
-    private var inFlight: Task<SyncPushReport, any Error>?
+    let store: TrainingStore
+    let remote: any TrainingRemoteStore
+    let userId: UUID
+    /// Rows asked for per pull request.
+    let pageSize: Int
+    /// How far before its cursor each table is read again (L5 item 5).
+    let pullOverlap: TimeInterval
+    private var pushing: Task<SyncPushReport, any Error>?
+    private var pulling: Task<SyncPullReport, any Error>?
 
-    public init(store: TrainingStore, remote: any TrainingRemoteStore, userId: UUID) {
+    /// - Parameters:
+    ///   - pageSize: rows per pull request.
+    ///   - pullOverlap: seconds of rows read again before each cursor, for rows a
+    ///     transaction that committed late wrote behind it. Re-reading is harmless:
+    ///     applying the same row twice changes nothing.
+    public init(
+        store: TrainingStore,
+        remote: any TrainingRemoteStore,
+        userId: UUID,
+        pageSize: Int = 500,
+        pullOverlap: TimeInterval = 5
+    ) {
         self.store = store
         self.remote = remote
         self.userId = userId
+        self.pageSize = pageSize
+        self.pullOverlap = pullOverlap
     }
 
     public func fullSync() async throws {
-        try await push()
+        try await sync()
+    }
+
+    /// Pushes, then pulls: local changes reach the server before its state is
+    /// applied, so the pull reads them back as echoes instead of conflicts.
+    @discardableResult
+    public func sync() async throws -> SyncReport {
+        let push = try await push()
+        let pull = try await pull()
+        return SyncReport(push: push, pull: pull)
     }
 
     /// Pushes every pending aggregate once. A call made while a push is running
     /// waits for that push and gets its report, so nothing is sent twice.
     @discardableResult
     public func push() async throws -> SyncPushReport {
-        if let inFlight {
-            return try await inFlight.value
+        if let pushing {
+            return try await pushing.value
         }
-        let task = Task { try await self.pushPending() }
-        inFlight = task
-        defer { inFlight = nil }
+        let pull = pulling
+        let task = Task {
+            _ = try? await pull?.value
+            return try await self.pushPending()
+        }
+        pushing = task
+        defer { pushing = nil }
+        return try await task.value
+    }
+
+    /// Pulls what changed on the server since the last pull and applies it to
+    /// the store. A call made while a pull is running gets that pull's report.
+    @discardableResult
+    public func pull() async throws -> SyncPullReport {
+        if let pulling {
+            return try await pulling.value
+        }
+        let push = pushing
+        let task = Task {
+            _ = try? await push?.value
+            return try await self.pullChanges()
+        }
+        pulling = task
+        defer { pulling = nil }
         return try await task.value
     }
 

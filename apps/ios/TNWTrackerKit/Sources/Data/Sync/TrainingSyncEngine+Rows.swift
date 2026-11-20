@@ -79,7 +79,10 @@ struct PushRows {
                 return .skip(reason)
             }
         }
-        let aggregate = sessionAggregate(model.snapshot, completedAt: completedAt, pending: pending)
+        var rows = sessionAggregate(model.snapshot, completedAt: completedAt)
+        rows.removedEntryIds = pending.removedEntryIds
+        rows.removedSetIds = pending.removedSetIds
+        let aggregate = rows
         return .send { remote in
             try await remote.pushSession(aggregate)
         }
@@ -104,11 +107,9 @@ struct PushRows {
 
     // MARK: - Session rows
 
-    private func sessionAggregate(
-        _ session: TrainingSession,
-        completedAt: Date,
-        pending: PendingSyncAggregate
-    ) -> RemoteSessionAggregate {
+    /// The rows of a completed session, as the server stores them. The pull
+    /// compares them with what it read to tell an echo from a local difference.
+    func sessionAggregate(_ session: TrainingSession, completedAt: Date) -> RemoteSessionAggregate {
         let row = RemoteSessionRow(
             id: session.id,
             userId: userId,
@@ -159,13 +160,7 @@ struct PushRows {
                 )
             }
         }
-        return RemoteSessionAggregate(
-            session: row,
-            entries: entries,
-            sets: sets,
-            removedEntryIds: pending.removedEntryIds,
-            removedSetIds: pending.removedSetIds
-        )
+        return RemoteSessionAggregate(session: row, entries: entries, sets: sets)
     }
 
     /// The server refuses an empty step list: none is `nil`.

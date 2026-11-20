@@ -1,0 +1,154 @@
+import Foundation
+import SwiftData
+
+/// Writes what the sync pulls into the store, outside the user commands: it
+/// never raises a revision for what the server already holds (an echo), only
+/// for a difference the device keeps, so that difference is pushed.
+///
+/// Rules (docs/database-schema.md, "Sync"):
+/// - A row the device does not hold is created with the server's id, as the
+///   server holds it: synced, never pending.
+/// - A row the device holds follows the conflict rule of its aggregate
+///   (`SyncConflictRule`); imported sets always merge through the import rules.
+/// - A row the device deleted is not brought back (S11, T5 sends the deletion).
+/// - A row whose external ref the device holds under another id gives that
+///   local row the server's id (adoption), so its push stops colliding (23505).
+/// - Catalogue exercises are always the server's.
+@MainActor
+final class SwiftDataPullApplier {
+    let context: ModelContext
+    /// The context does not keep its container alive; the adapter does.
+    private let container: ModelContainer
+    /// For the import rules the pull shares with the importer.
+    let sessions: SwiftDataSessionRepository
+
+    init(context: ModelContext, sessions: SwiftDataSessionRepository) {
+        self.context = context
+        container = context.container
+        self.sessions = sessions
+    }
+
+    /// Where the last pull of `table` stopped for `userId`.
+    func cursor(_ table: RemoteTable, userId: UUID) throws -> RemoteCursor? {
+        try cursorModel(table, userId: userId).map { RemoteCursor(updatedAt: $0.updatedAt, id: $0.rowId) }
+    }
+
+    /// Applies every row, parents first, and moves the cursors, in one save. On
+    /// any error nothing is kept.
+    func apply(_ batch: PulledBatch, userId: UUID) throws -> SyncPullReport {
+        let run = PullRun(userId: userId)
+        do {
+            try applyTemplates(batch, run)
+            try applySessions(batch, run)
+            try saveCursor(batch.exercises, run)
+            try saveCursor(batch.muscleGroups, run)
+            try saveCursor(batch.routines, run)
+            try saveCursor(batch.routineItems, run)
+            try saveCursor(batch.sessions, run)
+            try saveCursor(batch.entries, run)
+            try saveCursor(batch.sets, run)
+            try context.save()
+        } catch {
+            context.rollback()
+            throw error
+        }
+        return run.report
+    }
+
+    // MARK: - Cursors
+
+    /// The table's cursor moves to its last row read, or to the row before the
+    /// first one held back for a missing parent, so that one is read again.
+    private func saveCursor<Row: RemoteRow>(_ rows: [Row], _ run: PullRun) throws {
+        guard !rows.isEmpty else { return }
+        run.report.read[Row.table] = rows.count
+        let held = run.held[Row.table] ?? []
+        guard let last = rows.prefix(while: { !held.contains($0.id) }).last, let updatedAt = last.updatedAt else {
+            return
+        }
+        let cursor = RemoteCursor(updatedAt: updatedAt, id: last.id)
+        if let model = try cursorModel(Row.table, userId: run.userId) {
+            model.updatedAt = cursor.updatedAt
+            model.rowId = cursor.id
+        } else {
+            context.insert(SyncCursorModel(userId: run.userId, table: Row.table, cursor: cursor))
+        }
+    }
+
+    private func cursorModel(_ table: RemoteTable, userId: UUID) throws -> SyncCursorModel? {
+        let key = SyncCursorModel.key(userId: userId, table: table)
+        var descriptor = FetchDescriptor<SyncCursorModel>(predicate: #Predicate { $0.key == key })
+        descriptor.fetchLimit = 1
+        return try context.fetch(descriptor).first
+    }
+
+    // MARK: - Lookups
+
+    /// True when the device deleted the row and the deletion has not reached the server.
+    func hasTombstone(_ kind: SyncTombstoneKind, _ id: UUID) throws -> Bool {
+        let kindRaw = kind.rawValue
+        let descriptor = FetchDescriptor<SyncTombstoneModel>(
+            predicate: #Predicate { $0.kindRaw == kindRaw && $0.rowId == id }
+        )
+        return try context.fetchCount(descriptor) > 0
+    }
+}
+
+/// The state of one pull while it is applied.
+@MainActor
+final class PullRun {
+    let userId: UUID
+    let now = Date()
+    var report = SyncPullReport()
+    /// Rows left for a missing parent, per table.
+    var held: [RemoteTable: Set<UUID>] = [:]
+    /// Entries whose sets changed, with the entries an imported set left for them (D8).
+    var touchedEntries: [SessionEntryModel] = []
+    var vacated: [(into: SessionEntryModel, from: SessionEntryModel)] = []
+    private var created: Set<SyncAggregateRef> = []
+    private var rules: [SyncAggregateRef: SyncConflictRule] = [:]
+
+    init(userId: UUID) {
+        self.userId = userId
+    }
+
+    /// The conflict rule of an aggregate the device holds, decided once per pull
+    /// on its state when the pull first reaches it, and reported. An aggregate
+    /// this pull created has no conflict.
+    func rule(for aggregate: SyncAggregateRef, model: any SyncTrackedModel) -> SyncConflictRule {
+        if created.contains(aggregate) { return .serverApplied }
+        if let rule = rules[aggregate] { return rule }
+        let rule = report.resolve(aggregate, localPending: model.syncRevision > model.syncedRevision)
+        rules[aggregate] = rule
+        return rule
+    }
+
+    func create(_ aggregate: SyncAggregateRef) {
+        created.insert(aggregate)
+        report.created.append(aggregate)
+    }
+
+    func hold(_ table: RemoteTable, _ id: UUID) {
+        held[table, default: []].insert(id)
+        report.skip(table, id, .missingParent)
+    }
+
+    func adopt(_ table: RemoteTable, localId: UUID, serverId: UUID) {
+        report.adopted.append(.init(table: table, localId: localId, serverId: serverId))
+    }
+
+    func touch(_ entry: SessionEntryModel) {
+        if !touchedEntries.contains(where: { $0 === entry }) { touchedEntries.append(entry) }
+    }
+}
+
+extension SyncTrackedModel {
+    /// A new aggregate as the server holds it: the user's, sent and acknowledged,
+    /// so it is not pending and sessions that use it can be pushed.
+    func markPulled() {
+        isSyncable = true
+        syncSent = true
+        syncRevision = 1
+        syncedRevision = 1
+    }
+}

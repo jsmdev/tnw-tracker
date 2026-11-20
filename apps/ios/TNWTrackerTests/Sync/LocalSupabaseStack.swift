@@ -20,7 +20,8 @@ enum LocalSupabaseStack {
     struct Configuration: Sendable {
         let url: URL
         let anonKey: String
-        /// Optional: only used to delete the throwaway users afterwards.
+        /// Optional: deletes the throwaway users afterwards, and lets a test
+        /// write as an importer outside the app would (`adminClient()`).
         let serviceRoleKey: String?
     }
 
@@ -64,10 +65,10 @@ enum LocalSupabaseStack {
         do {
             try await body(client, userId)
         } catch {
-            await deleteUser(userId, configuration: configuration)
+            await deleteUser(userId)
             throw error
         }
-        await deleteUser(userId, configuration: configuration)
+        await deleteUser(userId)
     }
 
     private static func configured() throws -> Configuration {
@@ -75,9 +76,17 @@ enum LocalSupabaseStack {
         return configuration
     }
 
-    private static func deleteUser(_ id: UUID, configuration: Configuration) async {
-        guard let serviceRoleKey = configuration.serviceRoleKey else { return }
-        let admin = SupabaseClient(
+    /// `true` when the stack answers and the service role key is configured.
+    static func hasServiceRole() async -> Bool {
+        await isAvailable() && configuration?.serviceRoleKey != nil
+    }
+
+    /// A client with the service role, which row-level security does not limit:
+    /// it writes as a server-side importer would. `nil` without the key. Keep it
+    /// alive for as long as its requests run.
+    static func adminClient() -> SupabaseClient? {
+        guard let configuration, let serviceRoleKey = configuration.serviceRoleKey else { return nil }
+        return SupabaseClient(
             supabaseURL: configuration.url,
             supabaseKey: serviceRoleKey,
             options: SupabaseClientOptions(
@@ -88,7 +97,13 @@ enum LocalSupabaseStack {
                 )
             )
         )
+    }
+
+    private static func deleteUser(_ id: UUID) async {
+        guard let admin = adminClient() else { return }
         try? await admin.auth.admin.deleteUser(id: id)
+        // The client must outlive the request: its auth reads the client's dependencies.
+        withExtendedLifetime(admin) {}
     }
 }
 

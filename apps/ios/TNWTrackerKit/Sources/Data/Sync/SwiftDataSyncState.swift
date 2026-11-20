@@ -27,6 +27,10 @@ final class SwiftDataStoreOwnership: StoreOwnershipProtocol {
         for owner in owners {
             context.delete(owner)
         }
+        // Pull cursors are kept per user; another user's would only be stale.
+        for cursor in try context.fetch(FetchDescriptor<SyncCursorModel>()) where cursor.userId != userId {
+            context.delete(cursor)
+        }
         context.insert(StoreOwnerModel(userId: userId, claimedAt: date))
         try context.save()
         return .claimed

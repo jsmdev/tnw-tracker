@@ -176,6 +176,42 @@ enum TrainingRemoteStoreContract {
         #expect(sets.isEmpty)
     }
 
+    /// Another row of the user with an external ref the server already holds
+    /// under a different id is refused with 23505 (L5 item 1); the pull adopts
+    /// the server's id so the next push succeeds.
+    static func duplicateExternalRefIsRejected(_ harness: RemoteStoreHarness) async throws {
+        var first = finishedSession(for: harness.userId)
+        first.session.externalRef = ExternalRef(provider: "machines-atlas", id: "session-\(UUID().uuidString)")
+        try await harness.store.pushSession(first)
+        var second = finishedSession(for: harness.userId)
+        second.session.externalRef = first.session.externalRef
+
+        do {
+            try await harness.store.pushSession(second)
+            Issue.record("a second session with the same external ref was stored")
+        } catch let RemoteStoreError.rejected(code, _) {
+            #expect(code == "23505")
+        }
+
+        let sessions = try await pullAll(RemoteSessionRow.self, from: harness.store)
+        #expect(sessions.map(\.id) == [first.session.id])
+    }
+
+    /// The cursor the pull rewinds by its overlap is accepted by the server and
+    /// reads again the rows just behind the exact cursor, which reads none.
+    static func rewoundCursorReadsAgain(_ harness: RemoteStoreHarness) async throws {
+        try await harness.store.pushSession(finishedSession(for: harness.userId))
+        let sets = try await pullAll(RemoteSetRow.self, from: harness.store)
+        let last = try #require(sets.last)
+        let cursor = RemoteCursor(updatedAt: try #require(last.updatedAt), id: last.id)
+        let rewound = try #require(cursor.rewound(by: 5))
+
+        let again = try await harness.store.pull(RemoteSetRow.self, after: rewound, limit: 100)
+
+        #expect(Set(again.rows.map(\.id)) == Set(sets.map(\.id)))
+        #expect(try await harness.store.pull(RemoteSetRow.self, after: cursor, limit: 100).rows.isEmpty)
+    }
+
     /// A user exercise with its muscle groups and a routine with its items read
     /// back unchanged, and pushing them again updates the same rows: child ids
     /// derived from their natural keys never collide with those keys.

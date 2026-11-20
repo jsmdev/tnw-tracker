@@ -89,4 +89,26 @@ struct RemoteRowsCodingTests {
         #expect(empty.next == nil)
         #expect(empty.mayHaveMore == false)
     }
+
+    @Test(
+        "the overlap rewinds a cursor in whole seconds, from the server's text with or without a fraction",
+        arguments: [
+            ("2026-11-19T10:00:00.123456+00:00", "2026-11-19T09:59:55+00:00"),
+            ("2026-11-19T10:00:00+00:00", "2026-11-19T09:59:55+00:00"),
+            ("2026-11-19T11:00:00.5+01:00", "2026-11-19T09:59:55+00:00"),
+            ("2026-01-01T00:00:03.000001Z", "2025-12-31T23:59:58+00:00")
+        ]
+    )
+    func cursorRewinds(text: String, expected: String) throws {
+        let id = UUID()
+
+        let rewound = try #require(RemoteCursor(updatedAt: text, id: id).rewound(by: 5))
+
+        #expect(rewound == RemoteCursor(updatedAt: expected, id: RemoteCursor.lowestId))
+    }
+
+    @Test("a cursor whose time cannot be read is not rewound")
+    func unreadableCursorIsKept() {
+        #expect(RemoteCursor(updatedAt: "yesterday", id: UUID()).rewound(by: 5) == nil)
+    }
 }

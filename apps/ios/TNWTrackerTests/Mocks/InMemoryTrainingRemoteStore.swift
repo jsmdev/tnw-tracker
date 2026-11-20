@@ -7,10 +7,13 @@ import Foundation
 /// (rows written together share it, as in one Postgres statement), keyset
 /// pulls, and the server rules a push can break (parents first, rows only
 /// referring to exercises and routines the server holds, no set on a skipped
-/// entry), refused as `RemoteStoreError.rejected` with the server's SQLSTATE.
+/// entry, one row per user and external ref), refused as
+/// `RemoteStoreError.rejected` with the server's SQLSTATE.
 ///
-/// It can fail the next call of an operation, or a push part way, to simulate
-/// the network dropping, and run an action in the middle of the next push.
+/// It can fail the next call of an operation, the next pull of a table, or a
+/// push part way, to simulate the network dropping, and run an action in the
+/// middle of the next push. Its clock ticks one microsecond per statement and
+/// can jump ahead, to place writes outside the pull's overlap window.
 actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     enum Operation: Hashable, Sendable {
         case pushSession, upsert, pull
@@ -38,14 +41,21 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
 
     static let skippedEntryWithSets = RemoteStoreError.rejected(code: "23514", message: "a skipped entry has no sets")
 
+    /// What the server answers for a second row of the user with the same external ref.
+    static func duplicateExternalRef(_ table: RemoteTable) -> RemoteStoreError {
+        .rejected(code: "23505", message: "\(table.rawValue)_external_ref_key")
+    }
+
     private(set) var calls: [Call] = []
     private var failures: [Operation: [any Error]] = [:]
+    private var pullFailures: [RemoteTable: (pagesFirst: Int, error: any Error)] = [:]
     private var pushFailure: (step: PushStep, error: any Error)?
     private var tables: [RemoteTable: [UUID: any RemoteRow]] = [:]
     private var clock = 0
     /// The curated catalogue of supabase/seed.sql, which every user can refer to.
     private let catalogue: Set<UUID>
     private var duringNextPush: (@Sendable () async -> Void)?
+    private var duringNextPull: (@Sendable () async -> Void)?
 
     init(catalogue: Set<UUID> = TrainingRemoteStoreContract.catalogue) {
         self.catalogue = catalogue
@@ -56,6 +66,17 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     /// The next call of `operation` throws `error` and changes nothing.
     func failNext(_ operation: Operation, with error: any Error = networkDown) {
         failures[operation, default: []].append(error)
+    }
+
+    /// A pull of `table` throws `error` and returns nothing, once `pages` more
+    /// pulls of it have succeeded.
+    func failNextPull(of table: RemoteTable, afterPages pages: Int = 0, with error: any Error = networkDown) {
+        pullFailures[table] = (pages, error)
+    }
+
+    /// Moves the server clock `seconds` ahead: the next write is that much later.
+    func advanceClock(seconds: Int) {
+        clock += seconds * 1_000_000
     }
 
     /// The next push writes the steps before `step`, then throws `error`.
@@ -69,9 +90,25 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         duringNextPush = action
     }
 
+    /// The next pull runs `action` before it answers: as if the device changed
+    /// while the pages were read.
+    func duringNextPull(_ action: @escaping @Sendable () async -> Void) {
+        duringNextPull = action
+    }
+
     /// Writes a row as another client would (an importer, another device).
     func insertOnServer<Row: RemoteRow>(_ row: Row) throws {
         try write([row])
+    }
+
+    /// Writes a row whose transaction committed late: its `updated_at` is
+    /// `seconds` behind the clock, so a cursor may already be past it.
+    func insertLateOnServer<Row: RemoteRow>(_ row: Row, secondsBehind seconds: Int) throws {
+        try check(row)
+        try checkExternalRefs([row])
+        var row = row
+        row.updatedAt = Self.timestamp(clock - seconds * 1_000_000)
+        tables[Row.table, default: [:]][row.id] = row
     }
 
     /// Rows of `type` stored now, in cursor order.
@@ -126,6 +163,17 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     ) async throws -> RemotePage<Row> {
         calls.append(.pull(Row.table, after: cursor, limit: limit))
         try throwIfFailing(.pull)
+        if let action = duringNextPull {
+            duringNextPull = nil
+            await action()
+        }
+        if let failure = pullFailures[Row.table] {
+            if failure.pagesFirst == 0 {
+                pullFailures[Row.table] = nil
+                throw failure.error
+            }
+            pullFailures[Row.table]?.pagesFirst -= 1
+        }
         let rows = ordered(type).filter { row in
             guard let cursor, let updatedAt = row.updatedAt else { return true }
             return (updatedAt, Self.key(row.id)) > (cursor.updatedAt, Self.key(cursor.id))
@@ -148,6 +196,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         for row in rows {
             try check(row)
         }
+        try checkExternalRefs(rows)
         clock += 1
         let now = Self.timestamp(clock)
         for var row in rows {
@@ -182,6 +231,31 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         try requireExercise(entry.exerciseId, "entries_exercise_id_fkey")
         try requireExercise(entry.replacedExerciseId, "entries_replaced_exercise_id_fkey")
         if entry.status == .skipped, !setsOf(entry.id).isEmpty { throw Self.skippedEntryWithSets }
+    }
+
+    /// `UNIQUE (user_id, external_provider, external_id)`: another row of the
+    /// user, stored or in the same statement, holding the ref refuses the write.
+    private func checkExternalRefs<Row: RemoteRow>(_ rows: [Row]) throws {
+        let written = Set(rows.map(\.id))
+        let stored = (tables[Row.table]?.values.compactMap { $0 as? Row } ?? []).filter { !written.contains($0.id) }
+        var seen: [UUID: String] = [:]
+        for row in rows + stored {
+            if let key = Self.externalRefKey(row) { seen[row.id] = key }
+        }
+        guard Set(seen.values).count == seen.count else { throw Self.duplicateExternalRef(Row.table) }
+    }
+
+    private static func externalRefKey(_ row: some RemoteRow) -> String? {
+        let owned: (UUID?, ExternalRef?)? = switch row {
+        case let row as RemoteSessionRow: (row.userId, row.externalRef)
+        case let row as RemoteEntryRow: (row.userId, row.externalRef)
+        case let row as RemoteSetRow: (row.userId, row.externalRef)
+        case let row as RemoteRoutineRow: (row.userId, row.externalRef)
+        case let row as RemoteExerciseRow: (row.userId, row.externalRef)
+        default: nil
+        }
+        guard let owned, let ref = owned.1 else { return nil }
+        return "\(owned.0?.uuidString ?? "catalogue")/\(ref.provider)/\(ref.id)"
     }
 
     /// A `nil` reference refers to nothing, so it always holds.
@@ -226,7 +300,10 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         id.uuidString.lowercased()
     }
 
+    /// `tick` microseconds after 2026-01-01T00:00:00Z, written as Postgres does.
     private static func timestamp(_ tick: Int) -> String {
-        String(format: "2026-01-01T00:00:%02d.%06d+00:00", tick / 1_000_000, tick % 1_000_000)
+        let date = Date(timeIntervalSince1970: 1_767_225_600 + TimeInterval(tick / 1_000_000))
+        let seconds = ISO8601DateFormatter().string(from: date).dropLast() // drops the "Z"
+        return seconds + String(format: ".%06d+00:00", tick % 1_000_000)
     }
 }

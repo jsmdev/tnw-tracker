@@ -30,7 +30,8 @@ public enum TrainingSchemaV1: VersionedSchema {
             ExerciseSettingModel.self,
             WorkoutIntentEvent.self,
             StoreOwnerModel.self,
-            SyncTombstoneModel.self
+            SyncTombstoneModel.self,
+            SyncCursorModel.self
         ]
     }
 }
@@ -354,5 +355,30 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
         self.sessionId = sessionId
         self.revision = revision
         self.deletedAt = deletedAt
+    }
+}
+
+/// Where the pull of one server table stopped, for one user: the (`updated_at`,
+/// `id`) of the last row applied. It lives in the store, so a store reset
+/// (`TrainingStore.deleteAllTrainingData`) starts the pull again from the start.
+@Model final class SyncCursorModel {
+    /// `<user id>/<table>`, one cursor per user and table.
+    @Attribute(.unique) var key: String
+    var userId: UUID
+    var tableRaw: String
+    /// `updated_at` exactly as the server wrote it.
+    var updatedAt: String
+    var rowId: UUID
+
+    init(userId: UUID, table: RemoteTable, cursor: RemoteCursor) {
+        key = Self.key(userId: userId, table: table)
+        self.userId = userId
+        tableRaw = table.rawValue
+        updatedAt = cursor.updatedAt
+        rowId = cursor.id
+    }
+
+    static func key(userId: UUID, table: RemoteTable) -> String {
+        "\(userId.uuidString.lowercased())/\(table.rawValue)"
     }
 }
