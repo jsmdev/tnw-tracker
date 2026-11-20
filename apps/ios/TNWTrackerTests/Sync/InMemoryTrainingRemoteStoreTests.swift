@@ -44,6 +44,14 @@ struct InMemoryTrainingRemoteStoreTests {
         try await TrainingRemoteStoreContract.exerciseAndRoutineReadBack(harness)
     }
 
+    @Test func childrenNoLongerListedAreDeleted() async throws {
+        try await TrainingRemoteStoreContract.childrenNoLongerListedAreDeleted(harness)
+    }
+
+    @Test func settingsAreKeyedByExercise() async throws {
+        try await TrainingRemoteStoreContract.settingsAreKeyedByExercise(harness)
+    }
+
     @Test func rowsWrittenTogetherPageOneByOne() async throws {
         try await TrainingRemoteStoreContract.rowsWrittenTogetherPageOneByOne(harness)
     }

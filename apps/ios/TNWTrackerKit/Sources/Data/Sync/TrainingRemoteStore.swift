@@ -26,10 +26,18 @@ public protocol TrainingRemoteStore: Sendable {
     /// marks the aggregate synced only after this returns.
     func pushSession(_ aggregate: RemoteSessionAggregate) async throws
 
-    /// Upserts rows of one table by `id`, every column the client owns
-    /// included, in one statement. For tables pushed on their own: user
-    /// exercises with their muscle groups, routines with their items.
+    /// Upserts rows of one table by `id` (by `RemoteTable.conflictTarget`),
+    /// every column the client owns included, in one statement. For tables
+    /// pushed on their own: user exercises with their muscle groups, routines
+    /// with their items, exercise settings.
     func upsert<Row: RemoteRow>(_ rows: [Row]) async throws
+
+    /// Deletes, in one statement, the rows of a child table (muscle groups,
+    /// routine items: `RemoteTable.parentColumn`) of `parentId` whose ids are
+    /// not in `keeping`: the rows the device no longer lists for the exercise or
+    /// routine it pushes. Each leaves a tombstone, so other devices drop them
+    /// too. Rows already gone are passed over, so sending it again is harmless.
+    func deleteChildren(_ table: RemoteTable, of parentId: UUID, keeping ids: [UUID]) async throws
 
     /// Deletes the rows of `table` with these ids, in one statement: sessions,
     /// routines and exercises deleted on the device. Ids the server does not

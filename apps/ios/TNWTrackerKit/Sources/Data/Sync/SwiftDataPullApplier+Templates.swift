@@ -1,11 +1,14 @@
 import Foundation
 import SwiftData
 
-// Exercises, their muscle groups, routines and their items, as the pull applies
-// them. An exercise or routine is one aggregate: with a local change waiting,
-// none of its server values is applied. Exercises and routines the server
-// deleted go with its tombstones (`SwiftDataPullApplier+Tombstones.swift`);
-// muscle groups and routine items it no longer lists are not removed here (T6).
+// Exercises, their muscle groups, routines and their items, and exercise
+// settings, as the pull applies them. An exercise, a routine or a setting is
+// one aggregate: with a local change waiting, none of its server values is
+// applied. Every field the push sends is applied, muscle order included. Rows
+// the server deleted, children included, go with its tombstones
+// (`SwiftDataPullApplier+Tombstones.swift`). A child row keeps the id the
+// server holds it under (`serverId`), so its tombstone finds it even when
+// another client wrote it under an id of its own.
 
 extension SwiftDataPullApplier {
     func applyTemplates(_ batch: PulledBatch, _ run: PullRun) throws {
@@ -20,6 +23,9 @@ extension SwiftDataPullApplier {
         }
         for row in batch.routineItems {
             try applyRoutineItem(row, run)
+        }
+        for row in batch.exerciseSettings {
+            try applySetting(row, run)
         }
     }
 
@@ -75,7 +81,8 @@ extension SwiftDataPullApplier {
         model.externalId = row.externalRef?.id
     }
 
-    /// A muscle the exercise does not list yet is added after the others.
+    /// The muscle takes the server's position (from 1 on the server, from 0 on
+    /// the device); one the exercise does not list yet is added.
     private func applyMuscleGroup(_ row: RemoteMuscleGroupRow, _ run: PullRun) throws {
         guard let exercise = try context.fetchExercise(id: row.exerciseId) else {
             return run.hold(.exerciseMuscleGroups, row.id)
@@ -83,17 +90,16 @@ extension SwiftDataPullApplier {
         if !exercise.isCatalogue, run.rule(for: .init(.exercise, id: exercise.id), model: exercise) == .localKept {
             return
         }
-        let known = exercise.muscleGroups.contains {
+        let group = exercise.muscleGroups.first {
             $0.muscleRaw == row.muscle.rawValue && $0.roleRaw == row.role.rawValue
-        }
-        guard !known else { return }
-        let group = MuscleGroupModel(
-            muscleRaw: row.muscle.rawValue,
-            roleRaw: row.role.rawValue,
-            position: (exercise.muscleGroups.map(\.position).max() ?? -1) + 1
-        )
-        context.insert(group)
-        exercise.muscleGroups.append(group)
+        } ?? {
+            let group = MuscleGroupModel(muscleRaw: row.muscle.rawValue, roleRaw: row.role.rawValue, position: 0)
+            context.insert(group)
+            exercise.muscleGroups.append(group)
+            return group
+        }()
+        group.position = row.position - 1
+        group.serverId = row.id
     }
 
     // MARK: - Routines
@@ -142,6 +148,7 @@ extension SwiftDataPullApplier {
             routine.items.append(item)
             return item
         }()
+        item.serverId = row.id
         item.exercise = exercise
         item.targetSets = row.targetSets
         item.targetRepsMin = row.targetReps?.min
@@ -151,5 +158,32 @@ extension SwiftDataPullApplier {
         item.targetDurationSeconds = row.targetDurationSeconds
         item.restSeconds = row.restSeconds
         item.notes = row.notes
+    }
+
+    // MARK: - Exercise settings
+
+    /// A setting of an exercise the device does not hold waits for it, unless
+    /// the device deleted that exercise (its deletion goes up next push).
+    private func applySetting(_ row: RemoteExerciseSettingRow, _ run: PullRun) throws {
+        guard try context.fetchExercise(id: row.exerciseId) != nil else {
+            if try hasTombstone(.exercise, row.exerciseId) {
+                return run.report.skip(.exerciseSettings, row.id, .deletedOnDevice)
+            }
+            return run.hold(.exerciseSettings, row.id)
+        }
+        let aggregate = SyncAggregateRef(.exerciseSetting, id: row.exerciseId)
+        if let model = try context.fetchExerciseSetting(exerciseId: row.exerciseId) {
+            if run.rule(for: aggregate, model: model) == .serverApplied {
+                model.restEnabled = row.restEnabled
+                model.restSeconds = row.restSeconds
+            }
+            return
+        }
+        let model = ExerciseSettingModel(
+            exerciseId: row.exerciseId, restEnabled: row.restEnabled, restSeconds: row.restSeconds
+        )
+        context.insert(model)
+        model.markPulled()
+        run.create(aggregate)
     }
 }

@@ -87,8 +87,22 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
     private func upsertRows<Row: RemoteRow>(_ rows: [Row]) async throws {
         guard !rows.isEmpty else { return }
         try await client.from(Row.table.rawValue)
-            .upsert(rows, onConflict: "id", returning: .minimal)
+            .upsert(rows, onConflict: Row.table.conflictTarget, returning: .minimal)
             .execute()
+    }
+
+    public func deleteChildren(_ table: RemoteTable, of parentId: UUID, keeping ids: [UUID]) async throws {
+        guard let parent = table.parentColumn else {
+            throw RemoteStoreError.invalidAggregate("\(table.rawValue) has no parent to delete children of")
+        }
+        try await Self.reportingRejections {
+            var query = client.from(table.rawValue)
+                .delete(returning: .minimal)
+                .eq(parent, value: parentId.uuidString.lowercased())
+            // An empty list keeps nothing: every child of the parent goes.
+            if !ids.isEmpty { query = query.notIn("id", values: Self.text(ids)) }
+            try await query.execute()
+        }
     }
 
     public func delete(_ table: RemoteTable, ids: [UUID]) async throws {
@@ -96,7 +110,7 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
         try await Self.reportingRejections {
             try await client.from(table.rawValue)
                 .delete(returning: .minimal)
-                .in("id", values: Self.text(ids))
+                .in(table.keyColumn, values: Self.text(ids))
                 .execute()
         }
     }
@@ -106,17 +120,18 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
         after cursor: RemoteCursor?,
         limit: Int
     ) async throws -> RemotePage<Row> {
+        let key = Row.table.keyColumn
         var query = client.from(Row.table.rawValue).select()
         if let cursor {
-            // Keyset: (updated_at, id) > cursor. The timestamp is quoted, as it
+            // Keyset: (updated_at, key) > cursor. The timestamp is quoted, as it
             // holds reserved characters of the filter grammar (":", ".", "+").
             let time = "\"\(cursor.updatedAt)\""
             let id = cursor.id.uuidString.lowercased()
-            query = query.or("updated_at.gt.\(time),and(updated_at.eq.\(time),id.gt.\(id))")
+            query = query.or("updated_at.gt.\(time),and(updated_at.eq.\(time),\(key).gt.\(id))")
         }
         let rows: [Row] = try await query
             .order("updated_at", ascending: true)
-            .order("id", ascending: true)
+            .order(key, ascending: true)
             .limit(limit)
             .execute()
             .value

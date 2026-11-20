@@ -4,8 +4,12 @@ import SwiftData
 // Rows the server deleted, as the pull applies them (S11). Rules in
 // docs/database-schema.md, "Sync":
 //
-// - Children first (sets, entries, sessions, routines, exercises), so a
-//   session's rows go before it.
+// - Children first (sets, entries, sessions, routine items, routines, muscle
+//   groups, exercise settings, exercises), so a session's rows go before it
+//   and an exercise goes after the rows this pull deleted that used it.
+// - A muscle group or routine item is found by the id the server holds it
+//   under (`serverId`, else the one derived from its natural key); a setting
+//   by its exercise id.
 // - A deletion follows the conflict rule of the row's aggregate
 //   (`SyncConflictRule`, change `.deleted`): with no local change waiting, the
 //   row goes; with one, it is kept and the next push writes it back.
@@ -16,7 +20,9 @@ import SwiftData
 
 extension SwiftDataPullApplier {
     func applyTombstones(_ rows: [RemoteTombstoneRow], _ run: PullRun) throws {
-        let order: [RemoteTable] = [.sets, .entries, .sessions, .routines, .exercises]
+        let order: [RemoteTable] = [
+            .sets, .entries, .sessions, .routineItems, .routines, .exerciseMuscleGroups, .exerciseSettings, .exercises
+        ]
         for table in order {
             for row in rows where row.deletedTable == table {
                 try applyTombstone(table, id: row.rowId, run)
@@ -29,10 +35,42 @@ extension SwiftDataPullApplier {
         case .sets: try deleteSet(id, run)
         case .entries: try deleteEntry(id, run)
         case .sessions: try deleteSession(id, run)
+        case .routineItems: try deleteRoutineItem(id, run)
         case .routines: try deleteRoutine(id, run)
+        case .exerciseMuscleGroups: try deleteMuscleGroup(id, run)
+        case .exerciseSettings: try deleteSetting(id, run)
         case .exercises: try deleteExercise(id, run)
-        default: break
+        case .tombstones: break
         }
+    }
+
+    private func deleteRoutineItem(_ id: UUID, _ run: PullRun) throws {
+        guard let item = try context.fetch(FetchDescriptor<RoutineItemModel>()).first(where: { $0.rowId == id }),
+              let routine = item.routine, routine.isSyncable
+        else { return }
+        guard decide(.routineItems, id, aggregate: .init(.routine, id: routine.id), model: routine, run) else {
+            return
+        }
+        run.removedItems.insert(item.persistentModelID)
+        routine.items.removeAll { $0.persistentModelID == item.persistentModelID }
+        context.delete(item)
+    }
+
+    private func deleteMuscleGroup(_ id: UUID, _ run: PullRun) throws {
+        guard let group = try context.fetch(FetchDescriptor<MuscleGroupModel>()).first(where: { $0.rowId == id }),
+              let exercise = group.exercise, exercise.isSyncable, !exercise.isCatalogue
+        else { return }
+        guard decide(.exerciseMuscleGroups, id, aggregate: .init(.exercise, id: exercise.id), model: exercise, run)
+        else { return }
+        exercise.muscleGroups.removeAll { $0.persistentModelID == group.persistentModelID }
+        context.delete(group)
+    }
+
+    private func deleteSetting(_ exerciseId: UUID, _ run: PullRun) throws {
+        guard let setting = try context.fetchExerciseSetting(exerciseId: exerciseId), setting.isSyncable else { return }
+        let aggregate = SyncAggregateRef(.exerciseSetting, id: exerciseId)
+        guard decide(.exerciseSettings, exerciseId, aggregate: aggregate, model: setting, run) else { return }
+        context.delete(setting)
     }
 
     private func deleteSet(_ id: UUID, _ run: PullRun) throws {
@@ -80,9 +118,12 @@ extension SwiftDataPullApplier {
             return
         }
         // Rows this pull deleted still list the exercise until the save. A
-        // session's entries leave their own tombstones; a routine's items do not.
+        // session's entries leave their own tombstones; a routine's items do
+        // only when deleted on their own.
         let inUse = exercise.entries.contains { !run.deletes(.entries, $0.id) }
-            || exercise.routineItems.contains { !run.deletes(.routines, $0.routine?.id) }
+            || exercise.routineItems.contains {
+                !run.deletes(.routines, $0.routine?.id) && !run.removedItems.contains($0.persistentModelID)
+            }
         if inUse {
             exercise.markChanged()
             return run.report.skip(.exercises, id, .conflict("the device still uses it, so it is sent again"))

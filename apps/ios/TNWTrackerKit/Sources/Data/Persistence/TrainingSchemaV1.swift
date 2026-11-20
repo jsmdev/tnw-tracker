@@ -105,6 +105,10 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     /// Keeps the list order of the source.
     var position: Int
     var exercise: ExerciseModel?
+    /// The server row's id when the pull brought this muscle group (app-local):
+    /// another client may have written it under its own id. `nil` for one the
+    /// device wrote, whose row id is derived from its natural key.
+    var serverId: UUID?
 
     init(muscleRaw: String, roleRaw: String, position: Int) {
         self.muscleRaw = muscleRaw
@@ -157,6 +161,10 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     var order: Int
     var exercise: ExerciseModel?
     var routine: RoutineModel?
+    /// The server row's id when the pull brought this item (app-local): another
+    /// client may have written it under its own id. `nil` for one the device
+    /// wrote, whose row id is derived from its routine and position.
+    var serverId: UUID?
     var targetSets: Int?
     var targetRepsMin: Int?
     var targetRepsMax: Int?

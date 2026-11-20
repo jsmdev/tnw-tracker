@@ -223,8 +223,8 @@ enum TrainingRemoteStoreContract {
             externalRef: ExternalRef(provider: "machines-atlas", id: "fly-\(UUID().uuidString)")
         )
         let muscles = [
-            RemoteMuscleGroupRow(exerciseId: exercise.id, muscle: .chest, role: .primary),
-            RemoteMuscleGroupRow(exerciseId: exercise.id, muscle: .shoulders, role: .secondary)
+            RemoteMuscleGroupRow(exerciseId: exercise.id, muscle: .chest, role: .primary, position: 1),
+            RemoteMuscleGroupRow(exerciseId: exercise.id, muscle: .shoulders, role: .secondary, position: 2)
         ]
         let routine = RemoteRoutineRow(id: UUID(), userId: harness.userId, name: "Push", description: "Chest day",
                                        isFavorite: true)
@@ -321,7 +321,7 @@ enum TrainingRemoteStoreContract {
         return row
     }
 
-    private static func byId<Row: RemoteRow>(_ lhs: Row, _ rhs: Row) -> Bool {
+    static func byId<Row: RemoteRow>(_ lhs: Row, _ rhs: Row) -> Bool {
         lhs.id.uuidString < rhs.id.uuidString
     }
 

@@ -27,43 +27,69 @@ extension InMemoryTrainingRemoteStore {
                 tables[.sessions]?[session.id] = session
             }
         }
-        for (table, id) in cascade(table, ids) {
-            if let owner = tables[table]?[id].flatMap(Self.owner) {
-                let tombstone = RemoteTombstoneRow(userId: owner, tableName: table.rawValue, rowId: id, updatedAt: now)
+        for row in cascade(table, ids) {
+            if row.tracked, let owner = tables[row.table]?[row.id].flatMap(owner) {
+                let tombstone = RemoteTombstoneRow(
+                    userId: owner, tableName: row.table.rawValue, rowId: row.id, updatedAt: now
+                )
                 tables[.tombstones, default: [:]][tombstone.id] = tombstone
             }
-            tables[table]?[id] = nil
+            tables[row.table]?[row.id] = nil
         }
     }
 
-    /// The rows a delete of `ids` reaches: those, then the rows that cascade from them.
-    private func cascade(_ table: RemoteTable, _ ids: [UUID]) -> [(RemoteTable, UUID)] {
-        let children: [(RemoteTable, UUID)] = switch table {
+    /// The rows a delete of `ids` reaches: those, then the rows that cascade
+    /// from them, and whether each leaves a tombstone. A session's entries and
+    /// sets do; the muscle groups, items and settings deleted with their
+    /// exercise or routine do not (their parent's tombstone covers them).
+    private func cascade(_ table: RemoteTable, _ ids: [UUID]) -> [Reached] {
+        let children: [Reached] = switch table {
         case .sessions:
             cascade(.entries, rows(RemoteEntryRow.self).filter { ids.contains($0.sessionId) }.map(\.id))
         case .entries:
             cascade(.sets, rows(RemoteSetRow.self).filter { ids.contains($0.entryId) }.map(\.id))
         case .routines:
-            rows(RemoteRoutineItemRow.self).filter { ids.contains($0.routineId) }.map { (.routineItems, $0.id) }
+            rows(RemoteRoutineItemRow.self)
+                .filter { ids.contains($0.routineId) }
+                .map { Reached(.routineItems, $0.id, tracked: false) }
         case .exercises:
             rows(RemoteMuscleGroupRow.self)
                 .filter { ids.contains($0.exerciseId) }
-                .map { (.exerciseMuscleGroups, $0.id) }
+                .map { Reached(.exerciseMuscleGroups, $0.id, tracked: false) }
+                + rows(RemoteExerciseSettingRow.self)
+                .filter { ids.contains($0.exerciseId) }
+                .map { Reached(.exerciseSettings, $0.id, tracked: false) }
         default:
             []
         }
-        return ids.map { (table, $0) } + children
+        return ids.map { Reached(table, $0, tracked: true) } + children
     }
 
-    /// The owner a tombstone records: catalogue exercises, muscle groups and
-    /// routine items leave none.
-    private static func owner(of row: any RemoteRow) -> UUID? {
+    /// A row a delete reaches, and whether it leaves a tombstone.
+    struct Reached {
+        let table: RemoteTable
+        let id: UUID
+        let tracked: Bool
+
+        init(_ table: RemoteTable, _ id: UUID, tracked: Bool) {
+            self.table = table
+            self.id = id
+            self.tracked = tracked
+        }
+    }
+
+    /// The owner a tombstone records: catalogue exercises and their muscle
+    /// groups leave none; a muscle group's owner is its exercise's.
+    private func owner(of row: any RemoteRow) -> UUID? {
         switch row {
         case let row as RemoteSessionRow: row.userId
         case let row as RemoteEntryRow: row.userId
         case let row as RemoteSetRow: row.userId
         case let row as RemoteRoutineRow: row.userId
         case let row as RemoteExerciseRow: row.userId
+        case let row as RemoteRoutineItemRow: row.userId
+        case let row as RemoteExerciseSettingRow: row.userId
+        case let row as RemoteMuscleGroupRow: (tables[.exercises]?[row.exerciseId] as? RemoteExerciseRow)?.userId
         default: nil
         }
     }
@@ -74,7 +100,7 @@ extension InMemoryTrainingRemoteStore {
         let ids = Set(ids)
         for tombstone in rows(RemoteTombstoneRow.self)
             where tombstone.tableName == table.rawValue && ids.contains(tombstone.rowId)
-            && tables[table]?[tombstone.rowId].flatMap(Self.owner) == tombstone.userId {
+            && tables[table]?[tombstone.rowId].flatMap(owner) == tombstone.userId {
             tables[.tombstones]?[tombstone.id] = nil
         }
     }

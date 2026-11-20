@@ -25,20 +25,36 @@ struct PushRows {
             videoURI: exercise.media?.videoURI,
             externalRef: exercise.externalRef
         )
-        let muscles = exercise.muscleGroups.map {
-            RemoteMuscleGroupRow(exerciseId: exercise.id, muscle: $0.muscle, role: $0.role)
+        // In the snapshot's order, numbered from 1, under the id the server holds them by.
+        let groups = MuscleGroupModel.inOrder(model.muscleGroups)
+            .compactMap { group in group.snapshot.map { (id: group.rowId(exerciseId: exercise.id), value: $0) } }
+        let muscles = groups.enumerated().map { index, group in
+            RemoteMuscleGroupRow(
+                id: group.id, exerciseId: exercise.id, muscle: group.value.muscle, role: group.value.role,
+                position: index + 1
+            )
         }
         return .send { remote in
             try await remote.upsert([row])
+            // The server then holds exactly the device's list (L7): the others go
+            // first, so a row another client wrote under its own id for the same
+            // muscle cannot collide with the device's.
+            try await remote.deleteChildren(.exerciseMuscleGroups, of: exercise.id, keeping: muscles.map(\.id))
             try await remote.upsert(muscles)
         }
     }
 
     func routine(_ model: RoutineModel) -> TrainingSyncEngine.Upload {
         for item in model.items {
-            if let reason = item.exercise.flatMap(missingOnServer) { return .skip(reason) }
+            // Without its exercise the item would be left out, and the push
+            // would delete its row on the server.
+            guard let exercise = item.exercise else { return .skip(.incomplete) }
+            if let reason = missingOnServer(exercise) { return .skip(reason) }
         }
         let routine = model.snapshot
+        let rowIds = Dictionary(
+            model.items.map { ($0.order, $0.rowId(routineId: routine.id)) }, uniquingKeysWith: { first, _ in first }
+        )
         let row = RemoteRoutineRow(
             id: routine.id,
             userId: userId,
@@ -49,7 +65,7 @@ struct PushRows {
         )
         let items = routine.items.map { item in
             RemoteRoutineItemRow(
-                id: RemoteRoutineItemRow.id(routineId: routine.id, position: item.order),
+                id: rowIds[item.order] ?? RemoteRoutineItemRow.id(routineId: routine.id, position: item.order),
                 userId: userId,
                 routineId: routine.id,
                 position: item.order,
@@ -64,7 +80,24 @@ struct PushRows {
         }
         return .send { remote in
             try await remote.upsert([row])
+            // Items at positions the routine no longer has go first (L7), as for muscle groups.
+            try await remote.deleteChildren(.routineItems, of: routine.id, keeping: items.map(\.id))
             try await remote.upsert(items)
+        }
+    }
+
+    /// A setting goes up once its exercise is on the server (catalogue ones are).
+    func setting(_ model: ExerciseSettingModel, exercise: ExerciseModel?) -> TrainingSyncEngine.Upload {
+        guard let exercise else { return .skip(.incomplete) }
+        if let reason = missingOnServer(exercise) { return .skip(reason) }
+        let row = RemoteExerciseSettingRow(
+            exerciseId: model.exerciseId,
+            userId: userId,
+            restEnabled: model.restEnabled,
+            restSeconds: model.restSeconds
+        )
+        return .send { remote in
+            try await remote.upsert([row])
         }
     }
 
@@ -166,5 +199,31 @@ struct PushRows {
     /// The server refuses an empty step list: none is `nil`.
     private static func steps(_ steps: [String]?) -> [String]? {
         steps.flatMap { $0.isEmpty ? nil : $0 }
+    }
+}
+
+// MARK: - Child row ids
+
+extension MuscleGroupModel {
+    /// The id of this muscle group's row on the server: the one the pull brought
+    /// it under, else the one derived from its natural key.
+    func rowId(exerciseId: UUID) -> UUID {
+        serverId ?? RemoteMuscleGroupRow.id(exerciseId: exerciseId, muscle: muscleRaw, role: roleRaw)
+    }
+
+    var rowId: UUID? {
+        exercise.map { rowId(exerciseId: $0.id) }
+    }
+}
+
+extension RoutineItemModel {
+    /// The id of this item's row on the server: the one the pull brought it
+    /// under, else the one derived from its routine and position.
+    func rowId(routineId: UUID) -> UUID {
+        serverId ?? RemoteRoutineItemRow.id(routineId: routineId, position: order)
+    }
+
+    var rowId: UUID? {
+        routine.map { rowId(routineId: $0.id) }
     }
 }

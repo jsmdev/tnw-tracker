@@ -181,9 +181,7 @@ final class SwiftDataSyncStateRepository: SyncStateRepositoryProtocol {
         case .exercise:
             return try context.fetchExercise(id: id)
         case .exerciseSetting:
-            var descriptor = FetchDescriptor<ExerciseSettingModel>(predicate: #Predicate { $0.exerciseId == id })
-            descriptor.fetchLimit = 1
-            return try context.fetch(descriptor).first
+            return try context.fetchExerciseSetting(exerciseId: id)
         }
     }
 

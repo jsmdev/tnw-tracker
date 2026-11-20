@@ -54,13 +54,15 @@ extension SwiftDataPullApplier {
             run.report.skip(.sets, row.id, .invalid("an imported set needs an external ref"))
             return false
         }
-        if let known {
+        // A set the device holds in another entry was regrouped on the server: it
+        // moves through the import rules below, like a re-imported set.
+        if let known, known.entry?.persistentModelID == entry.persistentModelID {
             known.apply(values)
             known.completedAt = row.completedAt
             known.syncSent = true
             return true
         }
-        if let holder = try context.fetchSet(ref: ref) {
+        if let holder = try context.fetchSet(ref: ref), holder.id != row.id {
             // The device holds the ref under its own id. Sent without the ref,
             // the server may hold that id too, so that row goes.
             if holder.syncSent { try context.recordRemoval(of: holder, from: holder.entry?.session) }

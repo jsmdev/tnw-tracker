@@ -117,7 +117,7 @@ SELECT ok(
 );
 SELECT ok(
   NOT ('routine_items:b1100000-0000-0000-0000-000000000001' = ANY (pg_temp.tombstones_of('00000000-0000-0000-0000-000000000001'))),
-  'routine items are not tracked: they follow their routine'
+  'routine items deleted with their routine leave no tombstone of their own'
 );
 SELECT is(
   (SELECT routine_id FROM public.sessions WHERE id = 'd1000000-0000-0000-0000-000000000001'), NULL,

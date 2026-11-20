@@ -110,7 +110,7 @@ extension SwiftDataPullApplier {
             if run.rule(for: SyncAggregateRef(.session, id: session.id), model: session) == .serverApplied {
                 write(row, parents: parents, to: entry)
             }
-            try mergeRef(row.externalRef, into: entry)
+            try mergeRef(row.externalRef, into: entry, run)
             return
         }
         if row.status == .done, session.entries.contains(where: { $0.isDone && $0.exercise?.id == row.exerciseId }) {
@@ -124,7 +124,7 @@ extension SwiftDataPullApplier {
         entry.reconciliationKeepRaw = row.reconciliationKeep?.rawValue
         entry.reconciliationDecidedByRaw = row.reconciliationDecidedBy?.rawValue
         entry.reconciliationDecidedAt = row.reconciliationDecidedAt
-        try mergeRef(row.externalRef, into: entry)
+        try mergeRef(row.externalRef, into: entry, run)
     }
 
     private func parents(of row: RemoteEntryRow) throws -> EntryParents? {
@@ -183,12 +183,23 @@ extension SwiftDataPullApplier {
     }
 
     /// An entry ref the device does not know yet becomes one of the entry's
-    /// aliases, so a later in-app import finds the entry by it.
-    private func mergeRef(_ ref: ExternalRef?, into entry: SessionEntryModel) throws {
-        guard let ref, try context.fetchEntry(ref: ref) == nil else { return }
-        let alias = EntryExternalRefModel(provider: ref.provider, externalId: ref.id)
-        context.insert(alias)
-        entry.mergedRefs.append(alias)
+    /// aliases, so a later in-app import finds the entry by it. A ref the device
+    /// holds on another entry moves here (L8): the server holds it on this one,
+    /// because an importer regrouped it, and entry refs are imported data, which
+    /// follows the server like imported sets (D8). Otherwise this entry would
+    /// push no ref over the server's, and the other one would collide with it.
+    /// The entry it left is tidied like one an imported set left.
+    private func mergeRef(_ ref: ExternalRef?, into entry: SessionEntryModel, _ run: PullRun) throws {
+        guard let ref else { return }
+        if let holder = try context.fetchEntry(ref: ref) {
+            guard holder.persistentModelID != entry.persistentModelID else { return }
+            sessions.moveRef(ref, from: holder, to: entry)
+            run.vacated.append((into: entry, from: holder))
+        } else {
+            let alias = EntryExternalRefModel(provider: ref.provider, externalId: ref.id)
+            context.insert(alias)
+            entry.mergedRefs.append(alias)
+        }
         if entry.externalId == nil {
             entry.externalProvider = ref.provider
             entry.externalId = ref.id
