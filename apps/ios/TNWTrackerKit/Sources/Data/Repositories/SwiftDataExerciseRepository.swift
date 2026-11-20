@@ -36,7 +36,13 @@ final class SwiftDataExerciseRepository: ExerciseRepositoryProtocol {
         }
         let model = try context.fetchExercise(id: exercise.id)
             ?? ExerciseModel(id: exercise.id, name: exercise.name, typeRaw: exercise.type.rawValue)
-        if model.modelContext == nil { context.insert(model) }
+        if model.modelContext == nil {
+            context.insert(model)
+            // A catalogue exercise is shared app data, never the user's to upload (S9).
+            try context.trackNew(model, syncable: !exercise.isCatalogue)
+        } else {
+            model.markChanged()
+        }
 
         model.name = exercise.name
         model.typeRaw = exercise.type.rawValue

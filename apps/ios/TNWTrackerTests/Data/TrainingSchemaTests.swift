@@ -14,24 +14,27 @@ struct TrainingSchemaTests {
         #expect(TrainingSchemaV1.versionIdentifier == Schema.Version(1, 0, 0))
     }
 
-    @Test("the schema holds every training model and the intent mailbox event")
+    @Test("the schema holds every training model, the intent mailbox event and the sync state")
     func schemaHoldsEveryModel() {
         let names = Set(TrainingSchemaV1.models.map { String(describing: $0) })
         #expect(names == [
             "ExerciseModel", "MuscleGroupModel", "RoutineModel", "RoutineItemModel",
             "SessionModel", "SessionEntryModel", "EntryExternalRefModel", "ExerciseSetModel",
-            "ExerciseSettingModel", "WorkoutIntentEvent"
+            "ExerciseSettingModel", "WorkoutIntentEvent", "StoreOwnerModel", "SyncTombstoneModel",
+            "SyncCursorModel"
         ])
     }
 
-    @Test("the store uses a new file name, so the old model's store is never opened")
-    func storeUsesNewFileName() {
-        #expect(ModelContainerFactory.storeFileName == "training-v1.store")
+    @Test("account stores and the shared store from before never use the old model's file")
+    func storesUseNewFileNames() {
+        #expect(ModelContainerFactory.legacyStoreFileName == "training-v1.store")
+        #expect(AccountStores.storeFileName == "training.store")
+        #expect(ModelContainerFactory.legacyStoreURLs().allSatisfy { $0.lastPathComponent == "training-v1.store" })
     }
 
     @Test("an in-memory store opens empty")
     func inMemoryStoreOpensEmpty() throws {
-        let store = try TrainingStore(inMemory: true)
+        let store = try TrainingStore.inMemory()
         #expect(try store.isEmpty())
         #expect(try store.sessions.activeSession() == nil)
     }

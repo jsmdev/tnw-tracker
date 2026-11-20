@@ -97,4 +97,11 @@ extension ModelContext {
         descriptor.fetchLimit = 1
         return try fetch(descriptor).first
     }
+
+    /// The user's setting of an exercise, keyed by the exercise id.
+    func fetchExerciseSetting(exerciseId: UUID) throws -> ExerciseSettingModel? {
+        var descriptor = FetchDescriptor<ExerciseSettingModel>(predicate: #Predicate { $0.exerciseId == exerciseId })
+        descriptor.fetchLimit = 1
+        return try fetch(descriptor).first
+    }
 }

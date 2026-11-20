@@ -16,7 +16,7 @@ struct IntentMailboxTests {
     let container: ModelContainer
 
     init() throws {
-        container = try ModelContainerFactory.makeContainer(inMemory: true)
+        container = try ModelContainerFactory.makeIntentMailboxContainer(inMemory: true)
     }
 
     @Test("enqueue persists event with workoutId, kind, and unconsumed marker")

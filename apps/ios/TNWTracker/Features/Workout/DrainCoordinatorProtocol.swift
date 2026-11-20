@@ -12,4 +12,6 @@ public protocol DrainCoordinatorProtocol: AnyObject {
     func pause() async throws
     func resume() async throws
     func finish() async throws
+    /// Leaves the workout in progress, with its timers stopped (a sign-out).
+    func abandon() async
 }

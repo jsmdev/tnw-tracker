@@ -38,9 +38,10 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     let exerciseSettings: any ExerciseSettingRepositoryProtocol
     /// "Descanso al cambiar de ejercicio" in seconds, or nil when it is off.
     private let changeExerciseRest: @MainActor () -> Int?
-    private let syncEngine: any SyncEngine
+    /// Asks for a sync and returns at once: finishing never waits for it (S12).
+    private let requestSync: @MainActor () -> Void
     let timerService: RestTimerService
-    private let liveActivity: LiveActivityController
+    let liveActivity: LiveActivityController
     private let now: () -> Date
 
     /// The set whose rest timer is running (AC3.8: its rest taken is recorded when the rest ends).
@@ -48,12 +49,12 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// The last set after which no timer ran; its rest is the time until the next set.
     private var setWithoutTimer: (setId: UUID, completedAt: Date)?
 
-    private var elapsedTask: Task<Void, Never>?
+    var elapsedTask: Task<Void, Never>?
     private var undoLastSetId: UUID?
     /// The set whose rest the last set ended, and its `completedAt`: undo clears
     /// that rest and measures it again from there (D-T3k).
     private var undoRestore: (setId: UUID, completedAt: Date)?
-    private var undoTask: Task<Void, Never>?
+    var undoTask: Task<Void, Never>?
 
     // MARK: - Init
 
@@ -62,7 +63,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         routines: any RoutineRepositoryProtocol,
         exerciseSettings: any ExerciseSettingRepositoryProtocol,
         changeExerciseRest: @escaping @MainActor () -> Int?,
-        syncEngine: any SyncEngine,
+        requestSync: @escaping @MainActor () -> Void,
         timerService: RestTimerService,
         liveActivity: LiveActivityController,
         now: @escaping () -> Date = Date.init
@@ -71,7 +72,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         self.routines = routines
         self.exerciseSettings = exerciseSettings
         self.changeExerciseRest = changeExerciseRest
-        self.syncEngine = syncEngine
+        self.requestSync = requestSync
         self.timerService = timerService
         self.liveActivity = liveActivity
         self.now = now
@@ -346,8 +347,8 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         await timerService.skip()
 
         // Cierre LOCAL: la sesión se completa en el store antes de sincronizar.
-        // El sync remoto es best-effort — un fallo NO debe dejar la sesión en
-        // curso ni colgar el coordinador (bug #88).
+        // The sync runs detached: finishing never waits for it nor fails because
+        // of it (bug #88, S12); a failed sync keeps the session pending.
         // T6 (D7): una sesión sin series de trabajo (rutina o libre) nunca se
         // guarda: se descarta, sin resumen.
         let discard = !hasWorkingSets
@@ -360,25 +361,25 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         } catch {
             logger.error("finish: cierre local falló: \(error)")
         }
-        do {
-            try await syncEngine.fullSync()
-        } catch {
-            logger.error("finish: sync falló; sesión cerrada localmente igual: \(error)")
-        }
+        requestSync()
 
         liveActivity.end()
 
         if !discard { completedWorkoutId = current.id }
-        session = nil
-        targets = [:]
-        currentExerciseIndex = 0
-        phase = .idle
-        elapsedSeconds = 0
+        clearWorkout()
         logger.info("Coordinator phase → .idle (finished, summary ID: \(current.id))")
         lastFinishOutcome = discard ? .discarded : .saved(current.id)
     }
 
     // MARK: - Helpers
+
+    func clearWorkout() {
+        session = nil
+        targets = [:]
+        currentExerciseIndex = 0
+        phase = .idle
+        elapsedSeconds = 0
+    }
 
     func refreshSession() throws {
         guard let id = session?.id else { return }

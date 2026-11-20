@@ -41,9 +41,13 @@ public final class AuthRepository: AuthRepositoryProtocol {
         return session
     }
 
+    /// Signs out on this device only (`.local`): the account's other devices stay
+    /// signed in. The client forgets the session and emits `.signedOut` before it
+    /// calls the auth service, so offline the session still ends on the device and
+    /// only the server-side revocation of its refresh token is lost (it throws).
     public func signOut() async throws {
         logger.info("Auth: signOut")
-        try await supabase.auth.signOut()
+        try await supabase.auth.signOut(scope: .local)
     }
 
     public func currentSession() async -> Auth.Session? {

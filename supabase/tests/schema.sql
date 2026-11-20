@@ -41,7 +41,7 @@ SELECT tables_are(
   'public',
   ARRAY[
     'users', 'exercises', 'exercise_muscle_groups', 'routines', 'routine_items',
-    'sessions', 'entries', 'sets', 'exercise_settings'
+    'sessions', 'entries', 'sets', 'exercise_settings', 'tombstones'
   ],
   'public holds exactly the new tables'
 );

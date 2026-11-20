@@ -17,7 +17,7 @@ extension ExerciseModel {
             name: name,
             type: ExerciseType(rawValue: typeRaw) ?? .strength,
             equipment: equipmentRaw.flatMap(Equipment.init(rawValue:)),
-            muscleGroups: muscleGroups.sorted { $0.position < $1.position }.compactMap(\.snapshot),
+            muscleGroups: MuscleGroupModel.inOrder(muscleGroups).compactMap(\.snapshot),
             instructions: instructions.isEmpty ? nil : instructions,
             media: media.isEmpty ? nil : media
         )
@@ -25,6 +25,17 @@ extension ExerciseModel {
 }
 
 extension MuscleGroupModel {
+    /// The exercise's list order: by position, then by the server row's id, so
+    /// rows the server holds at the same position (the seed writes none) keep
+    /// the server's id order on every device.
+    static func inOrder(_ groups: [MuscleGroupModel]) -> [MuscleGroupModel] {
+        groups.sorted { lhs, rhs in
+            lhs.position == rhs.position
+                ? (lhs.serverId?.uuidString ?? "") < (rhs.serverId?.uuidString ?? "")
+                : lhs.position < rhs.position
+        }
+    }
+
     var snapshot: MuscleGroup? {
         guard let muscle = Muscle(rawValue: muscleRaw), let role = MuscleRole(rawValue: roleRaw) else { return nil }
         return MuscleGroup(muscle: muscle, role: role)

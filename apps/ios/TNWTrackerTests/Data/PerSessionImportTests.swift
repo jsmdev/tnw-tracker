@@ -16,7 +16,7 @@ struct PerSessionImportTests {
     let cardioId = UUID()
 
     init() throws {
-        store = try TrainingStore(inMemory: true)
+        store = try TrainingStore.inMemory()
     }
 
     private func ref(_ id: String) -> ExternalRef {

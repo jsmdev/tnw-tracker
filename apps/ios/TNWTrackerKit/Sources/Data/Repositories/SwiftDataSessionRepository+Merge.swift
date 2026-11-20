@@ -22,6 +22,7 @@ extension SwiftDataSessionRepository {
         let found = try context.fetchEntry(ref: imported.externalRef)
         let known = found?.session?.id == session.id ? found : nil
         var vacatedEntries: [SessionEntryModel] = []
+        session.markChanged()
 
         // One entry per exercise: a second provider entry merges into the same entry.
         let entry = known ?? doneEntry(in: session, for: exercise)
@@ -49,39 +50,60 @@ extension SwiftDataSessionRepository {
 
         let keep = entry.reconciliationKeepRaw.flatMap(SetSource.init(rawValue:))
         for incoming in imported.sets.sorted(by: { $0.order < $1.order }) {
-            if let stored = try context.fetchSet(ref: incoming.externalRef) {
-                if let previous = stored.entry, previous.id != entry.id {
-                    // D8: the set moves into this entry, after its imported sets;
-                    // `superseded` and `warmup` move with it.
-                    previous.sets.removeAll { $0.id == stored.id }
-                    stored.order = nextOrder(in: entry, source: .imported)
-                    entry.sets.append(stored)
-                    vacatedEntries.append(previous)
-                }
-                // Re-import: values replace the stored ones. The set keeps its
-                // position in the merged entry; `superseded` and `warmup` belong to the app.
-                stored.apply(incoming.values)
-                stored.completedAt = incoming.completedAt
-            } else {
-                // Imported sets are numbered within the merged entry, so sets of
-                // several provider entries never share an order.
-                let set = ExerciseSetModel(
-                    id: UUID(),
-                    order: nextOrder(in: entry, source: .imported),
-                    sourceRaw: SetSource.imported.rawValue
-                )
-                context.insert(set)
-                set.externalProvider = incoming.externalRef.provider
-                set.externalId = incoming.externalRef.id
-                set.apply(incoming.values)
-                set.completedAt = incoming.completedAt
-                set.superseded = keep == .manual
-                set.warmup = incoming.warmup
-                entry.sets.append(set)
-            }
+            let merged = try mergeImportedSet(incoming, into: entry, of: session, keep: keep, newId: UUID())
+            if let vacated = merged.vacated { vacatedEntries.append(vacated) }
         }
         reconcileAfterMerge(entry, movedChoice: movedChoice, at: Date())
-        return tidyVacated(vacatedEntries, keeping: entry).filter { $0.id != session.id }
+        return try tidyVacated(vacatedEntries, keeping: entry).filter { $0.id != session.id }
+    }
+
+    /// Merges one imported set into `entry` of `session` without saving; shared
+    /// by the import and the sync pull, so both apply the same rules. A set whose
+    /// ref is already stored is updated (re-import) and, when it sits in another
+    /// entry, moves here (D8); a new set gets `newId`. `keep` is the entry's
+    /// reconciliation choice before the merge. Only the session a set moves out
+    /// of is marked changed. Returns the set and the entry it left, if it moved.
+    func mergeImportedSet(
+        _ incoming: ImportedSet,
+        into entry: SessionEntryModel,
+        of session: SessionModel,
+        keep: SetSource?,
+        newId: UUID
+    ) throws -> (set: ExerciseSetModel, vacated: SessionEntryModel?) {
+        if let stored = try context.fetchSet(ref: incoming.externalRef) {
+            var vacated: SessionEntryModel?
+            if let previous = stored.entry, previous.id != entry.id {
+                // D8: the set moves into this entry, after its imported sets;
+                // `superseded` and `warmup` move with it.
+                try context.recordRemoval(of: stored, from: previous.session)
+                try context.dropRemoval(ofSet: stored.id, in: session)
+                previous.sets.removeAll { $0.id == stored.id }
+                stored.order = nextOrder(in: entry, source: .imported)
+                entry.sets.append(stored)
+                vacated = previous
+            }
+            // Re-import: values replace the stored ones. The set keeps its
+            // position in the merged entry; `superseded` and `warmup` belong to the app.
+            stored.apply(incoming.values)
+            stored.completedAt = incoming.completedAt
+            return (stored, vacated)
+        }
+        // Imported sets are numbered within the merged entry, so sets of
+        // several provider entries never share an order.
+        let set = ExerciseSetModel(
+            id: newId,
+            order: nextOrder(in: entry, source: .imported),
+            sourceRaw: SetSource.imported.rawValue
+        )
+        context.insert(set)
+        set.externalProvider = incoming.externalRef.provider
+        set.externalId = incoming.externalRef.id
+        set.apply(incoming.values)
+        set.completedAt = incoming.completedAt
+        set.superseded = keep == .manual
+        set.warmup = incoming.warmup
+        entry.sets.append(set)
+        return (set, nil)
     }
 
     /// Rules an imported entry and its sets must meet before anything is written.
@@ -99,7 +121,9 @@ extension SwiftDataSessionRepository {
 
     /// D8: moves the entry ref `ref` from `source` (in another session) to `entry`.
     /// Returns the source's reconciliation choice, which moves with the ref.
-    private func moveRef(
+    /// Shared with the sync pull, which moves a ref the server holds on another entry.
+    @discardableResult
+    func moveRef(
         _ ref: ExternalRef,
         from source: SessionEntryModel,
         to entry: SessionEntryModel
@@ -120,7 +144,7 @@ extension SwiftDataSessionRepository {
     /// in `entry` is derived from the entry's choice. The target's own choice wins,
     /// else the choice that moved with the ref, else the default (keep imported)
     /// when the entry starts mixing sources. A single-source entry has no choice.
-    private func reconcileAfterMerge(_ entry: SessionEntryModel, movedChoice: Reconciliation?, at date: Date) {
+    func reconcileAfterMerge(_ entry: SessionEntryModel, movedChoice: Reconciliation?, at date: Date) {
         guard entry.hasBothSources else {
             entry.clearReconciliation()
             return
@@ -134,11 +158,12 @@ extension SwiftDataSessionRepository {
 
     /// Entries that lost refs or sets to `kept`: an emptied entry is removed (a
     /// planned one goes back to skipped), a single-source one loses its
-    /// reconciliation. Returns their sessions.
-    private func tidyVacated(_ entries: [SessionEntryModel], keeping kept: SessionEntryModel) -> [SessionModel] {
+    /// reconciliation. Every session that lost data is marked changed. Returns them.
+    func tidyVacated(_ entries: [SessionEntryModel], keeping kept: SessionEntryModel) throws -> [SessionModel] {
         var sessions: [SessionModel] = []
         for source in entries where source.id != kept.id {
             guard let session = source.session else { continue }
+            session.markChanged()
             if !sessions.contains(where: { $0.id == session.id }) { sessions.append(session) }
             if source.sets.isEmpty, source.mergedRefs.isEmpty {
                 if isPlanned(source, in: session) {
@@ -148,6 +173,7 @@ extension SwiftDataSessionRepository {
                     source.externalId = nil
                     source.clearReconciliation()
                 } else {
+                    try context.recordRemoval(of: source, from: session)
                     session.entries.removeAll { $0.id == source.id }
                     context.delete(source)
                 }
@@ -163,7 +189,8 @@ extension SwiftDataSessionRepository {
     /// D-T7f: only a session an import created (it carries the import's session
     /// `externalRef`) can be removed; a session the user logged, or one in
     /// progress, is always kept.
-    func removeEmptiedImportedSessions(_ sessions: [SessionModel]) {
+    /// A removed session that may exist on the server leaves a tombstone.
+    func removeEmptiedImportedSessions(_ sessions: [SessionModel]) throws {
         for session in sessions where session.completedAt != nil && session.externalId != nil {
             let sets = session.entries.flatMap(\.sets)
             let hasManual = sets.contains { $0.sourceRaw == SetSource.manual.rawValue }
@@ -171,6 +198,7 @@ extension SwiftDataSessionRepository {
                 entry.statusRaw != EntryStatus.removed.rawValue && entry.sets.contains { !$0.superseded && !$0.warmup }
             }
             if !hasManual, !hasCounted {
+                try context.recordDeletion(of: session)
                 context.delete(session)
             }
         }

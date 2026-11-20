@@ -23,7 +23,7 @@ struct RestSettingsTests {
             routines: fx.routines,
             exerciseSettings: fx.store.exerciseSettings,
             changeExerciseRest: { changeExerciseRest },
-            syncEngine: NoopSyncEngine(),
+            requestSync: {},
             timerService: RestTimerService(liveActivity: liveActivity),
             liveActivity: liveActivity,
             now: { TrainingFixtures.t0 }

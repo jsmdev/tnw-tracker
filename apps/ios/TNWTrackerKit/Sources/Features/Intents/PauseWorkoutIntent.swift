@@ -22,7 +22,7 @@ public struct PauseWorkoutIntent: AppIntent {
     public init() {
         _workoutId = UUID()
         do {
-            let container = try ModelContainerFactory.makeContainer()
+            let container = try ModelContainerFactory.makeIntentMailboxContainer()
             mailbox = IntentMailbox(container: container)
         } catch {
             fatalError("PauseWorkoutIntent.init failed to build ModelContainer: \(error)")

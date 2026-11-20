@@ -1,0 +1,314 @@
+import Foundation
+
+/// An aggregate the sync pushes: its kind and id.
+public struct SyncAggregateRef: Hashable, Sendable {
+    public var kind: SyncAggregateKind
+    public var id: UUID
+
+    public init(_ kind: SyncAggregateKind, id: UUID) {
+        self.kind = kind
+        self.id = id
+    }
+}
+
+/// Why a pending aggregate was not sent. It stays pending and is looked at again next time.
+public enum SyncSkipReason: Equatable, Sendable {
+    /// It uses a routine or exercise that never leaves the device (sample data,
+    /// data written before any sign-in), which the server would refuse.
+    case usesLocalOnlyData(SyncAggregateRef)
+    /// It uses a routine or exercise the server does not hold yet, because its
+    /// own push was refused or skipped.
+    case waitsFor(SyncAggregateRef)
+    /// A row of it lost a reference the server requires.
+    case incomplete
+}
+
+/// What one push did. Aggregates not listed were not pending.
+public struct SyncPushReport: Equatable, Sendable {
+    public struct Skip: Equatable, Sendable {
+        public var aggregate: SyncAggregateRef
+        public var reason: SyncSkipReason
+    }
+
+    public struct Rejection: Equatable, Sendable {
+        public var aggregate: SyncAggregateRef
+        public var error: RemoteStoreError
+    }
+
+    /// Acknowledged by the server, in push order. One edited during its upload
+    /// is listed here and is still pending.
+    public var pushed: [SyncAggregateRef] = []
+    public var skipped: [Skip] = []
+    /// Refused by the server; recorded on the aggregate, which stays pending.
+    /// A refused deletion keeps its tombstone and is tried again next push.
+    public var rejected: [Rejection] = []
+    /// Sessions, routines and exercises deleted on the device whose deletion the
+    /// server acknowledged, in push order. Their tombstones are gone.
+    public var deleted: [SyncAggregateRef] = []
+
+    public init() {}
+}
+
+public enum TrainingSyncError: Error, Equatable, Sendable {
+    /// The local store does not belong to the signed-in user (it belongs to
+    /// `owner`, or to nobody yet): nothing was sent and nothing changed (S10).
+    case storeNotOwned(userId: UUID, owner: UUID?)
+    /// The server answered rows of another user than the engine's (S10): the
+    /// pull applies none of them. Row-level security never does this; it guards
+    /// against a request made with another account's session.
+    case pulledRowsOfAnotherUser
+}
+
+/// The sync between the local store and the server (#135): `sync()` pushes
+/// local changes, then pulls the server's (`TrainingSyncEngine+Pull.swift`).
+/// A push and a pull never run at the same time: each waits for the other.
+///
+/// Push rules (docs/database-schema.md, "Sync"):
+/// - Only when the store's owner is the signed-in user (S10).
+/// - Exercises, then routines, then exercise settings, then sessions, so every
+///   row a session or setting refers to is on the server first. Catalogue
+///   exercises are already there. An exercise or routine push sends its muscle
+///   groups or items only when that list changed on the device since the server
+///   last held it (`SyncConflictRule.childListChanged`, L12), and then leaves on
+///   the server exactly the device's list (L7); otherwise only its own row.
+/// - An aggregate is read, turned into rows and marked sent in one MainActor
+///   stretch, then uploaded, then marked synced at the revision it was read
+///   at: an edit during the upload keeps it pending (S7).
+/// - The server refusing an aggregate (`RemoteStoreError`) is recorded on it
+///   and the push carries on with the next; any other error stops the push and
+///   is thrown, leaving everything not acknowledged pending (S3, S4).
+/// - Every pending aggregate is tried at most once per push.
+/// - Deletions made on the device (S11) go children first: sessions before the
+///   sessions are uploaded (a re-import may reuse a removed session's refs),
+///   routines and exercises after them (the server refuses to delete an
+///   exercise a session still uses). A tombstone is forgotten only once the
+///   server acknowledged it (compare and clear); a refusal keeps it.
+@MainActor
+public final class TrainingSyncEngine {
+    let store: TrainingStore
+    let remote: any TrainingRemoteStore
+    let userId: UUID
+    /// Rows asked for per pull request.
+    let pageSize: Int
+    /// How far before its cursor each table is read again (L5 item 5).
+    let pullOverlap: TimeInterval
+    private var pushing: Task<SyncPushReport, any Error>?
+    private var pulling: Task<SyncPullReport, any Error>?
+    private var isStopped = false
+
+    /// - Parameters:
+    ///   - pageSize: rows per pull request.
+    ///   - pullOverlap: seconds of rows read again before each cursor, for rows a
+    ///     transaction that committed late wrote behind it. Re-reading is harmless:
+    ///     applying the same row twice changes nothing.
+    public init(
+        store: TrainingStore,
+        remote: any TrainingRemoteStore,
+        userId: UUID,
+        pageSize: Int = 500,
+        pullOverlap: TimeInterval = 5
+    ) {
+        self.store = store
+        self.remote = remote
+        self.userId = userId
+        self.pageSize = pageSize
+        self.pullOverlap = pullOverlap
+    }
+
+    /// Stops the engine for good (a sign-out, another account signing in): the
+    /// push or pull running now ends at its next step, before it sends anything
+    /// more or writes anything more to the store, and nothing runs after it.
+    public func stop() {
+        isStopped = true
+        pushing?.cancel()
+        pulling?.cancel()
+    }
+
+    /// Throws `CancellationError` once the engine is stopped: checked before
+    /// every request and after every answer, before the store is written.
+    func checkRunning() throws {
+        if isStopped { throw CancellationError() }
+        try Task.checkCancellation()
+    }
+
+    /// Pushes, then pulls: local changes reach the server before its state is
+    /// applied, so the pull reads them back as echoes instead of conflicts.
+    ///
+    /// A push stopped by a server fault (`RemoteServerError`) still lets the
+    /// pull run, then throws: what the pull brings may be what the push needs
+    /// (a tombstone that makes the device send a row again). Any other error
+    /// stops the run: no network, a session that is not the account's or was
+    /// refused, a stopped engine (S4).
+    @discardableResult
+    public func sync() async throws -> SyncReport {
+        let push: SyncPushReport
+        do {
+            push = try await self.push()
+        } catch let error as RemoteServerError {
+            _ = try await pull()
+            throw error
+        }
+        let pull = try await pull()
+        return SyncReport(push: push, pull: pull)
+    }
+
+    /// Pushes every pending aggregate once. A call made while a push is running
+    /// waits for that push and gets its report, so nothing is sent twice.
+    @discardableResult
+    public func push() async throws -> SyncPushReport {
+        if let pushing {
+            return try await pushing.value
+        }
+        let pull = pulling
+        let task = Task {
+            _ = try? await pull?.value
+            return try await self.pushPending()
+        }
+        pushing = task
+        defer { pushing = nil }
+        return try await task.value
+    }
+
+    /// Pulls what changed on the server since the last pull and applies it to
+    /// the store. A call made while a pull is running gets that pull's report.
+    @discardableResult
+    public func pull() async throws -> SyncPullReport {
+        if let pulling {
+            return try await pulling.value
+        }
+        let push = pushing
+        let task = Task {
+            _ = try? await push?.value
+            return try await self.pullChanges()
+        }
+        pulling = task
+        defer { pulling = nil }
+        return try await task.value
+    }
+
+    // MARK: - Push
+
+    /// The state of one push.
+    private final class PushRun {
+        var report = SyncPushReport()
+        var attempted: Set<SyncAggregateRef> = []
+        /// Acknowledged by the server during this push.
+        var acknowledged: Set<SyncAggregateRef> = []
+    }
+
+    /// A pending aggregate ready to send, or the reason it cannot go yet.
+    enum Upload {
+        /// `children`: the fingerprint of the child list the upload sends, if it sends one.
+        case send(@Sendable (any TrainingRemoteStore) async throws -> Void, children: String? = nil)
+        case skip(SyncSkipReason)
+    }
+
+    private func pushPending() async throws -> SyncPushReport {
+        try checkRunning()
+        let owner = try store.ownership.owner()
+        guard owner == userId else { throw TrainingSyncError.storeNotOwned(userId: userId, owner: owner) }
+        let run = PushRun()
+        try await pushPending(.exercise, run: run)
+        try await pushPending(.routine, run: run)
+        try await pushPending(.exerciseSetting, run: run)
+        try await pushDeletions(.session, run: run)
+        try await pushPending(.session, run: run)
+        try await pushDeletions(.routine, run: run)
+        try await pushDeletions(.exercise, run: run)
+        return run.report
+    }
+
+    /// Sends every tombstone of `kind` in one delete, once per push. Each is
+    /// cleared at the revision it was read at, so one written again during the
+    /// upload is sent again. A refusal is reported and keeps them; any other
+    /// error stops the push.
+    private func pushDeletions(_ kind: SyncTombstoneKind, run: PushRun) async throws {
+        let tombstones = try store.syncState.tombstones().filter { $0.kind == kind }
+        guard let target = kind.pushTarget, !tombstones.isEmpty else { return }
+        let refs = tombstones.map { SyncAggregateRef(target.kind, id: $0.id) }
+        try checkRunning()
+        do {
+            try await remote.delete(target.table, ids: tombstones.map(\.id))
+        } catch let error as RemoteStoreError {
+            run.report.rejected += refs.map { .init(aggregate: $0, error: error) }
+            return
+        }
+        try checkRunning()
+        for tombstone in tombstones {
+            try store.syncState.clearTombstone(tombstone)
+        }
+        run.report.deleted += refs
+    }
+
+    /// Pending aggregates are read again after every upload, so each one is
+    /// turned into rows as it is at that moment. `attempted` sends each at most
+    /// once per push: one edited during its upload waits for the next push.
+    private func pushPending(_ kind: SyncAggregateKind, run: PushRun) async throws {
+        while let pending = try store.syncState.pending(kind).first(where: {
+            !run.attempted.contains(SyncAggregateRef(kind, id: $0.id))
+        }) {
+            try checkRunning()
+            let ref = SyncAggregateRef(kind, id: pending.id)
+            run.attempted.insert(ref)
+            switch try upload(for: pending, run: run) {
+            case nil:
+                continue
+            case let .skip(reason):
+                run.report.skipped.append(.init(aggregate: ref, reason: reason))
+            case let .send(send, children):
+                // Rows that may reach the server from now on leave a tombstone when deleted.
+                try store.syncState.markSent(kind, id: ref.id, ifRevision: pending.revision)
+                do {
+                    try await send(remote)
+                } catch let error as RemoteStoreError {
+                    try checkRunning()
+                    try store.syncState.markFailed(kind, id: ref.id, reason: String(describing: error))
+                    run.report.rejected.append(.init(aggregate: ref, error: error))
+                    continue
+                }
+                try checkRunning()
+                run.acknowledged.insert(ref)
+                run.report.pushed.append(ref)
+                if let children {
+                    try store.syncState.markChildrenSynced(kind, id: ref.id, fingerprint: children)
+                }
+                try store.syncState.markSynced(kind, id: ref.id, ifRevision: pending.revision)
+            }
+        }
+    }
+
+    /// `nil` when the aggregate is gone, which cannot happen within the same
+    /// MainActor stretch as the read of `pending`.
+    private func upload(for pending: PendingSyncAggregate, run: PushRun) throws -> Upload? {
+        let context = store.context
+        let rows = PushRows(userId: userId) { run.acknowledged.contains($0) }
+        switch pending.kind {
+        case .exercise:
+            return try context.fetchExercise(id: pending.id).map(rows.exercise)
+        case .routine:
+            return try context.fetchRoutine(id: pending.id).map(rows.routine)
+        case .session:
+            guard let model = try context.fetchSession(id: pending.id), let completedAt = model.completedAt else {
+                return nil
+            }
+            return rows.session(model, completedAt: completedAt, pending: pending)
+        case .exerciseSetting:
+            return try context.fetchExerciseSetting(exerciseId: pending.id).map {
+                try rows.setting($0, exercise: context.fetchExercise(id: pending.id))
+            }
+        }
+    }
+}
+
+private extension SyncTombstoneKind {
+    /// The aggregate and server table of a tombstone pushed on its own. Entry
+    /// and set tombstones travel with their session's push instead.
+    var pushTarget: (kind: SyncAggregateKind, table: RemoteTable)? {
+        switch self {
+        case .session: (.session, .sessions)
+        case .routine: (.routine, .routines)
+        case .exercise: (.exercise, .exercises)
+        case .entry, .set: nil
+        }
+    }
+}

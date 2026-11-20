@@ -41,12 +41,10 @@ struct RootView: View {
             router.handle(deepLink: url)
         }
         .onChange(of: scenePhase) { _, newPhase in
-            // Drain pending intents when app foregrounds — catches up events
-            // that arrived while the app was backgrounded / suspended.
+            // Foreground: sync, and drain the intents that arrived while the
+            // app was backgrounded / suspended.
             if newPhase == .active {
-                Task {
-                    await appEnv.drainIfActive()
-                }
+                appEnv.sceneDidBecomeActive()
             }
         }
     }
@@ -86,12 +84,7 @@ private struct ActiveWorkoutCover: View {
         }
         .task {
             guard coordinator == nil else { return }
-            guard let c = appEnv.makeActiveWorkoutCoordinator() else {
-                // Sin userId resuelto no se puede iniciar el workout: cerrar el cover.
-                appEnv.router.presentedActiveWorkout = nil
-                appEnv.activeCoordinator = nil
-                return
-            }
+            let c = appEnv.makeActiveWorkoutCoordinator()
             coordinator = c
             appEnv.activeCoordinator = c
             // Arrancar el workout desde la rutina. Si la rutina no existe o el

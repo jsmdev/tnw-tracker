@@ -10,6 +10,9 @@ private let logger = Logger(subsystem: "com.tnwtracker", category: "network")
 @MainActor
 public protocol NetworkMonitoring: AnyObject {
     var isOnline: Bool { get }
+    /// Called when the connection comes back (offline → online), so the sync
+    /// sends what was saved meanwhile (S3).
+    var onReconnect: (@MainActor () -> Void)? { get set }
 }
 
 /// Production implementation backed by `NWPathMonitor`.
@@ -18,28 +21,40 @@ public protocol NetworkMonitoring: AnyObject {
 @Observable
 public final class NetworkMonitor: NetworkMonitoring {
     public private(set) var isOnline: Bool = true
+    @ObservationIgnored public var onReconnect: (@MainActor () -> Void)?
 
-    private let monitor: NWPathMonitor
-    private let queue: DispatchQueue
+    private let monitor: NWPathMonitor?
 
-    public init() {
-        monitor = NWPathMonitor()
-        queue = DispatchQueue(label: "com.tnwtracker.network-monitor")
+    public convenience init() {
+        self.init(monitorsPath: true)
+    }
 
+    /// Without `monitorsPath`, only `apply(online:)` changes the status (tests).
+    init(monitorsPath: Bool) {
+        guard monitorsPath else {
+            monitor = nil
+            return
+        }
+        let monitor = NWPathMonitor()
+        self.monitor = monitor
         monitor.pathUpdateHandler = { [weak self] path in
             let online = path.status == .satisfied
             Task { @MainActor [weak self] in
-                guard let self else { return }
-                if isOnline != online {
-                    logger.info("NetworkMonitor: isOnline → \(online, privacy: .public)")
-                }
-                isOnline = online
+                self?.apply(online: online)
             }
         }
-        monitor.start(queue: queue)
+        monitor.start(queue: DispatchQueue(label: "com.tnwtracker.network-monitor"))
+    }
+
+    /// Records a path update; going from offline to online calls `onReconnect`.
+    func apply(online: Bool) {
+        guard isOnline != online else { return }
+        logger.info("NetworkMonitor: isOnline → \(online, privacy: .public)")
+        isOnline = online
+        if online { onReconnect?() }
     }
 
     deinit {
-        monitor.cancel()
+        monitor?.cancel()
     }
 }

@@ -42,6 +42,7 @@ final class SwiftDataRoutineRepository: RoutineRepositoryProtocol {
     func setFavorite(_ favorite: Bool, routineId: UUID) throws {
         guard let model = try context.fetchRoutine(id: routineId) else { throw TrainingDataError.notFound }
         model.isFavorite = favorite
+        model.markChanged()
         try context.save()
     }
 
@@ -68,7 +69,12 @@ final class SwiftDataRoutineRepository: RoutineRepositoryProtocol {
 
         let model = try context.fetchRoutine(id: routine.id)
             ?? RoutineModel(id: routine.id, name: routine.name)
-        if model.modelContext == nil { context.insert(model) }
+        if model.modelContext == nil {
+            context.insert(model)
+            try context.trackNew(model)
+        } else {
+            model.markChanged()
+        }
         model.name = routine.name
         model.routineDescription = routine.description
         model.externalProvider = routine.externalRef?.provider
