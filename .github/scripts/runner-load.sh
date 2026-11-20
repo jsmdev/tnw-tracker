@@ -18,9 +18,11 @@ sample() {
     free=$(memory_pressure -Q 2>/dev/null | awk -F': ' '/free percentage/ {gsub("%","",$2); print $2}')
     swap=$(sysctl -n vm.swapusage | awk '{print $6}')
     pageouts=$(vm_stat | awk '/Pageouts/ {gsub("\\.","",$2); print $2}')
-    top=$(ps -Ao pcpu=,rss=,comm= -r | head -3 \
-      | awk '{n=$3; sub(".*/","",n); printf "%s:%s%%/%dMB ", n, $1, $2/1024}')
-    echo "$ts load=$load free=${free:-?}% swap_used=$swap pageouts=$pageouts top=$top"
+    # Executable paths may hold spaces (simulator runtimes): keep the last part.
+    top=$(ps -Ao pcpu=,rss=,comm= -r 2>/dev/null | head -4 \
+      | awk '{cpu=$1; mem=$2; $1=""; $2=""; n=$0; sub(".*/","",n); printf "%s:%s%%/%dMB ", n, cpu, mem/1024}')
+    crashes=$(find "$HOME/Library/Logs/DiagnosticReports" -type f 2>/dev/null | wc -l | tr -d ' ')
+    echo "$ts load=$load free=${free:-?}% swap_used=$swap pageouts=$pageouts crashes=$crashes top=$top"
     sleep 5
   done
 }
@@ -28,6 +30,7 @@ sample() {
 case "$cmd" in
   start)
     mkdir -p "$(dirname "$log")"
+    touch "$log.start"
     sample >"$log" 2>&1 &
     echo $! >"$pidfile"
     echo "Sampling runner load into $log (pid $(cat "$pidfile"))"
@@ -43,6 +46,9 @@ case "$cmd" in
           l=v["load"]+0; f=v["free"]+0; s=v["swap_used"]+0
           if (l>ml) ml=l; if (NR==1 || f<mf) mf=f; if (s>ms) ms=s}
          END {printf "Max load: %.2f  Min free memory: %d%%  Max swap used: %.0fM\n", ml, mf, ms}' "$log"
+    echo "Crash reports written while sampling (newest last):"
+    find "$HOME/Library/Logs/DiagnosticReports" -type f -newer "$log.start" 2>/dev/null \
+      | xargs -I{} basename {} | sort | uniq -c | sort -n | tail -20
     echo "Samples with free memory under 20% or load over 6:"
     awk '{split($3,f,"="); split($2,l,"="); if (f[2]+0<20 || l[2]+0>6) print}' "$log" | head -40
     ;;

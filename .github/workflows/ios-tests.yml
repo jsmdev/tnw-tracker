@@ -114,7 +114,9 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: ios-ui-tests-runner-load
-          path: build/runner-load.log
+          path: |
+            build/runner-load.log
+            ~/Library/Logs/DiagnosticReports/
           if-no-files-found: ignore
 
       - name: Subir resultados de test en fallo
