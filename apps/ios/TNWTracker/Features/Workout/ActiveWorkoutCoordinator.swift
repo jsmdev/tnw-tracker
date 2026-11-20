@@ -147,7 +147,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         session = existing
         let routine = existing.routineId.flatMap { try? routines.routine(id: $0) }
         loadTargets(from: routine)
-        currentExerciseIndex = firstIncompleteExerciseIndex()
+        currentExerciseIndex = resumeExerciseIndex()
         let startedAt = existing.startedAt ?? now()
         elapsedSeconds = max(0, Int(now().timeIntervalSince(startedAt)))
         phase = .active
