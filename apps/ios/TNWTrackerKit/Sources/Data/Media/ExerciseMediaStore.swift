@@ -45,7 +45,8 @@ public actor ExerciseMediaStore {
         let protect = protect
         let download = Task {
             let data = try await source.download(path: path)
-            try data.write(to: file, options: .atomic)
+            // Protected from its first byte, not only once `protect` runs.
+            try data.write(to: file, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             try protect(file)
             return file
         }
@@ -65,6 +66,13 @@ public actor ExerciseMediaStore {
         guard let name = Self.fileName(for: path) else { return nil }
         let file = folder.appending(path: name)
         return FileManager.default.fileExists(atPath: file.path) ? file : nil
+    }
+
+    /// Forgets the stored file of the object at `path`, so the next request
+    /// downloads it again: for a file whose bytes turned out unusable.
+    public func discard(path: String) {
+        guard let name = Self.fileName(for: path) else { return }
+        try? FileManager.default.removeItem(at: folder.appending(path: name))
     }
 
     /// The file name of an object path, or nil when `path` is not one: empty

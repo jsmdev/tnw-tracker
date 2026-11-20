@@ -30,8 +30,15 @@ public final class ExerciseMediaLibrary: Sendable {
 
     /// The image at the object path, from memory, the account's files or a
     /// download, in that order.
+    /// Bytes that do not decode are discarded, so the next view downloads
+    /// them again instead of failing forever.
     public func image(path: String) async throws -> UIImage {
-        try await pipeline.image(for: request(path))
+        do {
+            return try await pipeline.image(for: request(path))
+        } catch let error as ImagePipeline.Error {
+            if case .decodingFailed = error { await store.discard(path: path) }
+            throw error
+        }
     }
 
     /// The image at the object path if it is decoded in memory now.
