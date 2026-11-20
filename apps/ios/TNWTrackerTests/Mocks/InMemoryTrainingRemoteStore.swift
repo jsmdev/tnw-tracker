@@ -68,6 +68,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     private let catalogue: Set<UUID>
     private var duringNextPush: (@Sendable () async -> Void)?
     private var duringNextPull: (table: RemoteTable?, action: @Sendable () async -> Void)?
+    private var duringNextUpsert: (table: RemoteTable, action: @Sendable () async -> Void)?
 
     init(catalogue: Set<UUID> = TrainingRemoteStoreContract.catalogue) {
         self.catalogue = catalogue
@@ -100,6 +101,12 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     /// entries and sets: as if the user edited the data while it uploads.
     func duringNextPush(_ action: @escaping @Sendable () async -> Void) {
         duringNextPush = action
+    }
+
+    /// The next upsert of `table` runs `action` once its rows are written: as if
+    /// the user edited the data while it uploads.
+    func duringNextUpsert(of table: RemoteTable, _ action: @escaping @Sendable () async -> Void) {
+        duringNextUpsert = (table, action)
     }
 
     /// The next pull (of `table`, when given) runs `action` before it answers:
@@ -179,6 +186,10 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         calls.append(.upsert(Row.table, count: rows.count))
         try throwIfFailing(.upsert)
         try write(rows)
+        if let hook = duringNextUpsert, hook.table == Row.table {
+            duringNextUpsert = nil
+            await hook.action()
+        }
     }
 
     func delete(_ table: RemoteTable, ids: [UUID]) async throws {

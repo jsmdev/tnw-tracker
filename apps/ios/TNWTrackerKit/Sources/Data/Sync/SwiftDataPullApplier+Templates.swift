@@ -3,8 +3,12 @@ import SwiftData
 
 // Exercises, their muscle groups, routines and their items, and exercise
 // settings, as the pull applies them. An exercise, a routine or a setting is
-// one aggregate: with a local change waiting, none of its server values is
-// applied. Every field the push sends is applied, muscle order included. Rows
+// one aggregate: with a local change waiting, none of its own server values is
+// applied. Its muscle groups or items are decided as one list, apart from it
+// (`PullRun.childRule`): the server's list applies unless the device's list
+// changed since the server last held it, so a favourite or a rename waiting
+// here does not hold back items another device added (L12). Every field the
+// push sends is applied, muscle order included. Rows
 // the server deleted, children included, go with its tombstones
 // (`SwiftDataPullApplier+Tombstones.swift`). A child row keeps the id the
 // server holds it under (`serverId`), so its tombstone finds it even when
@@ -43,7 +47,7 @@ extension SwiftDataPullApplier {
         context.insert(model)
         write(row, to: model)
         model.markPulled()
-        run.create(aggregate)
+        run.create(aggregate, list: model)
     }
 
     /// The curated catalogue belongs to the server: always applied, never synced back.
@@ -87,7 +91,7 @@ extension SwiftDataPullApplier {
         guard let exercise = try context.fetchExercise(id: row.exerciseId) else {
             return run.hold(.exerciseMuscleGroups, row.id)
         }
-        if !exercise.isCatalogue, run.rule(for: .init(.exercise, id: exercise.id), model: exercise) == .localKept {
+        if !exercise.isCatalogue, run.childRule(for: .init(.exercise, id: exercise.id), model: exercise) == .localKept {
             return
         }
         let group = exercise.muscleGroups.first {
@@ -115,7 +119,7 @@ extension SwiftDataPullApplier {
         context.insert(model)
         write(row, to: model)
         model.markPulled()
-        run.create(aggregate)
+        run.create(aggregate, list: model)
     }
 
     private func adoptRoutine(_ row: RemoteRoutineRow, _ run: PullRun) throws -> RoutineModel? {
@@ -141,7 +145,7 @@ extension SwiftDataPullApplier {
         guard let routine = try context.fetchRoutine(id: row.routineId),
               let exercise = try context.fetchExercise(id: row.exerciseId)
         else { return run.hold(.routineItems, row.id) }
-        guard run.rule(for: .init(.routine, id: routine.id), model: routine) == .serverApplied else { return }
+        guard run.childRule(for: .init(.routine, id: routine.id), model: routine) == .serverApplied else { return }
         let item = routine.items.first { $0.order == row.position } ?? {
             let item = RoutineItemModel(order: row.position)
             context.insert(item)

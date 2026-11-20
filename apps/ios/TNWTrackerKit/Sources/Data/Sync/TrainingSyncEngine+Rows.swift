@@ -34,14 +34,17 @@ struct PushRows {
                 position: index + 1
             )
         }
-        return .send { remote in
+        // An unchanged list stays as the server holds it, children another device added included (L12).
+        let children = model.childListChanged ? model.childrenFingerprint : nil
+        return .send({ remote in
             try await remote.upsert([row])
+            guard children != nil else { return }
             // The server then holds exactly the device's list (L7): the others go
             // first, so a row another client wrote under its own id for the same
             // muscle cannot collide with the device's.
             try await remote.deleteChildren(.exerciseMuscleGroups, of: exercise.id, keeping: muscles.map(\.id))
             try await remote.upsert(muscles)
-        }
+        }, children: children)
     }
 
     func routine(_ model: RoutineModel) -> TrainingSyncEngine.Upload {
@@ -78,12 +81,14 @@ struct PushRows {
                 notes: item.notes
             )
         }
-        return .send { remote in
+        let children = model.childListChanged ? model.childrenFingerprint : nil
+        return .send({ remote in
             try await remote.upsert([row])
+            guard children != nil else { return }
             // Items at positions the routine no longer has go first (L7), as for muscle groups.
             try await remote.deleteChildren(.routineItems, of: routine.id, keeping: items.map(\.id))
             try await remote.upsert(items)
-        }
+        }, children: children)
     }
 
     /// A setting goes up once its exercise is on the server (catalogue ones are).

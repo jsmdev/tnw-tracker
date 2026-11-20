@@ -141,11 +141,11 @@ struct TrainingSyncEnginePullTests {
         #expect(push.skipped.isEmpty)
     }
 
-    @Test("an exercise with a local change keeps its muscle groups; a muscle of an exercise the device lacks waits")
+    @Test("an exercise whose muscles changed here keeps them; a muscle of an exercise the device lacks waits")
     func pendingExerciseKeepsItsMuscles() async throws {
         try await world.uploadPrerequisites()
         var edited = world.squat
-        edited.name = "Front Squat"
+        edited.muscleGroups = [MuscleGroup(muscle: .glutes, role: .primary)]
         try store.exercises.save(edited)
         var hamstrings = RemoteMuscleGroupRow(exerciseId: world.squat.id, muscle: .hamstrings, role: .secondary)
         hamstrings.updatedAt = "2026-01-01T00:00:01.000000+00:00"
@@ -154,8 +154,9 @@ struct TrainingSyncEnginePullTests {
 
         let report = try store.pulled.apply(PulledBatch(muscleGroups: [hamstrings, unknown]), userId: world.userId)
 
-        #expect(try store.exercises.exercise(id: world.squat.id)?.muscleGroups == world.squat.muscleGroups)
-        #expect(report.resolved == [.init(aggregate: .init(.exercise, id: world.squat.id), rule: .localKept)])
+        #expect(try store.exercises.exercise(id: world.squat.id)?.muscleGroups == edited.muscleGroups)
+        // The list is decided apart from its parent row, which this batch does not hold.
+        #expect(report.resolved.isEmpty)
         #expect(report.skipped == [.init(table: .exerciseMuscleGroups, id: unknown.id, reason: .missingParent)])
         #expect(try store.pulled.cursor(.exerciseMuscleGroups, userId: world.userId)?.id == hamstrings.id)
     }

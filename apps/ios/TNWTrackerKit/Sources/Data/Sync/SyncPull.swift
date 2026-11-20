@@ -31,6 +31,18 @@ public enum SyncConflictRule: Equatable, Sendable {
         case .deleted: localPending ? .localKept : .serverApplied
         }
     }
+
+    /// Whether a routine's items or an exercise's muscle groups changed on the
+    /// device since the server last held them for it (L12, confirmed by the
+    /// owner). The list is its own part of the aggregate: only a changed list is
+    /// pushed, replacing the server's, and the pull applies the server's list
+    /// (rows and deletions) whenever the device's list did not change, even
+    /// while the parent waits with a change of its own (a favourite, a rename).
+    /// With no change of the parent waiting, the list did not change either:
+    /// the server's applies, as for the rest of the aggregate.
+    static func childListChanged(parentPending: Bool, synced: String?, current: String) -> Bool {
+        parentPending && synced != current
+    }
 }
 
 /// Why a pulled row was not applied. It is not lost: rows the cursor has not

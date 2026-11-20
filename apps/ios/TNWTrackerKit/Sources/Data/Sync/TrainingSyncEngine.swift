@@ -63,8 +63,10 @@ public enum TrainingSyncError: Error, Equatable, Sendable {
 /// - Only when the store's owner is the signed-in user (S10).
 /// - Exercises, then routines, then exercise settings, then sessions, so every
 ///   row a session or setting refers to is on the server first. Catalogue
-///   exercises are already there. An exercise or routine push leaves on the
-///   server exactly the muscle groups or items the device lists (L7).
+///   exercises are already there. An exercise or routine push sends its muscle
+///   groups or items only when that list changed on the device since the server
+///   last held it (`SyncConflictRule.childListChanged`, L12), and then leaves on
+///   the server exactly the device's list (L7); otherwise only its own row.
 /// - An aggregate is read, turned into rows and marked sent in one MainActor
 ///   stretch, then uploaded, then marked synced at the revision it was read
 ///   at: an edit during the upload keeps it pending (S7).
@@ -163,7 +165,8 @@ public final class TrainingSyncEngine {
 
     /// A pending aggregate ready to send, or the reason it cannot go yet.
     enum Upload {
-        case send(@Sendable (any TrainingRemoteStore) async throws -> Void)
+        /// `children`: the fingerprint of the child list the upload sends, if it sends one.
+        case send(@Sendable (any TrainingRemoteStore) async throws -> Void, children: String? = nil)
         case skip(SyncSkipReason)
     }
 
@@ -215,7 +218,7 @@ public final class TrainingSyncEngine {
                 continue
             case let .skip(reason):
                 run.report.skipped.append(.init(aggregate: ref, reason: reason))
-            case let .send(send):
+            case let .send(send, children):
                 // Rows that may reach the server from now on leave a tombstone when deleted.
                 try store.syncState.markSent(kind, id: ref.id, ifRevision: pending.revision)
                 do {
@@ -227,6 +230,9 @@ public final class TrainingSyncEngine {
                 }
                 run.acknowledged.insert(ref)
                 run.report.pushed.append(ref)
+                if let children {
+                    try store.syncState.markChildrenSynced(kind, id: ref.id, fingerprint: children)
+                }
                 try store.syncState.markSynced(kind, id: ref.id, ifRevision: pending.revision)
             }
         }
