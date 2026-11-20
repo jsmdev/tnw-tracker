@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 @testable import TNWTrackerKit
 
-/// Mock de `AuthRepositoryProtocol` para tests de cancellation del auth listener.
+/// Mock de `AuthRepositoryProtocol` para tests del auth listener y del cierre de sesión.
 ///
 /// Expone `emit(_ event:)` para disparar eventos al stream activo,
 /// y contadores de streams creados / terminados para verificar cancellation.
@@ -32,8 +32,17 @@ final class AuthRepositoryMock: AuthRepositoryProtocol {
         fatalError("Not implemented in mock")
     }
 
+    /// Sign-outs asked of the auth service.
+    private(set) var signOutCount = 0
+    /// The error the next sign-outs throw, as the auth service does offline.
+    var signOutError: (any Error)?
+    /// When set, each sign-out waits for it, like a logout request in flight.
+    var signOutGate: AsyncGate?
+
     func signOut() async throws {
-        fatalError("Not implemented in mock")
+        signOutCount += 1
+        await signOutGate?.wait()
+        if let signOutError { throw signOutError }
     }
 
     func currentSession() async -> Auth.Session? {

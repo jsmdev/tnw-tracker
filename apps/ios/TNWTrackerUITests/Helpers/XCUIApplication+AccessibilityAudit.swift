@@ -19,9 +19,9 @@ extension XCUIApplication {
                 && (element == nil || element?.elementType == .staticText)
             let outOfScope = only.map { !$0.contains(element?.identifier ?? "") } ?? false
             let ignored = systemFormText || preExisting.contains(label) || outOfScope
-            if ignored {
-                print("Accessibility audit (\(screen)) ignored: \(issue.compactDescription) on \"\(label)\"")
-            }
+            let kind = element.map { "\($0.elementType.rawValue) '\($0.identifier)'" } ?? "unknown element"
+            print("Accessibility audit (\(screen)) \(ignored ? "ignored" : "FAILED"): "
+                + "\(issue.compactDescription) on \"\(label)\" (\(kind))")
             return ignored
         }
     }
