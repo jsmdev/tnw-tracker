@@ -194,6 +194,32 @@ struct SyncSchedulerTests {
         #expect(await syncRuns() == 2)
     }
 
+    /// The tables every pull reads, in order.
+    static let pullOrder: [RemoteTable] = [
+        .tombstones, .sets, .entries, .sessions, .routineItems, .routines, .exerciseMuscleGroups,
+        .exerciseSettings, .exercises
+    ]
+
+    @Test("S10 signing in again during a sync stops the running engine first: it reads nothing more",
+          .timeLimit(.minutes(1)))
+    func signInAgainStopsTheRunningEngine() async throws {
+        let gates = await holdNextPull()
+        scheduler.signIn(userId: user)
+        await gates.reached.wait()
+
+        scheduler.signIn(userId: user)
+        await gates.release.open()
+        await scheduler.waitUntilIdle()
+
+        let pulls = await server.calls.compactMap { call -> RemoteTable? in
+            if case let .pull(table, _, _) = call { return table }
+            return nil
+        }
+        // The first engine had its tombstones page answered; the new one reads every table.
+        #expect(pulls == [.tombstones] + Self.pullOrder)
+        #expect(scheduler.status == .idle)
+    }
+
     // MARK: - Failures
 
     @Test("S4 a failed sync is reported, keeps the change pending and the next request retries it")

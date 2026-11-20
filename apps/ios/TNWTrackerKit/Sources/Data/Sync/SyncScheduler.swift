@@ -34,7 +34,9 @@ public enum SyncStatus: Equatable, Sendable {
 ///   more run after it, however many requests arrive, so the changes made
 ///   during a sync are sent too.
 /// - Signed out, a request does nothing; a run already going is stopped, and the
-///   sign-out waits until it has.
+///   sign-out waits until it has. Signing in again stops the running engine
+///   first: the new one runs only once the old run has ended, and the old one
+///   writes nothing more to the store.
 @MainActor
 @Observable
 public final class SyncScheduler {
@@ -58,8 +60,7 @@ public final class SyncScheduler {
     /// another user is left as it is and never syncs; one that cannot be read is
     /// treated the same way, as its owner is unknown.
     public func signIn(userId: UUID) {
-        engine = nil
-        runAgain = false
+        stop()
         do {
             switch try store.ownership.claim(userId: userId, at: now()) {
             case .claimed, .owned:
@@ -70,7 +71,8 @@ public final class SyncScheduler {
                 refuse(owner: ownerId)
             }
         } catch {
-            logger.error("Sync: claiming the store failed: \(error, privacy: .public)")
+            let kind = Self.category(of: error)
+            logger.error("Sync: claiming the store failed (\(kind, privacy: .public)): \(error, privacy: .private)")
             refuse(owner: nil)
         }
     }
@@ -79,12 +81,19 @@ public final class SyncScheduler {
     /// was running has stopped: from then on nothing reads or writes the store
     /// for the sync, nor talks to the server. The store keeps its data and owner.
     public func signOut() async {
+        stop()
+        await waitUntilIdle()
+    }
+
+    /// Stops syncing at once, without waiting: the running engine sends and
+    /// writes nothing more (it checks before every request and store write, on
+    /// the main actor), so the store can be reset right after this returns.
+    public func stop() {
         let engine = engine
         self.engine = nil
         runAgain = false
         status = .signedOut
         engine?.stop()
-        await waitUntilIdle()
     }
 
     /// Asks for a sync and returns at once. Does nothing while signed out or
@@ -127,8 +136,22 @@ public final class SyncScheduler {
         } catch let TrainingSyncError.storeNotOwned(_, owner) {
             return .storeNotOwned(owner: owner)
         } catch {
-            logger.error("Sync failed; kept for the next try: \(error, privacy: .public)")
+            let kind = category(of: error)
+            logger.error("Sync failed (\(kind, privacy: .public)); kept for the next try: \(error, privacy: .private)")
             return .failed
+        }
+    }
+
+    /// A coarse kind of error, safe to log in public: no row, id or message.
+    private static func category(of error: any Error) -> String {
+        switch error {
+        case is URLError: "network"
+        case is CancellationError: "stopped"
+        case is RemoteSessionError: "session"
+        case is RemoteServerError: "server"
+        case is RemoteStoreError: "refused"
+        case is TrainingSyncError: "account"
+        default: "other"
         }
     }
 

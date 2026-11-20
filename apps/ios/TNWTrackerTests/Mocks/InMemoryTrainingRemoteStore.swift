@@ -8,8 +8,11 @@ import Foundation
 /// pulls, and the server rules a push can break (parents first, rows only
 /// referring to exercises and routines the server holds, no set on a skipped
 /// entry, one row per user and external ref, one muscle group per muscle of an
-/// exercise and one item per routine position, no delete of an exercise in
-/// use), refused as `RemoteStoreError.rejected` with the server's SQLSTATE.
+/// exercise and one item per routine position, one done entry per exercise of
+/// a session, no delete of an exercise in use), refused as
+/// `RemoteStoreError.rejected` with the server's SQLSTATE. A row naming an
+/// exercise the server does not hold is refused by row-level security (42501),
+/// as the server's policies check it before the foreign key.
 /// Like the server's triggers, every delete records a tombstone of each deleted
 /// session, entry, set, routine, user exercise, muscle group, routine item and
 /// exercise setting (a session's cascade included; the children deleted with
@@ -51,6 +54,11 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     /// What the server answers for a broken foreign key or check.
     static func foreignKeyViolation(_ constraint: String) -> RemoteStoreError {
         .rejected(code: "23503", message: constraint)
+    }
+
+    /// What the server answers for a row whose policy names an exercise the user cannot see.
+    static func rowLevelSecurity(_ table: RemoteTable) -> RemoteStoreError {
+        .rejected(code: "42501", message: "new row violates row-level security policy for table \"\(table.rawValue)\"")
     }
 
     static let skippedEntryWithSets = RemoteStoreError.rejected(code: "23514", message: "a skipped entry has no sets")
@@ -282,21 +290,24 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
             }
             if entry.status == .skipped { throw Self.skippedEntryWithSets }
         case let group as RemoteMuscleGroupRow:
-            try require(group.exerciseId, in: .exercises, "exercise_muscle_groups_exercise_id_fkey")
+            // The policy: the user's own exercise.
+            guard tables[.exercises]?[group.exerciseId] != nil else {
+                throw Self.rowLevelSecurity(.exerciseMuscleGroups)
+            }
         case let item as RemoteRoutineItemRow:
+            try requireExercise(item.exerciseId, .routineItems)
             try require(item.routineId, in: .routines, "routine_items_routine_fkey")
-            try requireExercise(item.exerciseId, "routine_items_exercise_id_fkey")
         case let setting as RemoteExerciseSettingRow:
-            try requireExercise(setting.exerciseId, "exercise_settings_exercise_id_fkey")
+            try requireExercise(setting.exerciseId, .exerciseSettings)
         default:
             break
         }
     }
 
     private func check(_ entry: RemoteEntryRow) throws {
+        try requireExercise(entry.exerciseId, .entries)
+        try requireExercise(entry.replacedExerciseId, .entries)
         try require(entry.sessionId, in: .sessions, "entries_session_fkey")
-        try requireExercise(entry.exerciseId, "entries_exercise_id_fkey")
-        try requireExercise(entry.replacedExerciseId, "entries_replaced_exercise_id_fkey")
         if entry.status == .skipped, !setsOf(entry.id).isEmpty { throw Self.skippedEntryWithSets }
     }
 
@@ -312,9 +323,10 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         guard Set(seen.values).count == seen.count else { throw Self.duplicateExternalRef(Row.table) }
     }
 
-    /// `exercise_muscle_groups_key` and `routine_items_position_key`, checked at
-    /// statement end: a child row under another id holding the same muscle of an
-    /// exercise, or the same position of a routine, refuses the write.
+    /// `exercise_muscle_groups_key`, `routine_items_position_key` and
+    /// `entries_one_done_per_exercise`: a row under another id holding the same
+    /// muscle of an exercise, the same position of a routine, or a done entry of
+    /// the same exercise in a session, refuses the write.
     private func checkNaturalKeys<Row: RemoteRow>(_ rows: [Row]) throws {
         let written = Set(rows.map(\.id))
         let stored = (tables[Row.table]?.values.compactMap { $0 as? Row } ?? []).filter { !written.contains($0.id) }
@@ -322,6 +334,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
             switch row {
             case let group as RemoteMuscleGroupRow: "\(group.exerciseId)/\(group.muscle)/\(group.role)"
             case let item as RemoteRoutineItemRow: "\(item.routineId)/\(item.position)"
+            case let entry as RemoteEntryRow where entry.status == .done: "\(entry.sessionId)/\(entry.exerciseId)"
             default: nil
             }
         }
@@ -349,10 +362,11 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         throw Self.foreignKeyViolation(constraint)
     }
 
-    private func requireExercise(_ id: UUID?, _ constraint: String) throws {
+    /// Row-level security of `table`: the exercise is one the user can see.
+    private func requireExercise(_ id: UUID?, _ table: RemoteTable) throws {
         guard let id else { return }
         guard catalogue.contains(id) || tables[.exercises]?[id] != nil else {
-            throw Self.foreignKeyViolation(constraint)
+            throw Self.rowLevelSecurity(table)
         }
     }
 

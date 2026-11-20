@@ -114,7 +114,7 @@ extension SwiftDataPullApplier {
             return
         }
         if row.status == .done, session.entries.contains(where: { $0.isDone && $0.exercise?.id == row.exerciseId }) {
-            return run.report.skip(.entries, row.id, .conflict("the session already has a done entry of the exercise"))
+            return run.hold(.entries, row.id, .conflict("the session already has a done entry of the exercise"))
         }
         let entry = SessionEntryModel(id: row.id, order: row.position, statusRaw: row.status.rawValue)
         context.insert(entry)
@@ -141,7 +141,14 @@ extension SwiftDataPullApplier {
 
     /// The local entry that is the server's under another id: the one holding
     /// its ref in the same session, or, for a done entry, the session's done
-    /// entry of the same exercise that never reached the server.
+    /// entry of the same exercise (the server holds one per exercise per
+    /// session). That one may have been sent and refused for this very reason,
+    /// as when an importer added its entry meanwhile; so it is adopted unless
+    /// the server sent its own row in this pull too, which proves the server
+    /// holds both. The server's sets then merge into it through the import
+    /// rules, and the device's own sets go up under the server's id. Its ref
+    /// pushed is the server's, so the importer that wrote it finds it again;
+    /// the device's own stays one of its refs.
     private func adoptEntry(
         _ row: RemoteEntryRow,
         in session: SessionModel,
@@ -151,7 +158,13 @@ extension SwiftDataPullApplier {
         if let ref = row.externalRef, let holder = try context.fetchEntry(ref: ref), holder.session?.id == session.id {
             candidate = holder
         } else if row.status == .done {
-            candidate = session.entries.first { $0.isDone && $0.exercise?.id == row.exerciseId && !$0.syncSent }
+            candidate = session.entries.first {
+                $0.isDone && $0.exercise?.id == row.exerciseId && run.entrySessions[$0.id] == nil
+            }
+            if let ref = row.externalRef, let candidate {
+                candidate.externalProvider = ref.provider
+                candidate.externalId = ref.id
+            }
         }
         guard let entry = candidate else { return nil }
         // Sent without the ref: the server holds it under the local id too, so that row goes.

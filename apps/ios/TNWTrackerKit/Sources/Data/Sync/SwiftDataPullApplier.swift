@@ -194,9 +194,10 @@ final class PullRun {
         report.created.append(aggregate)
     }
 
-    func hold(_ table: RemoteTable, _ id: UUID) {
+    /// The row is not applied and its table's cursor stays before it, so the next pull reads it again.
+    func hold(_ table: RemoteTable, _ id: UUID, _ reason: SyncPullSkipReason = .missingParent) {
         held[table, default: []].insert(id)
-        report.skip(table, id, .missingParent)
+        report.skip(table, id, reason)
     }
 
     func adopt(_ table: RemoteTable, localId: UUID, serverId: UUID) {

@@ -72,4 +72,42 @@ struct TrainingSyncEngineAccountTests {
         #expect(try world.store.syncState.pending(.exercise).map(\.id) == [world.squat.id])
         #expect(try world.store.syncState.pending(.routine).map(\.id) == [routine.id])
     }
+
+    @Test("S10 an upload the server answers after the engine stopped is not marked synced",
+          .timeLimit(.minutes(1)))
+    func answerAfterStopMarksNothing() async throws {
+        try await world.uploadPrerequisites()
+        let session = try world.finishedSession()
+        let engine = world.engine
+        await world.server.duringNextPush {
+            await MainActor.run { engine.stop() }
+        }
+
+        await #expect(throws: CancellationError.self) { try await engine.push() }
+
+        #expect(await world.server.stored(RemoteSessionRow.self).map(\.id) == [session.id], "the server answered")
+        let pending = try world.store.syncState.pending(.session)
+        #expect(pending.map(\.id) == [session.id])
+        #expect(pending.first?.failureCount == 0)
+    }
+
+    @Test("S10 a muscle group is never applied under an exercise that is not the user's on the server")
+    func muscleGroupNeedsTheUsersExercise() async throws {
+        let device = try PushWorld(claimed: false)
+        let local = Exercise(
+            name: "Sample Row", type: .strength, muscleGroups: [MuscleGroup(muscle: .back, role: .primary)]
+        )
+        try device.store.exercises.save(local)
+        try device.claim()
+        var batch = PulledBatch()
+        let row = RemoteMuscleGroupRow(id: UUID(), exerciseId: local.id, muscle: .biceps, role: .secondary)
+        batch.muscleGroups = [row]
+
+        let report = try device.store.pulled.apply(batch, userId: device.userId)
+
+        let stored = try #require(try device.store.exercises.exercises().first { $0.id == local.id })
+        #expect(stored.muscleGroups == [MuscleGroup(muscle: .back, role: .primary)])
+        let notTheUsers = SyncPullSkipReason.invalid("its exercise is not the user's")
+        #expect(report.skipped == [.init(table: .exerciseMuscleGroups, id: row.id, reason: notTheUsers)])
+    }
 }

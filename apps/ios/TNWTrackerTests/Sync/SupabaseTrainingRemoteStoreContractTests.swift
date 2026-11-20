@@ -47,6 +47,14 @@ struct SupabaseTrainingRemoteStoreContractTests {
         try await run(TrainingRemoteStoreContract.exerciseAndRoutineReadBack)
     }
 
+    @Test func unseenExerciseIsRejected() async throws {
+        try await run(TrainingRemoteStoreContract.unseenExerciseIsRejected)
+    }
+
+    @Test func secondDoneEntryIsRejected() async throws {
+        try await run(TrainingRemoteStoreContract.secondDoneEntryIsRejected)
+    }
+
     @Test func duplicateExternalRefIsRejected() async throws {
         try await run(TrainingRemoteStoreContract.duplicateExternalRefIsRejected)
     }
