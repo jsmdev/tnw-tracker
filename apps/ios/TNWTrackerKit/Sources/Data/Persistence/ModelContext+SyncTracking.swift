@@ -11,6 +11,8 @@ protocol SyncTrackedModel: AnyObject {
     var syncedRevision: Int { get set }
     var syncSent: Bool { get set }
     var isSyncable: Bool { get set }
+    var syncFailureCount: Int { get set }
+    var syncLastError: String? { get set }
 }
 
 extension SyncTrackedModel {

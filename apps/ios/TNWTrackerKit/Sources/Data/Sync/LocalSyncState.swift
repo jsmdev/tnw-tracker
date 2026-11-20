@@ -43,19 +43,27 @@ public struct PendingSyncAggregate: Equatable, Sendable {
     public var removedEntryIds: [UUID]
     /// Sets of this session deleted on the device since its last acknowledged push.
     public var removedSetIds: [UUID]
+    /// Pushes the server refused since the last acknowledged one.
+    public var failureCount: Int
+    /// Why the server refused the last push, if it did.
+    public var lastError: String?
 
     public init(
         kind: SyncAggregateKind,
         id: UUID,
         revision: Int,
         removedEntryIds: [UUID] = [],
-        removedSetIds: [UUID] = []
+        removedSetIds: [UUID] = [],
+        failureCount: Int = 0,
+        lastError: String? = nil
     ) {
         self.kind = kind
         self.id = id
         self.revision = revision
         self.removedEntryIds = removedEntryIds
         self.removedSetIds = removedSetIds
+        self.failureCount = failureCount
+        self.lastError = lastError
     }
 }
 
@@ -109,11 +117,18 @@ public protocol SyncStateRepositoryProtocol: AnyObject {
     @discardableResult
     func markSent(_ kind: SyncAggregateKind, id: UUID, ifRevision revision: Int) throws -> Bool
 
-    /// Compare and clear: marks the aggregate synced at `revision` and forgets the
-    /// entry and set tombstones that push carried. Returns `false`, changing
-    /// nothing, when the aggregate changed again during the upload, so it stays pending.
+    /// Compare and clear: marks the aggregate synced at `revision`, forgets the
+    /// entry and set tombstones that push carried and any recorded failure.
+    /// Returns `false`, changing nothing, when the aggregate changed again during
+    /// the upload, so it stays pending.
     @discardableResult
     func markSynced(_ kind: SyncAggregateKind, id: UUID, ifRevision revision: Int) throws -> Bool
+
+    /// Records that the server refused the aggregate, with the reason. It stays
+    /// pending and its data is untouched; the revision does not change. Returns
+    /// `false` for an aggregate that is not stored or not syncable.
+    @discardableResult
+    func markFailed(_ kind: SyncAggregateKind, id: UUID, reason: String) throws -> Bool
 
     /// Sessions, routines and exercises deleted on the device that may exist on
     /// the server, oldest first.

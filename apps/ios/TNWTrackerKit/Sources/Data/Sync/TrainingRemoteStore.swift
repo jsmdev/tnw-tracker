@@ -24,8 +24,8 @@ public protocol TrainingRemoteStore: Sendable {
     func pushSession(_ aggregate: RemoteSessionAggregate) async throws
 
     /// Upserts rows of one table by `id`, every column the client owns
-    /// included. For tables pushed on their own (routines and user exercises,
-    /// once their rows exist).
+    /// included, in one statement. For tables pushed on their own: user
+    /// exercises with their muscle groups, routines with their items.
     func upsert<Row: RemoteRow>(_ rows: [Row]) async throws
 
     /// Rows of `Row.table` the signed-in user can read whose (`updated_at`, `id`)
@@ -74,7 +74,14 @@ public struct RemoteSessionAggregate: Sendable, Equatable {
     }
 }
 
+/// Errors a `TrainingRemoteStore` reports about the data it was given. Any
+/// other error (no network, a timeout, an expired session, a server fault)
+/// says nothing about the data: the same write may succeed later.
 public enum RemoteStoreError: Error, Equatable, Sendable {
     /// The aggregate is inconsistent; nothing was written.
     case invalidAggregate(String)
+    /// The server refused the rows: a constraint or validation rule failed
+    /// (Postgres error classes 22 and 23, `code` is the SQLSTATE). Sending the
+    /// same rows again fails the same way.
+    case rejected(code: String, message: String)
 }

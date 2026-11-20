@@ -18,6 +18,12 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
 
     public func pushSession(_ aggregate: RemoteSessionAggregate) async throws {
         try aggregate.validate()
+        try await Self.reportingRejections {
+            try await write(aggregate)
+        }
+    }
+
+    private func write(_ aggregate: RemoteSessionAggregate) async throws {
         if !aggregate.removedSetIds.isEmpty {
             try await client.from(RemoteTable.sets.rawValue)
                 .delete(returning: .minimal)
@@ -32,14 +38,20 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
                 .eq("session_id", value: aggregate.session.id.uuidString.lowercased())
                 .execute()
         }
-        try await upsert([aggregate.session])
-        try await upsert(aggregate.entries)
-        try await upsert(aggregate.sets)
+        try await upsertRows([aggregate.session])
+        try await upsertRows(aggregate.entries)
+        try await upsertRows(aggregate.sets)
     }
 
     /// One request, so one statement: the rows are written together or not at
     /// all, and position swaps pass the deferrable position keys.
     public func upsert<Row: RemoteRow>(_ rows: [Row]) async throws {
+        try await Self.reportingRejections {
+            try await upsertRows(rows)
+        }
+    }
+
+    private func upsertRows<Row: RemoteRow>(_ rows: [Row]) async throws {
         guard !rows.isEmpty else { return }
         try await client.from(Row.table.rawValue)
             .upsert(rows, onConflict: "id", returning: .minimal)
@@ -66,6 +78,19 @@ public struct SupabaseTrainingRemoteStore: TrainingRemoteStore {
             .execute()
             .value
         return RemotePage(rows: rows, limit: limit)
+    }
+
+    /// Turns a refusal of the data (SQLSTATE class 22 data exception or 23
+    /// integrity constraint, which the validation triggers also raise) into
+    /// `RemoteStoreError.rejected`. Every other error passes through unchanged:
+    /// it says nothing about the data.
+    private static func reportingRejections(_ body: () async throws -> Void) async throws {
+        do {
+            try await body()
+        } catch let error as PostgrestError {
+            guard let code = error.code, code.hasPrefix("22") || code.hasPrefix("23") else { throw error }
+            throw RemoteStoreError.rejected(code: code, message: error.message)
+        }
     }
 
     private static func text(_ ids: [UUID]) -> [String] {
