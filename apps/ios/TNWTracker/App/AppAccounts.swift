@@ -156,6 +156,25 @@ public final class AppAccounts {
         }
     }
 
+    /// The user signs out (Settings): the session ends with the auth service and
+    /// the account closes, its data staying in its store for its next sign-in.
+    /// The account closes even when the auth service cannot be reached (offline):
+    /// nobody is left signed in with no way out. The auth client forgets the
+    /// session on the device before it calls the service, and reports the
+    /// sign-out to the listener, which may close the account first; a logout
+    /// answer arriving after another account signed in closes nothing of it.
+    public func signOut() async {
+        let account = current
+        do {
+            try await authRepository.signOut()
+        } catch {
+            logger.error("Auth: signOut not confirmed by the auth service: \(error, privacy: .private)")
+        }
+        if let account, current === account {
+            await closeCurrent()
+        }
+    }
+
     /// Opens the account's store and claims it before the screens can write to it.
     private func open(_ userId: UUID) {
         let opened: (store: TrainingStore, isNew: Bool)
@@ -277,7 +296,8 @@ public final class AppAccounts {
             let accounts: AppAccounts
             do {
                 accounts = try AppAccounts(
-                    authRepository: AuthRepository(supabase: supabase),
+                    // Never the auth service: a session a developer left on the simulator stays untouched.
+                    authRepository: UITestingAuthRepository(),
                     networkMonitor: NetworkMonitor(),
                     // No Live Activities: one left by a test that stops mid-workout makes the
                     // system relaunch the app in the background without `--uitesting` (T11).
@@ -322,6 +342,25 @@ public final class AppAccounts {
                 )
             } catch {
                 preconditionFailure("makeForTesting: \(error)")
+            }
+        }
+
+        /// UI tests' auth service: no network, no session; signing out ends nothing
+        /// more than the app's account, signing in is refused.
+        @MainActor
+        final class UITestingAuthRepository: AuthRepositoryProtocol {
+            func signIn(email _: String, password _: String) async throws -> Auth.Session {
+                throw URLError(.userAuthenticationRequired)
+            }
+
+            func signOut() async throws {}
+
+            func currentSession() async -> Auth.Session? {
+                nil
+            }
+
+            func authStateChanges() -> AsyncStream<AuthStateChange> {
+                AsyncStream { $0.finish() }
             }
         }
 

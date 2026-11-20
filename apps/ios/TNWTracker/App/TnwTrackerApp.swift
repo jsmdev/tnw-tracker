@@ -14,11 +14,14 @@ struct TnwTrackerApp: App {
                         // One view tree per account: nothing of one account's screens survives a switch (S10).
                         RootView()
                             .environment(env)
+                            .environment(accounts)
                             .id(env.userId)
                     } else {
                         LoginView { email, password in
                             _ = try await accounts.authRepository.signIn(email: email, password: password)
                         }
+                        .accessibilityElement(children: .contain)
+                        .accessibilityIdentifier(AXID.Login.screen)
                     }
                 } else {
                     ProgressView()
