@@ -15,6 +15,9 @@ struct RootView: View {
                 .navigationDestination(for: Route.self) { route in
                     destination(for: route)
                 }
+                .navigationDestination(for: ExercisesRoute.self) { _ in
+                    ExerciseListView(exerciseRepository: appEnv.exerciseRepository)
+                }
         }
         .fullScreenCover(item: $router.presentedActiveWorkout) { presentation in
             // El summary cover se anida AQUÍ (no a nivel del padre): SwiftUI
