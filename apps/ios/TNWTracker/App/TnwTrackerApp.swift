@@ -5,27 +5,50 @@ import TNWTrackerKit
 struct TnwTrackerApp: App {
     @State private var accounts: AppAccounts?
     @Environment(\.scenePhase) private var scenePhase
+    /// The splash stays at least this long, so its hand-over never reads as a flash.
+    @State private var splashMinimumElapsed = false
+
+    /// The splash until the saved session is known (and its minimum time is up),
+    /// then the account or the login: the login never shows to someone signed in.
+    private var route: LaunchRoute {
+        guard let accounts, splashMinimumElapsed else { return .splash }
+        return accounts.launchRoute
+    }
 
     var body: some Scene {
         WindowGroup {
             Group {
-                if let accounts {
-                    if let env = accounts.current {
-                        // One view tree per account: nothing of one account's screens survives a switch (S10).
-                        RootView()
-                            .environment(env)
-                            .environment(accounts)
-                            .id(env.userId)
-                    } else {
+                switch route {
+                case .splash:
+                    SplashView()
+                        .transition(.asymmetric(
+                            insertion: .identity,
+                            removal: .opacity.combined(with: .scale(scale: 1.15))
+                        ))
+                case .login:
+                    if let accounts {
                         LoginView { email, password in
                             _ = try await accounts.authRepository.signIn(email: email, password: password)
                         }
                         .accessibilityElement(children: .contain)
                         .accessibilityIdentifier(AXID.Login.screen)
+                        .transition(.opacity)
                     }
-                } else {
-                    ProgressView()
+                case .account:
+                    if let accounts, let env = accounts.current {
+                        // One view tree per account: nothing of one account's screens survives a switch (S10).
+                        RootView()
+                            .environment(env)
+                            .environment(accounts)
+                            .id(env.userId)
+                            .transition(.opacity)
+                    }
                 }
+            }
+            .animation(.easeOut(duration: 0.35), value: route)
+            .task {
+                try? await Task.sleep(for: .seconds(0.6))
+                splashMinimumElapsed = true
             }
             .task {
                 #if DEBUG
