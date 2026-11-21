@@ -120,6 +120,10 @@ public enum AXID {
         public static let screen = "login.screen"
     }
 
+    public enum Splash {
+        public static let screen = "splash.screen"
+    }
+
     public enum SetLog {
         public static let repsField = "setLog.repsField"
         public static let weightField = "setLog.weightField"

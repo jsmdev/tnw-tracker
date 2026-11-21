@@ -18,7 +18,13 @@ public final class SupabaseClientProvider {
         client = SupabaseClient(
             supabaseURL: url,
             supabaseKey: anonKey,
-            options: SupabaseClientOptions(global: .init(session: Self.makeURLSession()))
+            options: SupabaseClientOptions(
+                // The saved session opens its account at launch without waiting for the
+                // network: an expired one is refreshed afterwards, and a refused refresh
+                // signs out. Offline, the app opens on the saved session.
+                auth: .init(emitLocalSessionAsInitialSession: true),
+                global: .init(session: Self.makeURLSession())
+            )
         )
     }
 

@@ -1473,6 +1473,22 @@
         }
       }
     },
+    "splash.loading": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando"
+          }
+        }
+      }
+    },
     "summary.close-button": {
       "localizations": {
         "en": {

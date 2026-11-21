@@ -26,6 +26,10 @@ private let drainLogger = Logger(subsystem: "com.tnwtracker", category: "drain")
 public final class AppAccounts {
     /// The signed-in account; nil while signed out.
     public private(set) var current: AppEnvironment?
+    /// False until the auth service first answers whether a session was saved:
+    /// until then nobody is signed in yet, but the login must not show (it would
+    /// flash before the saved session opens its account).
+    public private(set) var isSessionResolved = false
 
     public let authRepository: any AuthRepositoryProtocol
     /// Connectivity (NWPathMonitor wrapper): the network coming back syncs (S3).
@@ -144,6 +148,8 @@ public final class AppAccounts {
         // traen el userId en el propio evento: re-consultar `auth.session` desde
         // aquí devuelve nil por reentrancy del actor de auth.
         case .signedIn, .initialSession:
+            // After the account opens (or closes): the splash gives way to the final screen.
+            defer { isSessionResolved = true }
             guard let userId = change.userId else {
                 // No session (one that expired while the app was closed): clear what an account left.
                 await closeCurrent()
@@ -159,6 +165,7 @@ public final class AppAccounts {
             logger.info("Auth: \(String(describing: change.event)) — cuenta abierta")
         case .signedOut:
             await closeCurrent()
+            isSessionResolved = true
             logger.info("Auth: signedOut")
         default:
             break
