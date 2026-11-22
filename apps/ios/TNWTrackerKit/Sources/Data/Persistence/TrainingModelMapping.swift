@@ -19,8 +19,20 @@ extension ExerciseModel {
             equipment: equipmentRaw.flatMap(Equipment.init(rawValue:)),
             muscleGroups: MuscleGroupModel.inOrder(muscleGroups).compactMap(\.snapshot),
             instructions: instructions.isEmpty ? nil : instructions,
-            media: media.isEmpty ? nil : media
+            media: media.isEmpty ? nil : media,
+            relatedVideos: relatedVideos
         )
+    }
+
+    /// The stored related videos; `nil` when there are none. Setting `nil` or an
+    /// empty list clears them.
+    var relatedVideos: [RelatedVideo]? {
+        get {
+            relatedVideosData.flatMap { try? JSONDecoder().decode([RelatedVideo].self, from: $0) }
+        }
+        set {
+            relatedVideosData = newValue.flatMap { $0.isEmpty ? nil : try? JSONEncoder().encode($0) }
+        }
     }
 }
 

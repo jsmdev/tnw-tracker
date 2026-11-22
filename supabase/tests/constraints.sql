@@ -2,7 +2,7 @@
 -- Each block names the format rule it covers (docs/training-data-format.md).
 BEGIN;
 
-SELECT plan(89);
+SELECT plan(101);
 
 INSERT INTO auth.users (
   id, instance_id, email, encrypted_password, email_confirmed_at,
@@ -395,6 +395,67 @@ SELECT throws_ok(
   $$ INSERT INTO public.exercises (user_id, name, type, setup_steps)
      VALUES ('00000000-0000-0000-0000-000000000001', 'No steps', 'strength', '{}') $$,
   '23514', NULL, 'an instruction list has at least one step'
+);
+SELECT lives_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'With videos', 'strength',
+             '[{"title":"Setup","url":"https://video.example/a","source":"Example"}, {"title":"Range","url":"https://video.example/b","source":"Example"}]') $$,
+  'an exercise lists related videos with a title, an https url and a source'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '{"title":"Setup","url":"https://video.example/a","source":"Example"}') $$,
+  '23514', NULL, 'related videos are a list, not an object'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[]') $$,
+  '23514', NULL, 'the list of related videos is never empty'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"http://video.example/a","source":"Example"}]') $$,
+  '23514', NULL, 'a related video url is https'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"","url":"https://video.example/a","source":"Example"}]') $$,
+  '23514', NULL, 'a related video has a title'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a"}]') $$,
+  '23514', NULL, 'a related video has a source'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a","source":"Example","extra":1}]') $$,
+  '23514', NULL, 'a related video has no other fields'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '["https://video.example/a"]') $$,
+  '23514', NULL, 'every related video is an object'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a","source":"Example"}, {"title":"Setup","url":"https://video.example/a","source":"Example"}]') $$,
+  '23514', NULL, 'no related video is listed twice'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":1,"url":"https://video.example/a","source":"Example"}]') $$,
+  '23514', NULL, 'a related video title is text'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a","source":1}]') $$,
+  '23514', NULL, 'a related video source is text'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a b","source":"Example"}]') $$,
+  '23514', NULL, 'a related video url has no spaces'
 );
 SELECT lives_ok(
   $$ INSERT INTO public.exercise_muscle_groups (exercise_id, muscle, role)

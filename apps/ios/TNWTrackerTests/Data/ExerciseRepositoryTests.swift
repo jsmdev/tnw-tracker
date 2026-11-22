@@ -27,7 +27,11 @@ struct ExerciseRepositoryTests {
                 execution: ["Pull.", "Release."],
                 tips: ["Slow."]
             ),
-            media: ExerciseMedia(imageURI: "exercises/row.jpg", videoURI: "https://media.example/row.mp4")
+            media: ExerciseMedia(imageURI: "exercises/row.jpg", videoURI: "https://media.example/row.mp4"),
+            relatedVideos: [
+                RelatedVideo(title: "Setup", url: "https://video.example/a", source: "Example"),
+                RelatedVideo(title: "Range", url: "https://video.example/b", source: "Example")
+            ]
         )
     }
 
@@ -50,7 +54,32 @@ struct ExerciseRepositoryTests {
         #expect(loaded.muscleGroups.isEmpty)
         #expect(loaded.instructions == nil)
         #expect(loaded.media == nil)
+        #expect(loaded.relatedVideos == nil)
         #expect(loaded.externalRef == nil)
+    }
+
+    @Test("#182 S9 related videos are kept when a save does not state them, replaced or cleared when it does")
+    func relatedVideosOptionalMeansUnknown() throws {
+        let base = full
+        try store.exercises.save(base)
+
+        var unstated = base
+        unstated.relatedVideos = nil
+        unstated.name = "Row"
+        try store.exercises.save(unstated)
+        let kept = try #require(try store.exercises.exercise(id: base.id))
+        #expect(kept.name == "Row")
+        #expect(kept.relatedVideos == base.relatedVideos, "a save without the field keeps them")
+
+        var replaced = base
+        replaced.relatedVideos = [RelatedVideo(title: "Grip", url: "https://video.example/c", source: "Example")]
+        try store.exercises.save(replaced)
+        #expect(try store.exercises.exercise(id: base.id)?.relatedVideos == replaced.relatedVideos)
+
+        var cleared = base
+        cleared.relatedVideos = []
+        try store.exercises.save(cleared)
+        #expect(try store.exercises.exercise(id: base.id)?.relatedVideos == nil, "an empty list clears them")
     }
 
     @Test("saving an existing id replaces its values and muscle groups")

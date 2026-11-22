@@ -3,7 +3,7 @@
 -- and the API roles have exactly the privileges they need.
 BEGIN;
 
-SELECT plan(74);
+SELECT plan(76);
 
 -- ---------------------------------------------------------------
 -- Old schema removed (S5)
@@ -191,6 +191,8 @@ SELECT col_type_is('public', 'sets', 'warmup', 'boolean', 'sets.warmup is a bool
 SELECT col_default_is('public', 'sets', 'warmup', 'false', 'sets.warmup defaults to false');
 SELECT col_not_null('public', 'sets', 'warmup', 'sets.warmup is never null');
 SELECT col_type_is('public', 'exercises', 'setup_steps', 'text[]', 'instruction steps are text arrays');
+SELECT has_column('public', 'exercises', 'related_videos', 'exercises.related_videos exists (format 1.1)');
+SELECT col_type_is('public', 'exercises', 'related_videos', 'jsonb', 'exercises.related_videos is jsonb');
 
 -- exercise_settings: per-user rest between sets (L15, AC7.1, AC7.2)
 SELECT col_is_pk('public', 'exercise_settings', ARRAY['user_id', 'exercise_id'], 'exercise_settings key is (user_id, exercise_id)');

@@ -56,6 +56,10 @@ final class SwiftDataExerciseRepository: ExerciseRepositoryProtocol {
         model.instructionsTips = instructions.map(\.tips).flatMap { $0.isEmpty ? nil : $0 }
         model.mediaImageURI = exercise.media?.imageURI
         model.mediaVideoURI = exercise.media?.videoURI
+        // Optional means unknown: a save that does not state them keeps them.
+        if let videos = exercise.relatedVideos {
+            model.relatedVideos = videos
+        }
 
         for old in model.muscleGroups {
             context.delete(old)
@@ -85,8 +89,29 @@ final class SwiftDataExerciseRepository: ExerciseRepositoryProtocol {
         if let media = exercise.media, media.imageURI == "" || media.videoURI == "" {
             throw TrainingDataError.invalidExercise("a media uri is empty")
         }
+        if let videos = exercise.relatedVideos {
+            try validate(videos)
+        }
         if let steps = exercise.instructions, (steps.setup + steps.execution + steps.tips).contains(where: \.isEmpty) {
             throw TrainingDataError.invalidExercise("an instruction step is empty")
+        }
+    }
+
+    /// `relatedVideo` of the format: a title, an `https` address with no spaces
+    /// and a source; no video twice.
+    private static func validate(_ videos: [RelatedVideo]) throws {
+        for video in videos {
+            guard !video.title.isEmpty, !video.source.isEmpty else {
+                throw TrainingDataError.invalidExercise("a related video needs a title and a source")
+            }
+            let address = video.url.dropFirst("https://".count)
+            guard video.url.hasPrefix("https://"), !address.isEmpty,
+                  !address.contains(where: \.isWhitespace) else {
+                throw TrainingDataError.invalidExercise("a related video url is not https")
+            }
+        }
+        guard Set(videos).count == videos.count else {
+            throw TrainingDataError.invalidExercise("related videos must be unique")
         }
     }
 }

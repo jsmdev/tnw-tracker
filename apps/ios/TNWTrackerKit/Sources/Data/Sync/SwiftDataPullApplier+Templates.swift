@@ -81,6 +81,8 @@ extension SwiftDataPullApplier {
         model.instructionsTips = row.tips
         model.mediaImageURI = row.imageURI
         model.mediaVideoURI = row.videoURI
+        // The server holds the curated list; `null` there means none.
+        model.relatedVideos = row.relatedVideos
         model.externalProvider = row.externalRef?.provider
         model.externalId = row.externalRef?.id
     }
