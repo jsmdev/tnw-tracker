@@ -17,11 +17,12 @@ struct HistoryScreen {
 
     @discardableResult
     func waitUntilLoaded(timeout: TimeInterval = 5) -> Self {
+        let tab = TabBar(app: app).button(.history)
         XCTAssertTrue(
-            app.tabBars.buttons[AXID.Tabs.history].waitForExistence(timeout: timeout),
+            tab.waitForExistence(timeout: timeout),
             "HistoryScreen did not load: the Historial tab is missing."
         )
-        XCTAssertTrue(app.tabBars.buttons[AXID.Tabs.history].isSelected, "the Historial tab is not selected")
+        XCTAssertTrue(tab.isSelected, "the Historial tab is not selected")
         return self
     }
 }

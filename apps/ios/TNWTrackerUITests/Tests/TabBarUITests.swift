@@ -8,24 +8,29 @@ final class TabBarUITests: XCTestCase {
     func test_tabsSwitchAndKeepTheirNavigation() throws {
         let app = launchUITestApp()
         let home = HomeScreen(app: app).waitUntilLoaded(timeout: 10)
-        let tabs = [AXID.Tabs.home, AXID.Tabs.history, AXID.Tabs.exercises]
-        for tab in tabs {
-            XCTAssertTrue(app.tabBars.buttons[tab].waitForExistence(timeout: 5), "tab \(tab) is in the tab bar")
+        let tabBar = TabBar(app: app)
+        for item in TabBar.Item.allCases {
+            XCTAssertTrue(tabBar.button(item).waitForExistence(timeout: 10), "tab \(item) is in the tab bar")
         }
-        XCTAssertTrue(app.tabBars.buttons[AXID.Tabs.home].isSelected)
+        XCTAssertEqual(app.tabBars.buttons.count, TabBar.Item.allCases.count)
+        XCTAssertTrue(tabBar.button(.home).isSelected)
         // Only the tab bar: Home's own contrast issues are tracked apart.
-        try app.auditAccessibility(screen: "home tab", only: Set(tabs))
+        // The identifiers the tab bar exposes (none on iOS 26.0): never "", which
+        // would bring every unidentified element of the screen into the audit.
+        let tabIds = Set(TabBar.Item.allCases.map { tabBar.button($0).identifier }.filter { !$0.isEmpty })
+        try app.auditAccessibility(screen: "home tab", only: tabIds)
 
         // Inicio → Ajustes, then away and back: Ajustes is still there.
         _ = home.tapSettings()
-        app.tabBars.buttons[AXID.Tabs.history].tap()
+        tabBar.select(.history)
         HistoryScreen(app: app).waitUntilLoaded()
-        try app.auditAccessibility(screen: "history tab", only: Set(tabs + [AXID.History.list]))
+        try app.auditAccessibility(screen: "history tab", only: tabIds.union([AXID.History.list]))
 
         _ = HomeScreen(app: app).openExercises()
+        XCTAssertTrue(tabBar.button(.exercises).isSelected)
         try app.auditAccessibility(screen: "exercises tab")
 
-        app.tabBars.buttons[AXID.Tabs.home].tap()
+        tabBar.select(.home)
         _ = SettingsScreen(app: app).waitUntilLoaded()
     }
 }

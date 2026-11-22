@@ -38,7 +38,7 @@ struct ExerciseListScreen {
     /// Back to Home with the navigation bar's back button.
     /// Back to Inicio through its tab: the list is the Ejercicios tab's root (#174).
     func openHomeTab() -> HomeScreen {
-        app.tabBars.buttons[AXID.Tabs.home].tap()
+        TabBar(app: app).select(.home)
         return HomeScreen(app: app).waitUntilLoaded()
     }
 }
