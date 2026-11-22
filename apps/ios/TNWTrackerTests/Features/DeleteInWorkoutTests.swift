@@ -90,7 +90,54 @@ struct DeleteInWorkoutTests {
         #expect(coordinator.currentEntry?.manualSets.isEmpty == true)
     }
 
+    @Test("after the undo window, deleting the set whose rest is running stops the rest")
+    func deleteRestingSetAfterUndoWindow() async throws {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        try await coordinator.recordSet(reps: 8, weight: nil, rir: nil)
+        // As if the 5 s undo window had run out.
+        coordinator.undoTask?.cancel()
+        coordinator.undoLastSetId = nil
+        let setId = try #require(coordinator.currentEntry?.manualSets.first?.id)
+
+        try await coordinator.deleteSet(id: setId)
+
+        #expect(coordinator.phase == .active)
+        #expect(coordinator.timerService.state == nil)
+        #expect(coordinator.restingSet == nil)
+        let stored = try fx.sessions.session(id: #require(coordinator.activeWorkoutId))
+        #expect(stored?.entries.allSatisfy { $0.manualSets.isEmpty } == true)
+    }
+
+    @Test("deleteSet refuses a set that is not in the session in progress")
+    func deleteSetOutsideSession() async throws {
+        let coordinator = try await sessionWithTwoSets()
+
+        await #expect(throws: TrainingDataError.notFound) {
+            try await coordinator.deleteSet(id: UUID())
+        }
+        #expect(coordinator.currentEntry?.manualSets.count == 2)
+    }
+
     // MARK: Remove an exercise
+
+    @Test("an exercise removed and added again gets a new entry: one removed, one done")
+    func removeThenAddAgain() async throws {
+        let coordinator = try await sessionWithTwoSets()
+        let removedId = try #require(coordinator.currentEntry?.id)
+        try await coordinator.removeExercise(entryId: removedId)
+
+        coordinator.addExercise(fx.squat.id)
+        try await coordinator.recordSet(reps: 5, weight: .kg(50), rir: nil)
+        await coordinator.skipTimer()
+
+        let stored = try fx.sessions.session(id: #require(coordinator.activeWorkoutId))
+        let squats = stored?.entries.filter { $0.exerciseId == fx.squat.id } ?? []
+        #expect(squats.map(\.status).sorted { $0.rawValue < $1.rawValue } == [.done, .removed])
+        #expect(squats.first { $0.status == .done }?.manualSets.map(\.values.reps) == [5])
+        #expect(coordinator.hasWorkingSets)
+    }
 
     @Test("removeExercise takes the exercise out: hidden, stored as removed, its sets do not count")
     func removeExerciseWithSets() async throws {

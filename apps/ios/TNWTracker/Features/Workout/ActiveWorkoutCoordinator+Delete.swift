@@ -14,7 +14,10 @@ extension ActiveWorkoutCoordinator {
         if setId == undoLastSetId {
             return try await undoLastSet()
         }
-        let exerciseId = entries.first { $0.sets.contains { $0.id == setId } }?.exerciseId
+        // Only a set of the session in progress.
+        guard let exerciseId = entries.first(where: { $0.sets.contains { $0.id == setId } })?.exerciseId else {
+            throw TrainingDataError.notFound
+        }
         let wasResting = restingSet?.setId == setId
         if wasResting { restingSet = nil }
         if setWithoutTimer?.setId == setId { setWithoutTimer = nil }
@@ -24,7 +27,7 @@ extension ActiveWorkoutCoordinator {
         try refreshSession()
         // An exercise the user picked stays in the session when its only set goes.
         keepPickedIfUnsaved(exerciseId)
-        if let exerciseId, let index = entries.firstIndex(where: { $0.exerciseId == exerciseId }) {
+        if let index = entries.firstIndex(where: { $0.exerciseId == exerciseId }) {
             currentExerciseIndex = index
         }
         if wasResting { await stopRest() }
