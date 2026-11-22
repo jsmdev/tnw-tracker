@@ -18,13 +18,32 @@ public enum AXID {
         public static let settingsButton = "home.settingsButton"
         /// "Ver todas" in "Otras rutinas": opens the routine list (T10).
         public static let seeAllRoutinesButton = "home.seeAllRoutinesButton"
-        /// Opens the exercises screen (#137 T2b).
-        public static let exercisesButton = "home.exercisesButton"
 
         /// A row of "Otras rutinas" (T10).
         public static func otherRoutine(_ routineId: UUID) -> String {
             "home.otherRoutine.\(routineId.uuidString)"
         }
+    }
+
+    /// The tab bar (#174).
+    public enum Tabs {
+        public static let home = "tabs.home"
+        public static let history = "tabs.history"
+        public static let exercises = "tabs.exercises"
+    }
+
+    /// The Historial tab (#174).
+    public enum History {
+        public static let list = "history.list"
+
+        public static func row(_ sessionId: UUID) -> String {
+            "history.row.\(sessionId.uuidString)"
+        }
+    }
+
+    /// "Sesión en curso" above the tab bar (#174 S5).
+    public enum SessionAccessory {
+        public static let button = "sessionAccessory.button"
     }
 
     /// Routine list (`SessionListView`).
