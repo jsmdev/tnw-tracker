@@ -74,7 +74,8 @@ jobs:
 
   ios-ui-tests:
     runs-on: macos-26
-    timeout-minutes: 30
+    # The UI suite took 26 minutes on its last green run and keeps growing.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
 
