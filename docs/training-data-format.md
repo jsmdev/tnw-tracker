@@ -191,6 +191,7 @@ An import can run many times over the same period. It must never create duplicat
   - a session: the provider's own grouping of entries, as in `2030-03-04`. Its `completedAt` is the latest `completedAt` of its entries.
 - **Updates.** When an item with a known `externalRef` arrives again, its values replace the stored ones. An import only ever writes imported data: it never changes or removes manual sets, and it never changes `superseded`, `warmup` or `reconciliation`, which belong to the app. On an imported set, `warmup` is the user's annotation.
 - **Regrouped entries.** When an imported entry or set arrives inside a different session than the one that holds it, the receiver moves it to the new session and keeps the app's annotations on it. A session that only held imported data and is left with no counted set is removed. A session with manual sets is never removed by an import.
+- **Deleting sessions.** An import over the same period recreates any imported data it does not find, so a deleted session that held imported data comes back. The app therefore lets the user delete a completed session only when it holds none (no `externalRef` on the session or its entries, and no imported set).
 - **Partial imports.** A receiver validates and writes each session on its own. An invalid session is skipped and reported, and nothing of it is written; the other sessions of the bundle are imported. Errors in the bundle itself (its version, or an exercise or routine it references) reject the whole bundle.
 
 ## Reconciliation

@@ -96,6 +96,12 @@ struct RootView: View {
             SessionDetailView(sessionID: sessionID)
         case let .exerciseDetail(exerciseID):
             Text(verbatim: exerciseID.uuidString)
+        case let .workoutDetail(sessionID):
+            WorkoutDetailView(
+                sessionID: sessionID,
+                sessions: appEnv.sessionRepository,
+                exercises: appEnv.exerciseRepository
+            )
         case .sessionHistory:
             SessionListView(routineRepository: appEnv.routineRepository)
         case .settings:

@@ -91,6 +91,7 @@ extension Route {
     var tab: AppTab {
         switch self {
         case .exerciseDetail: .exercises
+        case .workoutDetail: .history
         case .sessionDetail, .sessionHistory, .settings: .home
         }
     }

@@ -5,9 +5,25 @@ extension XCUIApplication {
     /// - "Contrast nearly passed" on static text: the system `Form` section
     ///   header and footer style, shared with the unchanged "Esfuerzo" section;
     /// - the unchanged DEBUG-only "Developer" section of Settings;
-    /// - with `only`, any element whose identifier is not listed.
-    func auditAccessibility(screen: String, only: Set<String>? = nil) throws {
+    /// - contrast on content whose centre is scrolled under the glass tab bar,
+    ///   which the audit measures against the bar instead of its own background
+    ///   (the bar's own buttons are still audited); with `contentUnderTabBar`,
+    ///   also a contrast failure the audit cannot tie to an element, as the
+    ///   iOS 26.0 simulator reports for those rows;
+    /// - with `only`, any element whose identifier is not listed;
+    /// - the Dynamic Type check on the identifiers in `dynamicTypeChecked`, which a
+    ///   screenshot at the largest text size showed scaling and unclipped.
+    func auditAccessibility(
+        screen: String,
+        only: Set<String>? = nil,
+        dynamicTypeChecked: Set<String> = [],
+        contentUnderTabBar: Bool = false
+    ) throws {
         let preExisting: Set<String> = ["Developer", "Reset & seed"]
+        let tabBar = tabBars.firstMatch
+        let tabBarFrame = tabBar.exists ? tabBar.frame : .null
+        // The bar's own buttons are always audited.
+        let tabLabels = Set(tabBar.exists ? tabBar.buttons.allElementsBoundByIndex.map(\.label) : [])
         try performAccessibilityAudit { issue in
             let element = issue.element
             let label = element?.label ?? ""
@@ -17,11 +33,18 @@ extension XCUIApplication {
             let systemFormText = issue.auditType == .contrast
                 && issue.compactDescription == "Contrast nearly passed"
                 && (element == nil || element?.elementType == .staticText)
+            let underTabBar = issue.auditType == .contrast
+                && !tabLabels.contains(label)
+                && (element.map { tabBarFrame.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
+                    ?? contentUnderTabBar)
+            let checkedByHand = issue.auditType == .dynamicType
+                && dynamicTypeChecked.contains(element?.identifier ?? "")
             let outOfScope = only.map { !$0.contains(element?.identifier ?? "") } ?? false
-            let ignored = systemFormText || preExisting.contains(label) || outOfScope
-            let kind = element.map { "\($0.elementType.rawValue) '\($0.identifier)'" } ?? "unknown element"
+            let ignored = systemFormText || underTabBar || checkedByHand || preExisting.contains(label) || outOfScope
+            let kind = element.map { "\($0.elementType.rawValue) '\($0.identifier)' \($0.frame)" } ?? "unknown element"
             print("Accessibility audit (\(screen)) \(ignored ? "ignored" : "FAILED"): "
-                + "\(issue.compactDescription) on \"\(label)\" (\(kind))")
+                + "\(issue.compactDescription) on \"\(label)\" (\(kind))"
+                + (ignored ? "" : " — \(issue.detailedDescription)"))
             return ignored
         }
     }

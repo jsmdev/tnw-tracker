@@ -203,6 +203,15 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         try context.save()
     }
 
+    func deleteCompletedSession(id: UUID) throws {
+        guard let session = try context.fetchSession(id: id) else { throw TrainingDataError.notFound }
+        guard session.completedAt != nil else { throw TrainingDataError.sessionInProgress }
+        guard !session.snapshot.hasImportedData else { throw TrainingDataError.sessionHasImportedData }
+        try context.recordDeletion(of: session)
+        context.delete(session)
+        try context.save()
+    }
+
     func finishSession(id: UUID, at date: Date, durationSeconds: Int?) throws -> TrainingSession {
         let session = try openSession(id)
         if let startedAt = session.startedAt, date < startedAt {

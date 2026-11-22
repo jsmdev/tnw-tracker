@@ -57,4 +57,45 @@ struct HistoryListModelTests {
         let session = try finishedSession(name: "One", days: 0)
         #expect(HistoryListModel.exerciseCount(session) == 1)
     }
+
+    @Test("deleting a workout drops it from the list and from the store (#174 S7)")
+    func deleteDropsTheWorkout() async throws {
+        let kept = try finishedSession(name: "Kept", days: 0)
+        let deleted = try finishedSession(name: "Deleted", days: 1)
+        let model = HistoryListModel(sessions: fx.sessions, now: { TrainingFixtures.t0.addingTimeInterval(4 * 86_400) })
+        await model.load()
+        #expect(HistoryListModel.canDelete(deleted))
+
+        try model.delete(deleted.id)
+
+        #expect(model.sessions.map(\.id) == [kept.id])
+        #expect(try fx.sessions.session(id: deleted.id) == nil)
+        await model.load()
+        #expect(model.sessions.map(\.id) == [kept.id])
+    }
+
+    @Test("a workout with machine data offers no delete, and stays when asked to (#174 S7)")
+    func importedWorkoutIsKept() async throws {
+        let workout = try finishedSession(name: "Mixed", days: 0)
+        let open = try fx.sessions.startSession(
+            routineId: nil, name: "Open", at: TrainingFixtures.t0.addingTimeInterval(86_400),
+            timeZone: TrainingFixtures.zone
+        )
+        try fx.sessions.importEntry(
+            ImportedEntry(exerciseId: fx.press.id, externalRef: fx.ref("e-1"), sets: [
+                ImportedSet(externalRef: fx.ref("e-1#1"), order: 1, values: SetValues(reps: 10, weight: .kg(40)))
+            ]),
+            into: open.id
+        )
+        let mixed = try fx.sessions.finishSession(
+            id: open.id, at: TrainingFixtures.t0.addingTimeInterval(86_400 + 900), durationSeconds: nil
+        )
+        let model = HistoryListModel(sessions: fx.sessions, now: { TrainingFixtures.t0.addingTimeInterval(4 * 86_400) })
+        await model.load()
+
+        #expect(HistoryListModel.canDelete(workout))
+        #expect(HistoryListModel.canDelete(mixed) == false)
+        #expect(throws: TrainingDataError.sessionHasImportedData) { try model.delete(mixed.id) }
+        #expect(model.sessions.map(\.id) == [mixed.id, workout.id])
+    }
 }

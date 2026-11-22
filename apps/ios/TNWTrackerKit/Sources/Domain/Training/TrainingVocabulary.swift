@@ -120,4 +120,8 @@ public enum TrainingDataError: Error, Equatable, Sendable {
     case sessionAlreadyCompleted
     case entryNotMixed
     case entryHasSets
+    /// A command for completed sessions got one still in progress.
+    case sessionInProgress
+    /// The session holds imported data, which the next import would bring back.
+    case sessionHasImportedData
 }

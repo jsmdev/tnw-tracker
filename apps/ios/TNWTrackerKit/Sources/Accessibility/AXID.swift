@@ -39,6 +39,27 @@ public enum AXID {
         public static func row(_ sessionId: UUID) -> String {
             "history.row.\(sessionId.uuidString)"
         }
+
+        /// The swipe action that deletes a finished workout (#174 S7).
+        public static let deleteAction = "history.deleteAction"
+    }
+
+    /// A finished workout of the history (#174 S7).
+    public enum WorkoutDetail {
+        public static let list = "workoutDetail.list"
+        public static let deleteButton = "workoutDetail.deleteButton"
+        /// Why a workout with machine data has no delete button.
+        public static let importedNote = "workoutDetail.importedNote"
+
+        public static func exercise(_ entryId: UUID) -> String {
+            "workoutDetail.exercise.\(entryId.uuidString)"
+        }
+    }
+
+    /// The confirmation shown before deleting a finished workout (#174 S7).
+    public enum DeleteWorkout {
+        public static let confirm = "deleteWorkout.confirm"
+        public static let cancel = "deleteWorkout.cancel"
     }
 
     /// "Sesión en curso" above the tab bar (#174 S5).

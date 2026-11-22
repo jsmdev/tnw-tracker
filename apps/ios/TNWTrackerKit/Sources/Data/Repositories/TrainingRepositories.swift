@@ -95,6 +95,12 @@ public protocol SessionRepositoryProtocol: AnyObject {
     /// without any entry (the format needs at least one).
     func discardSession(id: UUID) throws
 
+    /// Deletes a completed session with its entries and sets, leaving a sync
+    /// tombstone when it reached the server. Throws `sessionInProgress` for a
+    /// session in progress and `sessionHasImportedData` when it holds imported
+    /// data (`TrainingSession.hasImportedData`): the next import would bring it back.
+    func deleteCompletedSession(id: UUID) throws
+
     /// Completes the session. `durationSeconds` is clamped to the time between
     /// start and end; an entry `completedAt` later than the end is dropped
     /// (rule `range`). Throws for an end before the start or a session without entries.
