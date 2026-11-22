@@ -196,7 +196,16 @@ struct FormatRuleTests {
 
     // MARK: - Exercise fields and external refs
 
-    @Test("exercise: muscle groups are unique, media URIs and instruction steps are not empty")
+    private func video(
+        title: String = "Setup", url: String = "https://video.example/a", source: String = "Example"
+    ) -> RelatedVideo {
+        RelatedVideo(title: title, url: url, source: source)
+    }
+
+    @Test("""
+    exercise: muscle groups are unique, media URIs and instruction steps are not empty; related videos \
+    have a title, an https url and a source, and are unique
+    """)
     func exerciseFieldRules() {
         let invalid = [
             Exercise(name: "X", type: .strength, muscleGroups: [
@@ -204,7 +213,13 @@ struct FormatRuleTests {
             ]),
             Exercise(name: "X", type: .strength, media: ExerciseMedia(imageURI: "")),
             Exercise(name: "X", type: .strength, media: ExerciseMedia(videoURI: "")),
-            Exercise(name: "X", type: .strength, instructions: ExerciseInstructions(setup: [""]))
+            Exercise(name: "X", type: .strength, instructions: ExerciseInstructions(setup: [""])),
+            Exercise(name: "X", type: .strength, relatedVideos: [video(title: "")]),
+            Exercise(name: "X", type: .strength, relatedVideos: [video(source: "")]),
+            Exercise(name: "X", type: .strength, relatedVideos: [video(url: "http://video.example/a")]),
+            Exercise(name: "X", type: .strength, relatedVideos: [video(url: "https://")]),
+            Exercise(name: "X", type: .strength, relatedVideos: [video(url: "https://video.example/a b")]),
+            Exercise(name: "X", type: .strength, relatedVideos: [video(), video()])
         ]
         for exercise in invalid {
             #expect(throws: TrainingDataError.self) { try fx.exercises.save(exercise) }

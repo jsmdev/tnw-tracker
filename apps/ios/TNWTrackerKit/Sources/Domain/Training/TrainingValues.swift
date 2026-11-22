@@ -56,6 +56,9 @@ public struct Exercise: Identifiable, Hashable, Sendable {
     public var muscleGroups: [MuscleGroup]
     public var instructions: ExerciseInstructions?
     public var media: ExerciseMedia?
+    /// Curated external videos, in order. `nil` means unknown: saving an
+    /// exercise without them keeps the ones stored; an empty list clears them.
+    public var relatedVideos: [RelatedVideo]?
     /// True for a catalogue exercise: a curated app exercise shared with every user.
     /// A catalogue exercise never has an `externalRef`.
     public var isCatalogue: Bool
@@ -69,7 +72,8 @@ public struct Exercise: Identifiable, Hashable, Sendable {
         equipment: Equipment? = nil,
         muscleGroups: [MuscleGroup] = [],
         instructions: ExerciseInstructions? = nil,
-        media: ExerciseMedia? = nil
+        media: ExerciseMedia? = nil,
+        relatedVideos: [RelatedVideo]? = nil
     ) {
         self.id = id
         self.externalRef = externalRef
@@ -80,6 +84,7 @@ public struct Exercise: Identifiable, Hashable, Sendable {
         self.muscleGroups = muscleGroups
         self.instructions = instructions
         self.media = media
+        self.relatedVideos = relatedVideos
     }
 
     /// True for an exercise imported from a provider: it has an `externalRef`.

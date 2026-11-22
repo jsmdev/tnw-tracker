@@ -208,6 +208,37 @@
               "$ref": "#/$defs/mediaRef"
             }
           }
+        },
+        "relatedVideos": {
+          "description": "External videos that explain the exercise, curated with the catalogue. Since 1.1.",
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/relatedVideo"
+          }
+        }
+      }
+    },
+    "relatedVideo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "url", "source"],
+      "properties": {
+        "title": {
+          "description": "Our own title, shown instead of the URL.",
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "description": "Web address of the video. HTTPS only.",
+          "type": "string",
+          "pattern": "^https://[^\\s]+$"
+        },
+        "source": {
+          "description": "Name of the site the video is on, shown to the user (for example YouTube).",
+          "type": "string",
+          "minLength": 1
         }
       }
     },

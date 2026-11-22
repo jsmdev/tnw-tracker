@@ -5,7 +5,7 @@ This document defines the provider-neutral format the app uses for exercises, ro
 - **Schema:** [`training-data/schema.json`](training-data/schema.json) (JSON Schema 2020-12)
 - **Examples:** [`training-data/examples/`](training-data/examples), all with invented data
 - **Validator:** [`training-data/validate.py`](training-data/validate.py)
-- **Format version:** 1.0
+- **Format version:** 1.1 (1.1 adds `relatedVideos` to the exercise; a 1.0 bundle is still valid)
 
 ## Why it exists
 
@@ -60,16 +60,19 @@ There are two kinds of bundle, and they differ only in what they contain:
 
 ### Exercise
 
-| Field          | Required | Meaning                                                                                |
-| -------------- | -------- | -------------------------------------------------------------------------------------- |
-| `id`           | yes      | UUID.                                                                                  |
-| `externalRef`  | no       | Identity in the provider's catalogue.                                                  |
-| `name`         | yes      | Display name.                                                                          |
-| `type`         | yes      | `strength`, `bodyweight` or `cardio`. Decides how the exercise is logged.              |
-| `equipment`    | no       | `none`, `free_weights`, `machine`, `connected_machine`, `cardio_machine` or `other`.   |
-| `muscleGroups` | no       | List of `{ muscle, role }`, with `role` being `primary` or `secondary`.                |
-| `instructions` | no       | `setup`, `execution` and `tips`, each a list of steps.                                 |
-| `media`        | no       | `image` and `video`, each with a `uri`: absolute, or relative to an agreed media root. |
+| Field           | Required | Meaning                                                                                   |
+| --------------- | -------- | ----------------------------------------------------------------------------------------- |
+| `id`            | yes      | UUID.                                                                                     |
+| `externalRef`   | no       | Identity in the provider's catalogue.                                                     |
+| `name`          | yes      | Display name.                                                                             |
+| `type`          | yes      | `strength`, `bodyweight` or `cardio`. Decides how the exercise is logged.                 |
+| `equipment`     | no       | `none`, `free_weights`, `machine`, `connected_machine`, `cardio_machine` or `other`.      |
+| `muscleGroups`  | no       | List of `{ muscle, role }`, with `role` being `primary` or `secondary`.                   |
+| `instructions`  | no       | `setup`, `execution` and `tips`, each a list of steps.                                    |
+| `media`         | no       | `image` and `video`, each with a `uri`: absolute, or relative to an agreed media root.    |
+| `relatedVideos` | no       | Since 1.1. External videos that explain the exercise: a list of `{ title, url, source }`. |
+
+`relatedVideos` are curated with the catalogue, not written by the user: `title` is our own title, shown instead of the address; `url` is an `https` address; `source` is the name of the site shown to the user (for example YouTube). The list is never empty, and an exercise without the field keeps the videos the receiver already holds for it (principle: optional means unknown).
 
 `connected_machine` marks the exercises whose sets can arrive by import, so the app knows where reconciliation may apply.
 
@@ -243,14 +246,14 @@ The validator does not check that a `timeZone` exists in the IANA database, that
 
 ## Examples
 
-| File                                   | Shows                                                                        |
-| -------------------------------------- | ---------------------------------------------------------------------------- |
-| `connected-machine-strength.json`      | An importer's bundle: no per-set timestamp, derived ids, time under load.    |
-| `routine-session.json`                 | A routine and a session from it: a warm-up set, a swap, a skip, a removal.   |
-| `bodyweight-and-timed-sets.json`       | A free session with sets that have reps but no weight, and timed sets.       |
-| `cardio.json`                          | Imported cardio in three segments, and manual cardio with only a duration.   |
-| `exercise-without-catalogue-data.json` | An exercise the provider has no catalogue record for.                        |
-| `reconciliation.json`                  | Manual and imported sets in one entry, kept by default and kept by the user. |
+| File                                   | Shows                                                                                      |
+| -------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `connected-machine-strength.json`      | An importer's bundle: no per-set timestamp, derived ids, time under load, a related video. |
+| `routine-session.json`                 | A routine and a session from it: a warm-up set, a swap, a skip, a removal.                 |
+| `bodyweight-and-timed-sets.json`       | A free session with sets that have reps but no weight, and timed sets.                     |
+| `cardio.json`                          | Imported cardio in three segments, and manual cardio with only a duration.                 |
+| `exercise-without-catalogue-data.json` | An exercise the provider has no catalogue record for.                                      |
+| `reconciliation.json`                  | Manual and imported sets in one entry, kept by default and kept by the user.               |
 
 ## Assumptions and open decisions
 

@@ -65,6 +65,8 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     var instructionsTips: [String]?
     var mediaImageURI: String?
     var mediaVideoURI: String?
+    /// `relatedVideos` (format 1.1) as JSON, `nil` when none; optional, so it migrates lightly.
+    var relatedVideosData: Data?
 
     // Sync state (app-local, see `ModelContext+SyncTracking.swift`): the revision
     // grows with every local change, `syncedRevision` is the last one the server

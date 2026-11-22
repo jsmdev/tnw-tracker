@@ -128,7 +128,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
 
     /// Writes a row as another client would (an importer, another device).
     func insertOnServer<Row: RemoteRow>(_ row: Row) throws {
-        try write([row])
+        try write([row], asClient: false)
     }
 
     /// Deletes rows as another client would (an importer, another device),
@@ -185,20 +185,20 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
             try remove(.entries, ids: removed.filter { !kept.contains($0) })
             touch(entries: kept)
         }
-        try run(.session) { try write([aggregate.session]) }
+        try run(.session) { try write([aggregate.session], asClient: true) }
         if let action = duringNextPush {
             duringNextPush = nil
             await action()
         }
-        try run(.entries) { try write(aggregate.entries) }
-        try run(.sets) { try write(aggregate.sets) }
+        try run(.entries) { try write(aggregate.entries, asClient: true) }
+        try run(.sets) { try write(aggregate.sets, asClient: true) }
     }
 
     func upsert<Row: RemoteRow>(_ rows: [Row]) async throws {
         try Task.checkCancellation()
         calls.append(.upsert(Row.table, count: rows.count))
         try throwIfFailing(.upsert)
-        try write(rows)
+        try write(rows, asClient: true)
         if let hook = duringNextUpsert, hook.table == Row.table {
             duringNextUpsert = nil
             await hook.action()
@@ -261,7 +261,9 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     }
 
     /// One statement: every row gets the same new `updated_at`, or none is written.
-    private func write<Row: RemoteRow>(_ rows: [Row]) throws {
+    /// `asClient`: an app upsert, which never sends the columns the app only
+    /// reads (`related_videos`); like the server, the stored value stays.
+    private func write<Row: RemoteRow>(_ rows: [Row], asClient: Bool) throws {
         guard !rows.isEmpty else { return }
         for row in rows {
             try check(row)
@@ -273,6 +275,10 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         let now = Self.timestamp(clock)
         for var row in rows {
             row.updatedAt = now
+            if asClient, var exercise = row as? RemoteExerciseRow {
+                exercise.relatedVideos = (tables[Row.table]?[row.id] as? RemoteExerciseRow)?.relatedVideos
+                if let typed = exercise as? Row { row = typed }
+            }
             tables[Row.table, default: [:]][row.id] = row
         }
         clearTombstones(Row.table, ids: inserted)

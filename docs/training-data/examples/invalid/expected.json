@@ -62,5 +62,9 @@
   "duration-longer-than-session.json": {
     "rule": "range",
     "path": "/sessions/0/durationSeconds"
+  },
+  "related-video-without-https.json": {
+    "rule": "schema:pattern",
+    "path": "/exercises/0/relatedVideos/0/url"
   }
 }
