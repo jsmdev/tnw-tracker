@@ -86,6 +86,9 @@ public enum AXID {
         public static let setWarmupToggle = "activeWorkout.setWarmupToggle"
         public static let exerciseOptionsMenu = "activeWorkout.exerciseOptionsMenu"
         public static let exerciseRestButton = "activeWorkout.exerciseRestButton"
+        public static let deleteSetButton = "activeWorkout.deleteSetButton"
+        public static let removeExerciseButton = "activeWorkout.removeExerciseButton"
+        public static let removeExerciseConfirm = "activeWorkout.removeExerciseConfirm"
         /// Closes the workout screen and leaves the session in progress.
         public static let minimizeButton = "activeWorkout.minimizeButton"
     }

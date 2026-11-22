@@ -20,6 +20,8 @@ struct ActiveWorkoutView: View {
     @State private var exerciseNames: [UUID: String] = [:]
     /// "No has registrado ninguna serie" prompt (T6 AC6.1).
     @State private var showDiscardPrompt = false
+    /// The exercise waiting for "Quitar ejercicio" to be confirmed.
+    @State private var exerciseToRemove: SessionEntry?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -53,6 +55,19 @@ struct ActiveWorkoutView: View {
             .accessibilityIdentifier(AXID.DiscardWorkout.discardButton)
             Button("active-workout.discard.keep", role: .cancel) {}
                 .accessibilityIdentifier(AXID.DiscardWorkout.keepTrainingButton)
+        }
+        .alert(
+            "active-workout.remove-exercise.title",
+            isPresented: Binding(get: { exerciseToRemove != nil }, set: { if !$0 { exerciseToRemove = nil } }),
+            presenting: exerciseToRemove
+        ) { exercise in
+            Button("active-workout.remove-exercise.confirm", role: .destructive) {
+                Task { try? await coordinator.removeExercise(entryId: exercise.id) }
+            }
+            .accessibilityIdentifier(AXID.ActiveWorkout.removeExerciseConfirm)
+            Button("active-workout.remove-exercise.cancel", role: .cancel) {}
+        } message: { _ in
+            Text("active-workout.remove-exercise.message")
         }
         .sheet(item: $restItem) { item in
             ExerciseRestSheet(item: item) { setting in
@@ -186,6 +201,13 @@ struct ActiveWorkoutView: View {
                 Label("exercise-rest.title", systemImage: "timer")
             }
             .accessibilityIdentifier(AXID.ActiveWorkout.exerciseRestButton)
+
+            Button(role: .destructive) {
+                exerciseToRemove = exercise
+            } label: {
+                Label("active-workout.exercise.remove-button", systemImage: "minus.circle")
+            }
+            .accessibilityIdentifier(AXID.ActiveWorkout.removeExerciseButton)
         } label: {
             Image(systemName: "ellipsis.circle")
                 .font(.title3)
@@ -223,6 +245,13 @@ struct ActiveWorkoutView: View {
                         set: { try? coordinator.setWarmup($0, setId: set.id) }
                     ))
                     .accessibilityIdentifier(AXID.ActiveWorkout.setWarmupToggle)
+
+                    Button(role: .destructive) {
+                        Task { try? await coordinator.deleteSet(id: set.id) }
+                    } label: {
+                        Label("active-workout.set.delete-button", systemImage: "trash")
+                    }
+                    .accessibilityIdentifier(AXID.ActiveWorkout.deleteSetButton)
                 }
                 .transition(.asymmetric(
                     insertion: .move(edge: .bottom).combined(with: .opacity),
