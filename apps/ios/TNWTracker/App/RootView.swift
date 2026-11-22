@@ -4,20 +4,48 @@ import TNWTrackerKit
 struct RootView: View {
     @Environment(AppEnvironment.self) private var appEnv
     @Environment(\.scenePhase) private var scenePhase
+    /// The workout left in progress, shown above the tab bar while its screen is closed.
+    @State private var sessionInProgress: TrainingSession?
 
     var body: some View {
         @Bindable var router = appEnv.router
-        NavigationStack(path: $router.path) {
-            HomeView(
-                sessionRepository: appEnv.sessionRepository,
-                routineRepository: appEnv.routineRepository
-            )
-                .navigationDestination(for: Route.self) { route in
-                    destination(for: route)
+        TabView(selection: $router.selectedTab) {
+            Tab("tab.home", systemImage: "house", value: AppTab.home) {
+                NavigationStack(path: $router.homePath) {
+                    HomeView(
+                        sessionRepository: appEnv.sessionRepository,
+                        routineRepository: appEnv.routineRepository
+                    )
+                    .navigationDestination(for: Route.self) { destination(for: $0) }
                 }
-                .navigationDestination(for: ExercisesRoute.self) { _ in
+            }
+            .accessibilityIdentifier(AXID.Tabs.home)
+
+            Tab("tab.history", systemImage: "clock.arrow.circlepath", value: AppTab.history) {
+                NavigationStack(path: $router.historyPath) {
+                    HistoryListView(sessionRepository: appEnv.sessionRepository)
+                        .navigationDestination(for: Route.self) { destination(for: $0) }
+                }
+            }
+            .accessibilityIdentifier(AXID.Tabs.history)
+
+            Tab("tab.exercises", systemImage: "dumbbell", value: AppTab.exercises) {
+                NavigationStack(path: $router.exercisesPath) {
                     ExerciseListView(exerciseRepository: appEnv.exerciseRepository)
+                        .navigationDestination(for: Route.self) { destination(for: $0) }
                 }
+            }
+            .accessibilityIdentifier(AXID.Tabs.exercises)
+        }
+        .tabViewStyle(.sidebarAdaptable)
+        // The bar shrinks while scrolling down and comes back on scrolling up (#174 S3).
+        .tabBarMinimizeBehavior(.onScrollDown)
+        .modifier(SessionAccessoryModifier(session: showsSessionAccessory ? sessionInProgress : nil) { session in
+            router.presentedActiveWorkout = ActiveWorkoutPresentation(id: session.id)
+        })
+        .task { refreshSessionInProgress() }
+        .onChange(of: router.presentedActiveWorkout == nil) { _, _ in
+            refreshSessionInProgress()
         }
         .fullScreenCover(item: $router.presentedActiveWorkout) { presentation in
             // El summary cover se anida AQUÍ (no a nivel del padre): SwiftUI
@@ -48,8 +76,17 @@ struct RootView: View {
             // app was backgrounded / suspended.
             if newPhase == .active {
                 appEnv.sceneDidBecomeActive()
+                refreshSessionInProgress()
             }
         }
+    }
+
+    private var showsSessionAccessory: Bool {
+        sessionInProgress != nil && appEnv.router.presentedActiveWorkout == nil
+    }
+
+    private func refreshSessionInProgress() {
+        sessionInProgress = (try? appEnv.sessionRepository.activeSession()) ?? nil
     }
 
     @ViewBuilder

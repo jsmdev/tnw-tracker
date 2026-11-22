@@ -45,15 +45,6 @@ struct HomeView: View {
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
-                    appEnv.router.showExercises()
-                } label: {
-                    Image(systemName: "dumbbell")
-                }
-                .accessibilityLabel("a11y.exercises-button")
-                .accessibilityIdentifier(AXID.Home.exercisesButton)
-            }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
                     appEnv.router.push(.settings)
                 } label: {
                     Image(systemName: "gearshape")

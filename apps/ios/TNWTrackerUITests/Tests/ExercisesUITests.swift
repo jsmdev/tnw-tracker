@@ -1,7 +1,7 @@
 import TNWTrackerKit
 import XCTest
 
-/// #137 S7, T2b: Home opens "Exercises", which lists the account's exercises by
+/// #137 S7, T2b, #174: the Ejercicios tab opens "Exercises", which lists the account's exercises by
 /// name; a row opens the exercise's sheet with its how-to steps, its muscles
 /// and its image or a placeholder. Invented sample data and an invented image;
 /// accessibility audit on each screen.
@@ -33,6 +33,6 @@ final class ExercisesUITests: XCTestCase {
         XCTAssertTrue(press.image.waitForExistence(timeout: 5), "the invented image shows")
         try app.auditAccessibility(screen: "exercise sheet, image")
 
-        _ = press.close().back()
+        _ = press.close().openHomeTab()
     }
 }

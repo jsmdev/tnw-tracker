@@ -22,9 +22,9 @@ struct HomeScreen {
         app.buttons[AXID.Home.settingsButton]
     }
 
-    /// Opens the exercises screen (#137 T2b).
-    var exercisesButton: XCUIElement {
-        app.buttons[AXID.Home.exercisesButton]
+    /// The Ejercicios tab (#174).
+    var exercisesTab: XCUIElement {
+        app.tabBars.buttons[AXID.Tabs.exercises]
     }
 
     /// "Entrenamiento libre": a session without a routine (#137 S5).
@@ -93,9 +93,9 @@ struct HomeScreen {
         return SettingsScreen(app: app).waitUntilLoaded()
     }
 
-    /// Opens the exercises screen from the navigation bar (#137 T2b).
+    /// Opens the exercises screen from its tab (#174).
     func openExercises() -> ExerciseListScreen {
-        exercisesButton.tap()
+        exercisesTab.tap()
         return ExerciseListScreen(app: app).waitUntilLoaded()
     }
 
