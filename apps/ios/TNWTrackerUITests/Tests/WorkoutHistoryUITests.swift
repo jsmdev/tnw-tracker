@@ -40,7 +40,8 @@ final class WorkoutHistoryUITests: XCTestCase {
         // (checked by hand); the audit still reports it as partially unsupported.
         try app.auditAccessibility(
             screen: "workout detail (machine data)",
-            dynamicTypeChecked: [AXID.WorkoutDetail.importedNote]
+            dynamicTypeChecked: [AXID.WorkoutDetail.importedNote],
+            contentUnderTabBar: true
         )
 
         let list = detail.back().waitUntilLoaded()
@@ -57,7 +58,9 @@ final class WorkoutHistoryUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Rowing Machine"].exists, "a removed exercise is not shown")
         XCTAssertFalse(detail.importedNote.exists)
         attachScreenshot(of: app, named: "manual workout detail")
-        try app.auditAccessibility(screen: "workout detail")
+        // The sets run under the tab bar (see the screenshot); iOS 26.0 reports
+        // those rows without an element.
+        try app.auditAccessibility(screen: "workout detail", contentUnderTabBar: true)
 
         let back = detail.delete()
         _ = back.waitUntilLoaded()

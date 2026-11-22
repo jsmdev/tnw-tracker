@@ -7,14 +7,17 @@ extension XCUIApplication {
     /// - the unchanged DEBUG-only "Developer" section of Settings;
     /// - contrast on content whose centre is scrolled under the glass tab bar,
     ///   which the audit measures against the bar instead of its own background
-    ///   (the bar's own buttons are still audited);
+    ///   (the bar's own buttons are still audited); with `contentUnderTabBar`,
+    ///   also a contrast failure the audit cannot tie to an element, as the
+    ///   iOS 26.0 simulator reports for those rows;
     /// - with `only`, any element whose identifier is not listed;
     /// - the Dynamic Type check on the identifiers in `dynamicTypeChecked`, which a
     ///   screenshot at the largest text size showed scaling and unclipped.
     func auditAccessibility(
         screen: String,
         only: Set<String>? = nil,
-        dynamicTypeChecked: Set<String> = []
+        dynamicTypeChecked: Set<String> = [],
+        contentUnderTabBar: Bool = false
     ) throws {
         let preExisting: Set<String> = ["Developer", "Reset & seed"]
         let tabBar = tabBars.firstMatch
@@ -31,8 +34,9 @@ extension XCUIApplication {
                 && issue.compactDescription == "Contrast nearly passed"
                 && (element == nil || element?.elementType == .staticText)
             let underTabBar = issue.auditType == .contrast
-                && element.map { tabBarFrame.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) } == true
                 && !tabLabels.contains(label)
+                && (element.map { tabBarFrame.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
+                    ?? contentUnderTabBar)
             let checkedByHand = issue.auditType == .dynamicType
                 && dynamicTypeChecked.contains(element?.identifier ?? "")
             let outOfScope = only.map { !$0.contains(element?.identifier ?? "") } ?? false
