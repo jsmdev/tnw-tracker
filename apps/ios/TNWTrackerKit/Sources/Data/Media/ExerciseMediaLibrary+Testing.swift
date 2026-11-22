@@ -34,10 +34,12 @@
             library(source: InventedExerciseMediaSource())
         }
 
-        /// UI tests: the sample data's image (`SampleTrainingData`) is an invented PNG.
+        /// UI tests: the sample data's image (`SampleTrainingData`) is an invented
+        /// PNG, and its video invented bytes the player shows without playing.
         public static func sampleForUITesting() -> ExerciseMediaLibrary {
             library(source: InventedExerciseMediaSource(objects: [
-                "exercises/chest-press.jpg": InventedExerciseMediaSource.inventedImage()
+                "exercises/chest-press.jpg": InventedExerciseMediaSource.inventedImage(),
+                "exercises/chest-press.mp4": Data([0, 0, 0, 0x18]) + Data("ftypmp42".utf8)
             ]))
         }
 

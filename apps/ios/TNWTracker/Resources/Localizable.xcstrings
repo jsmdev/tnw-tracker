@@ -3643,6 +3643,23 @@
           }
         }
       }
+    },
+    "exercise-sheet.video.show": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Watch video"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ver vídeo"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

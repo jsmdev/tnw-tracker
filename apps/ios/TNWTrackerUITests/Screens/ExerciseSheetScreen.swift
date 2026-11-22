@@ -22,6 +22,22 @@ struct ExerciseSheetScreen {
         app.descendants(matching: .any)[AXID.ExerciseSheet.placeholder]
     }
 
+    var videoToggle: XCUIElement {
+        app.descendants(matching: .any)[AXID.ExerciseSheet.videoToggle].firstMatch
+    }
+
+    var video: XCUIElement {
+        app.descendants(matching: .any)[AXID.ExerciseSheet.video]
+    }
+
+    /// Opens or closes the "Watch video" section.
+    func toggleVideo() {
+        let button = app.buttons.matching(
+            NSPredicate(format: "identifier == %@", AXID.ExerciseSheet.videoToggle)
+        ).firstMatch
+        (button.exists ? button : videoToggle).tap()
+    }
+
     var primaryMuscles: XCUIElement {
         app.descendants(matching: .any)[AXID.ExerciseSheet.primaryMuscles]
     }

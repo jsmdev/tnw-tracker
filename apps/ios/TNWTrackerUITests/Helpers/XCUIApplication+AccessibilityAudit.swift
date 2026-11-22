@@ -11,6 +11,8 @@ extension XCUIApplication {
     ///   also content in the band above the bar that the system blurs as it
     ///   scrolls towards it (`scrollEdgeBand`), and a contrast failure the audit
     ///   cannot tie to an element, as the iOS 26.0 simulator reports for those rows;
+    /// - contrast on content cut by the bottom edge of the screen, which the audit
+    ///   cannot measure whole; it is audited once scrolled into view;
     /// - clipped placeholder text in the system search field (`.searchable`);
     /// - with `only`, any element whose identifier is not listed;
     /// - the Dynamic Type check on the identifiers in `dynamicTypeChecked`, which a
@@ -27,6 +29,7 @@ extension XCUIApplication {
         // The scroll edge effect blurs content this far above the glass bar.
         let scrollEdgeBand: CGFloat = 100
         // The bar's own buttons are always audited.
+        let screenFrame = windows.firstMatch.frame
         let tabLabels = Set(tabBar.exists ? tabBar.buttons.allElementsBoundByIndex.map(\.label) : [])
         try performAccessibilityAudit { issue in
             let element = issue.element
@@ -44,12 +47,14 @@ extension XCUIApplication {
                         || (contentUnderTabBar && !tabBarFrame.isNull
                             && node.frame.maxY >= tabBarFrame.minY - scrollEdgeBand)
                 } ?? contentUnderTabBar)
+            let cutByScreenEdge = issue.auditType == .contrast
+                && (element.map { !screenFrame.isEmpty && $0.frame.maxY > screenFrame.maxY } ?? false)
             let systemSearchField = issue.auditType == .textClipped
                 && element?.elementType == .searchField
             let checkedByHand = issue.auditType == .dynamicType
                 && dynamicTypeChecked.contains(element?.identifier ?? "")
             let outOfScope = only.map { !$0.contains(element?.identifier ?? "") } ?? false
-            let ignored = systemFormText || systemSearchField || underTabBar || checkedByHand
+            let ignored = systemFormText || systemSearchField || underTabBar || cutByScreenEdge || checkedByHand
                 || preExisting.contains(label) || outOfScope
             let kind = element.map { "\($0.elementType.rawValue) '\($0.identifier)' \($0.frame)" } ?? "unknown element"
             print("Accessibility audit (\(screen)) \(ignored ? "ignored" : "FAILED"): "

@@ -47,7 +47,7 @@
                     externalRef: ExternalRef(provider: importProvider, id: "ex-100"),
                     name: "Chest Press Machine", type: .strength, equipment: .connectedMachine,
                     muscleGroups: [.init(muscle: .chest, role: .primary), .init(muscle: .shoulders, role: .secondary)],
-                    media: ExerciseMedia(imageURI: "exercises/chest-press.jpg")
+                    media: ExerciseMedia(imageURI: "exercises/chest-press.jpg", videoURI: "exercises/chest-press.mp4")
                 ),
                 Exercise(
                     id: ExerciseID.seatedRow,
