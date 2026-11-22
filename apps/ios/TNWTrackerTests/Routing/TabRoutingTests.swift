@@ -57,6 +57,11 @@ struct TabRoutingTests {
         #expect(router.path(for: .history).isEmpty)
     }
 
+    @Test("a finished workout belongs to Historial (#174 S7)")
+    func workoutDetailBelongsToHistory() {
+        #expect(Route.workoutDetail(sessionID: UUID()).tab == .history)
+    }
+
     @Test("the workout deep link changes no tab (the root view presents it)")
     func workoutLinkKeepsTab() throws {
         let router = Router()

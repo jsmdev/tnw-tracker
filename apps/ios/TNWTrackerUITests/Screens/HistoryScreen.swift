@@ -15,6 +15,30 @@ struct HistoryScreen {
         app.descendants(matching: .any)[AXID.History.row(sessionId)]
     }
 
+    /// The row of the workout called `name` (the sample data's ids are not fixed).
+    func row(named name: String) -> XCUIElement {
+        app.buttons
+            .matching(NSPredicate(format: "identifier BEGINSWITH 'history.row.' AND label BEGINSWITH %@", name))
+            .firstMatch
+    }
+
+    func openWorkout(named name: String) -> WorkoutDetailScreen {
+        let row = row(named: name)
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "no history row for \(name)")
+        row.waitUntilHittable()
+        row.tap()
+        return WorkoutDetailScreen(app: app).waitUntilLoaded()
+    }
+
+    /// Swipes the row to show its actions. Returns the delete action, which a
+    /// workout with machine data does not have.
+    func swipe(named name: String) -> XCUIElement {
+        let row = row(named: name)
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "no history row for \(name)")
+        row.swipeLeft()
+        return app.buttons[AXID.History.deleteAction].firstMatch
+    }
+
     @discardableResult
     func waitUntilLoaded(timeout: TimeInterval = 5) -> Self {
         let tab = TabBar(app: app).button(.history)

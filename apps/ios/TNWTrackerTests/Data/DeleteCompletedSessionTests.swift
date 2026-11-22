@@ -123,3 +123,53 @@ struct DeleteCompletedSessionTests {
         }
     }
 }
+
+/// Each way a session can hold imported data on its own, so no condition of
+/// `hasImportedData` hides behind another (#174 S7, L4).
+@Suite("TrainingSession.hasImportedData")
+@MainActor
+struct HasImportedDataTests {
+    let ref = ExternalRef(provider: TrainingFixtures.provider, id: "x-1")
+    let exerciseId = UUID()
+
+    private func manualSet() -> ExerciseSet {
+        ExerciseSet(order: 1, source: .manual, values: SetValues(reps: 5))
+    }
+
+    private func session(sessionRef: ExternalRef? = nil, entries: [SessionEntry]) -> TrainingSession {
+        TrainingSession(externalRef: sessionRef, completedAt: TrainingFixtures.t0, timeZone: "UTC", entries: entries)
+    }
+
+    @Test("manual sets only: no imported data")
+    func manualOnly() {
+        let entry = SessionEntry(exerciseId: exerciseId, order: 1, status: .done, sets: [manualSet()])
+        #expect(session(entries: [entry]).hasImportedData == false)
+    }
+
+    @Test("only the session has a ref")
+    func sessionRefOnly() {
+        let entry = SessionEntry(exerciseId: exerciseId, order: 1, status: .done, sets: [manualSet()])
+        #expect(session(sessionRef: ref, entries: [entry]).hasImportedData)
+    }
+
+    @Test("only an entry has a ref, its imported sets moved elsewhere")
+    func entryRefOnly() {
+        let entry = SessionEntry(externalRef: ref, exerciseId: exerciseId, order: 1, status: .done, sets: [manualSet()])
+        #expect(session(entries: [entry]).hasImportedData)
+    }
+
+    @Test("only a set is imported")
+    func importedSetOnly() {
+        let set = ExerciseSet(order: 1, source: .imported, values: SetValues(reps: 5))
+        let entry = SessionEntry(exerciseId: exerciseId, order: 1, status: .done, sets: [set])
+        #expect(session(entries: [entry]).hasImportedData)
+    }
+
+    @Test("a removed entry with an imported set still counts")
+    func removedEntryCounts() {
+        let set = ExerciseSet(order: 1, source: .imported, values: SetValues(reps: 5), superseded: true)
+        let removed = SessionEntry(exerciseId: exerciseId, order: 1, status: .removed, sets: [set])
+        let manual = SessionEntry(exerciseId: UUID(), order: 2, status: .done, sets: [manualSet()])
+        #expect(session(entries: [removed, manual]).hasImportedData)
+    }
+}

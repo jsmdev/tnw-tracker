@@ -7,6 +7,8 @@ import TNWTrackerKit
 struct HistoryListView: View {
     @Environment(AppEnvironment.self) private var appEnv
     @State private var model: HistoryListModel
+    @State private var sessionToDelete: TrainingSession?
+    @State private var deleteFailed = false
 
     init(sessionRepository: any SessionRepositoryProtocol) {
         _model = State(initialValue: HistoryListModel(sessions: sessionRepository))
@@ -24,7 +26,19 @@ struct HistoryListView: View {
                 )
             } else {
                 List(model.sessions) { session in
-                    HistoryRow(session: session)
+                    NavigationLink(value: Route.workoutDetail(sessionID: session.id)) {
+                        HistoryRow(session: session)
+                    }
+                    .swipeActions(edge: .trailing) {
+                        if HistoryListModel.canDelete(session) {
+                            Button(role: .destructive) {
+                                sessionToDelete = session
+                            } label: {
+                                Label("history.delete.button", systemImage: "trash")
+                            }
+                            .accessibilityIdentifier(AXID.History.deleteAction)
+                        }
+                    }
                 }
                 .listStyle(.insetGrouped)
                 .accessibilityIdentifier(AXID.History.list)
@@ -32,6 +46,19 @@ struct HistoryListView: View {
         }
         .navigationTitle(Text("history.title"))
         .navigationBarTitleDisplayMode(.large)
+        .deleteWorkoutAlert(isPresented: Binding(
+            get: { sessionToDelete != nil },
+            set: { if !$0 { sessionToDelete = nil } }
+        )) {
+            guard let session = sessionToDelete else { return }
+            sessionToDelete = nil
+            do {
+                try model.delete(session.id)
+            } catch {
+                deleteFailed = true
+            }
+        }
+        .deleteWorkoutFailedAlert(isPresented: $deleteFailed)
         .task { await model.load() }
         .refreshable { await model.load() }
         // A workout just ended: it joins the list.

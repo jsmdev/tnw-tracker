@@ -26,6 +26,18 @@ final class HistoryListModel {
         sessions = (try? repository.completedSessions(in: everything)) ?? []
     }
 
+    /// Only a workout without machine data can be deleted: the next import would bring it back.
+    static func canDelete(_ session: TrainingSession) -> Bool {
+        session.isCompleted && !session.hasImportedData
+    }
+
+    /// Deletes a finished workout and drops it from the list.
+    /// See `SessionRepositoryProtocol.deleteCompletedSession(id:)`.
+    func delete(_ sessionId: UUID) throws {
+        try repository.deleteCompletedSession(id: sessionId)
+        sessions.removeAll { $0.id == sessionId }
+    }
+
     /// The exercises of a workout, leaving out the ones removed from it.
     static func exerciseCount(_ session: TrainingSession) -> Int {
         session.entries.filter { $0.status != .removed && !$0.sets.isEmpty }.count
