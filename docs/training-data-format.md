@@ -72,7 +72,7 @@ There are two kinds of bundle, and they differ only in what they contain:
 | `media`         | no       | `image` and `video`, each with a `uri`: absolute, or relative to an agreed media root.    |
 | `relatedVideos` | no       | Since 1.1. External videos that explain the exercise: a list of `{ title, url, source }`. |
 
-`relatedVideos` are curated with the catalogue, not written by the user: `title` is our own title, shown instead of the address; `url` is an `https` address; `source` is the name of the site shown to the user (for example YouTube). The list is never empty, and an exercise without the field keeps the videos the receiver already holds for it (principle: optional means unknown).
+`relatedVideos` are curated with the catalogue, not written by the user: `title` is our own title, shown instead of the address; `url` is an `https` address; `source` is the name of the site shown to the user (for example YouTube). The list is never empty and lists no video twice, and an exercise without the field keeps the videos the receiver already holds for it (principle: optional means unknown).
 
 `connected_machine` marks the exercises whose sets can arrive by import, so the app knows where reconciliation may apply.
 

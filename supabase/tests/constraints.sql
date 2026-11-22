@@ -2,7 +2,7 @@
 -- Each block names the format rule it covers (docs/training-data-format.md).
 BEGIN;
 
-SELECT plan(97);
+SELECT plan(101);
 
 INSERT INTO auth.users (
   id, instance_id, email, encrypted_password, email_confirmed_at,
@@ -436,6 +436,26 @@ SELECT throws_ok(
   $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
      VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '["https://video.example/a"]') $$,
   '23514', NULL, 'every related video is an object'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a","source":"Example"}, {"title":"Setup","url":"https://video.example/a","source":"Example"}]') $$,
+  '23514', NULL, 'no related video is listed twice'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":1,"url":"https://video.example/a","source":"Example"}]') $$,
+  '23514', NULL, 'a related video title is text'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a","source":1}]') $$,
+  '23514', NULL, 'a related video source is text'
+);
+SELECT throws_ok(
+  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a b","source":"Example"}]') $$,
+  '23514', NULL, 'a related video url has no spaces'
 );
 SELECT lives_ok(
   $$ INSERT INTO public.exercise_muscle_groups (exercise_id, muscle, role)

@@ -1,6 +1,7 @@
 -- Related videos of an exercise (format 1.1, issue #182): external videos that
 -- explain it, curated with the catalogue. A list of `{ title, url, source }`
--- objects, in order; NULL when the exercise has none, never an empty list.
+-- objects, in order, none twice; NULL when the exercise has none, never an
+-- empty list.
 -- The app reads this column and never writes it, so a push cannot erase it.
 
 CREATE FUNCTION public.related_videos_are_valid(videos jsonb)
@@ -11,6 +12,9 @@ SET search_path = ''
 AS $$
   SELECT CASE
     WHEN jsonb_typeof(videos) <> 'array' OR jsonb_array_length(videos) = 0 THEN false
+    -- No video twice, as the format's uniqueItems and the app require.
+    WHEN jsonb_array_length(videos)
+      <> (SELECT count(DISTINCT video) FROM jsonb_array_elements(videos) AS video) THEN false
     ELSE NOT EXISTS (
       SELECT 1
       FROM jsonb_array_elements(videos) AS video
@@ -29,7 +33,7 @@ AS $$
 $$;
 
 COMMENT ON FUNCTION public.related_videos_are_valid(jsonb) IS
-  'True when a value of exercises.related_videos follows the format: a non-empty list of { title, url (https), source }.';
+  'True when a value of exercises.related_videos follows the format: a non-empty list of distinct { title, url (https), source }.';
 
 ALTER TABLE public.exercises
   ADD COLUMN related_videos jsonb
