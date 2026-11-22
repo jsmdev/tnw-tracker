@@ -34,7 +34,8 @@ struct HistoryScreen {
     /// workout with machine data does not have.
     func swipe(named name: String) -> XCUIElement {
         let row = row(named: name)
-        XCTAssertTrue(row.waitForExistence(timeout: 5), "no history row for \(name)")
+        XCTAssertTrue(row.waitForExistence(timeout: 10), "no history row for \(name)")
+        row.waitUntilHittable()
         row.swipeLeft()
         return app.buttons[AXID.History.deleteAction].firstMatch
     }

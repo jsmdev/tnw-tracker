@@ -32,10 +32,13 @@ struct WorkoutDetailScreen {
         return HistoryScreen(app: app)
     }
 
+    /// Goes back to the history and waits until the detail has gone.
     func back() -> HistoryScreen {
-        let back = app.navigationBars.buttons.element(boundBy: 0)
+        let named = app.navigationBars.buttons["BackButton"]
+        let back = named.exists ? named : app.navigationBars.buttons.element(boundBy: 0)
         back.waitUntilHittable()
         back.tap()
+        XCTAssertTrue(list.waitForNonExistence(timeout: 5), "the workout detail did not close")
         return HistoryScreen(app: app)
     }
 }
