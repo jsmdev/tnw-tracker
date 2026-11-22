@@ -18,7 +18,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// Snapshot of the session in progress.
     public private(set) var session: TrainingSession?
     public internal(set) var currentExerciseIndex: Int = 0
-    public private(set) var phase: WorkoutPhase = .idle
+    public internal(set) var phase: WorkoutPhase = .idle
     public private(set) var elapsedSeconds: Int = 0
     public var timerTriggerMode: TimerTriggerMode = .auto
 
@@ -54,13 +54,13 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// The set whose rest timer is running (AC3.8: its rest taken is recorded when the rest ends).
     var restingSet: (setId: UUID, timerId: UUID)?
     /// The last set after which no timer ran; its rest is the time until the next set.
-    private var setWithoutTimer: (setId: UUID, completedAt: Date)?
+    var setWithoutTimer: (setId: UUID, completedAt: Date)?
 
     var elapsedTask: Task<Void, Never>?
-    private var undoLastSetId: UUID?
+    var undoLastSetId: UUID?
     /// The set whose rest the last set ended, and its `completedAt`: undo clears
     /// that rest and measures it again from there (D-T3k).
-    private var undoRestore: (setId: UUID, completedAt: Date)?
+    var undoRestore: (setId: UUID, completedAt: Date)?
     var undoTask: Task<Void, Never>?
 
     // MARK: - Init
