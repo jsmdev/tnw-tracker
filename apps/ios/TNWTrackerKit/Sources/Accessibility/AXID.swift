@@ -42,6 +42,24 @@ public enum AXID {
 
         /// The swipe action that deletes a finished workout (#174 S7).
         public static let deleteAction = "history.deleteAction"
+        /// "N sesiones" under the filters (#174 S8).
+        public static let count = "history.count"
+        public static let clearFilters = "history.clearFilters"
+        public static let noResults = "history.noResults"
+        /// The title row of a month section.
+        public static let month = "history.month"
+
+        public static func kindChip(_ kind: String) -> String {
+            "history.kind.\(kind)"
+        }
+
+        public static func periodChip(_ period: String) -> String {
+            "history.period.\(period)"
+        }
+
+        public static func sourceChip(_ source: String) -> String {
+            "history.source.\(source)"
+        }
     }
 
     /// A finished workout of the history (#174 S7).

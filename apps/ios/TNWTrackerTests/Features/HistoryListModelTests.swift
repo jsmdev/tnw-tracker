@@ -13,6 +13,13 @@ struct HistoryListModelTests {
         fx = try TrainingFixtures()
     }
 
+    private func model(daysAfterT0 days: Double) -> HistoryListModel {
+        HistoryListModel(
+            sessions: fx.sessions, exercises: fx.exercises,
+            now: { TrainingFixtures.t0.addingTimeInterval(days * 86_400) }
+        )
+    }
+
     /// A finished session `days` after t0 with one set of `reps` squats.
     @discardableResult
     private func finishedSession(name: String, days: Double, reps: Int = 8) throws -> TrainingSession {
@@ -37,7 +44,7 @@ struct HistoryListModelTests {
             routineId: nil, name: "Open", at: TrainingFixtures.t0.addingTimeInterval(3 * 86_400),
             timeZone: TrainingFixtures.zone
         )
-        let model = HistoryListModel(sessions: fx.sessions, now: { TrainingFixtures.t0.addingTimeInterval(4 * 86_400) })
+        let model = model(daysAfterT0: 4)
 
         await model.load()
 
@@ -46,7 +53,7 @@ struct HistoryListModelTests {
 
     @Test("with no finished workout the list is empty")
     func emptyHistory() async {
-        let model = HistoryListModel(sessions: fx.sessions, now: { TrainingFixtures.t0 })
+        let model = model(daysAfterT0: 0)
         await model.load()
         #expect(model.sessions.isEmpty)
         #expect(!model.isLoading)
@@ -62,7 +69,7 @@ struct HistoryListModelTests {
     func deleteDropsTheWorkout() async throws {
         let kept = try finishedSession(name: "Kept", days: 0)
         let deleted = try finishedSession(name: "Deleted", days: 1)
-        let model = HistoryListModel(sessions: fx.sessions, now: { TrainingFixtures.t0.addingTimeInterval(4 * 86_400) })
+        let model = model(daysAfterT0: 4)
         await model.load()
         #expect(HistoryListModel.canDelete(deleted))
 
@@ -90,12 +97,35 @@ struct HistoryListModelTests {
         let mixed = try fx.sessions.finishSession(
             id: open.id, at: TrainingFixtures.t0.addingTimeInterval(86_400 + 900), durationSeconds: nil
         )
-        let model = HistoryListModel(sessions: fx.sessions, now: { TrainingFixtures.t0.addingTimeInterval(4 * 86_400) })
+        let model = model(daysAfterT0: 4)
         await model.load()
 
         #expect(HistoryListModel.canDelete(workout))
         #expect(HistoryListModel.canDelete(mixed) == false)
         #expect(throws: TrainingDataError.sessionHasImportedData) { try model.delete(mixed.id) }
         #expect(model.sessions.map(\.id) == [mixed.id, workout.id])
+    }
+
+    @Test("the search and filters narrow the list, grouped by month; clearing restores it (#174 S8)")
+    func filtersAndMonths() async throws {
+        try finishedSession(name: "Legs", days: 0)
+        try finishedSession(name: "Legs", days: 40)
+        try finishedSession(name: "Arms", days: 41)
+        let model = model(daysAfterT0: 42)
+        await model.load()
+        #expect(model.months.map { $0.sessions.map(\.name) } == [["Arms", "Legs"], ["Legs"]])
+        #expect(model.kinds == [.all, .named("Legs"), .named("Arms")])
+        #expect(model.firstWorkoutDate == TrainingFixtures.t0.addingTimeInterval(1_800))
+
+        model.filter.query = "goblet"
+        #expect(model.filteredSessions.count == 3, "every workout has the squat")
+        model.filter.kind = .named("Legs")
+        model.filter.period = .month
+        #expect(model.filteredSessions.map(\.name) == ["Legs"])
+        #expect(model.filter.isActive)
+
+        model.clearFilters()
+        #expect(model.filter == HistoryFilter())
+        #expect(model.filteredSessions.count == 3)
     }
 }

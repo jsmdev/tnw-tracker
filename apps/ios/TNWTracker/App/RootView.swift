@@ -23,7 +23,10 @@ struct RootView: View {
 
             Tab("tab.history", systemImage: "clock.arrow.circlepath", value: AppTab.history) {
                 NavigationStack(path: $router.historyPath) {
-                    HistoryListView(sessionRepository: appEnv.sessionRepository)
+                    HistoryListView(
+                        sessionRepository: appEnv.sessionRepository,
+                        exerciseRepository: appEnv.exerciseRepository
+                    )
                         .navigationDestination(for: Route.self) { destination(for: $0) }
                 }
             }
