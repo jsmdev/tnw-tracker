@@ -19,6 +19,11 @@ struct HistoryScreen {
         app.staticTexts[AXID.History.count]
     }
 
+    /// The number in "N sesiones", whatever the language of the simulator.
+    var countValue: Int? {
+        Int(count.label.prefix { $0.isNumber })
+    }
+
     var noResults: XCUIElement {
         app.staticTexts[AXID.History.noResults]
     }

@@ -17,7 +17,7 @@ final class HistorySearchUITests: XCTestCase {
 
     func test_filtersNarrowTheListAndClear() throws {
         let (app, history) = openHistory()
-        XCTAssertEqual(history.count.label, "2 sesiones")
+        XCTAssertEqual(history.countValue, 2)
         XCTAssertFalse(history.clearFilters.exists, "nothing to clear yet")
         // The filters with the default selection, before scrolling: audited here.
         // The month title scales and wraps at the largest text size (checked by hand).
@@ -30,7 +30,7 @@ final class HistorySearchUITests: XCTestCase {
         history.tapChip(AXID.History.sourceChip("manual"))
         XCTAssertTrue(history.row(named: "Full Body A").waitForNonExistence(timeout: 5))
         XCTAssertTrue(history.row(named: "Full Body B").exists)
-        XCTAssertEqual(history.count.label, "1 sesión")
+        XCTAssertEqual(history.countValue, 1)
         XCTAssertTrue(history.chip(AXID.History.sourceChip("manual")).isSelected)
 
         history.tapChip(AXID.History.kindChip("Full Body A"))
@@ -40,7 +40,7 @@ final class HistorySearchUITests: XCTestCase {
         history.clearFilters.tap()
         XCTAssertTrue(history.row(named: "Full Body A").waitForExistence(timeout: 5))
         XCTAssertTrue(history.row(named: "Full Body B").exists)
-        XCTAssertEqual(history.count.label, "2 sesiones")
+        XCTAssertEqual(history.countValue, 2)
     }
 
     func test_searchFindsWorkoutsByExercise() throws {
@@ -49,7 +49,7 @@ final class HistorySearchUITests: XCTestCase {
         history.search("chest press")
         XCTAssertTrue(history.row(named: "Full Body B").waitForNonExistence(timeout: 5))
         XCTAssertTrue(history.row(named: "Full Body A").exists)
-        XCTAssertEqual(history.count.label, "1 sesión")
+        XCTAssertEqual(history.countValue, 1)
         attachScreenshot(of: app, named: "history search by exercise")
     }
 
