@@ -10,6 +10,7 @@ extension XCUIApplication {
     ///   (the bar's own buttons are still audited); with `contentUnderTabBar`,
     ///   also a contrast failure the audit cannot tie to an element, as the
     ///   iOS 26.0 simulator reports for those rows;
+    /// - clipped placeholder text in the system search field (`.searchable`);
     /// - with `only`, any element whose identifier is not listed;
     /// - the Dynamic Type check on the identifiers in `dynamicTypeChecked`, which a
     ///   screenshot at the largest text size showed scaling and unclipped.
@@ -37,10 +38,13 @@ extension XCUIApplication {
                 && !tabLabels.contains(label)
                 && (element.map { tabBarFrame.contains(CGPoint(x: $0.frame.midX, y: $0.frame.midY)) }
                     ?? contentUnderTabBar)
+            let systemSearchField = issue.auditType == .textClipped
+                && element?.elementType == .searchField
             let checkedByHand = issue.auditType == .dynamicType
                 && dynamicTypeChecked.contains(element?.identifier ?? "")
             let outOfScope = only.map { !$0.contains(element?.identifier ?? "") } ?? false
-            let ignored = systemFormText || underTabBar || checkedByHand || preExisting.contains(label) || outOfScope
+            let ignored = systemFormText || systemSearchField || underTabBar || checkedByHand
+                || preExisting.contains(label) || outOfScope
             let kind = element.map { "\($0.elementType.rawValue) '\($0.identifier)' \($0.frame)" } ?? "unknown element"
             print("Accessibility audit (\(screen)) \(ignored ? "ignored" : "FAILED"): "
                 + "\(issue.compactDescription) on \"\(label)\" (\(kind))"

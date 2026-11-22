@@ -15,6 +15,37 @@ struct HistoryScreen {
         app.descendants(matching: .any)[AXID.History.row(sessionId)]
     }
 
+    var count: XCUIElement {
+        app.staticTexts[AXID.History.count]
+    }
+
+    var noResults: XCUIElement {
+        app.staticTexts[AXID.History.noResults]
+    }
+
+    var clearFilters: XCUIElement {
+        app.buttons[AXID.History.clearFilters].firstMatch
+    }
+
+    func chip(_ identifier: String) -> XCUIElement {
+        app.buttons[identifier].firstMatch
+    }
+
+    func tapChip(_ identifier: String) {
+        let chip = chip(identifier)
+        XCTAssertTrue(chip.waitForExistence(timeout: 5), "no chip \(identifier)")
+        chip.waitUntilHittable()
+        chip.tap()
+    }
+
+    /// Types in the search field (shown above the list).
+    func search(_ text: String) {
+        let field = app.searchFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "no search field")
+        field.tap()
+        field.typeText(text)
+    }
+
     /// The row of the workout called `name` (the sample data's ids are not fixed).
     func row(named name: String) -> XCUIElement {
         app.buttons
