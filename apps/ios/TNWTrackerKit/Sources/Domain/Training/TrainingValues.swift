@@ -359,6 +359,14 @@ public struct TrainingSession: Identifiable, Hashable, Sendable {
         completedAt != nil
     }
 
+    /// True when anything in the session came from an import: the session or an
+    /// entry has an `externalRef`, or a set is imported. Removed entries count too.
+    public var hasImportedData: Bool {
+        externalRef != nil || entries.contains { entry in
+            entry.externalRef != nil || entry.sets.contains { $0.source == .imported }
+        }
+    }
+
     /// Sum of the entries' counted volume, in kilograms.
     public var volumeKg: Double {
         entries.reduce(0) { $0 + $1.volumeKg }
