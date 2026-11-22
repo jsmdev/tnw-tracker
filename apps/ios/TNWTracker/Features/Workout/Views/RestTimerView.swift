@@ -27,12 +27,21 @@ struct RestTimerView: View {
     var body: some View {
         VStack(spacing: Spacing.md) {
             timerLabel
-            HStack(spacing: Spacing.md) {
-                adjustButton(title: "rest-timer.decrease-button", label: "rest-duration.decrease",
-                             identifier: AXID.RestTimer.decreaseButton, delta: -RestPolicy.stepSeconds)
-                skipButton
-                adjustButton(title: "rest-timer.increase-button", label: "rest-duration.increase",
-                             identifier: AXID.RestTimer.increaseButton, delta: RestPolicy.stepSeconds)
+            // One row when it fits; otherwise (narrow screen, long translation,
+            // large Dynamic Type) skip moves below so its label never wraps.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: Spacing.md) {
+                    decreaseButton
+                    skipButton
+                    increaseButton
+                }
+                VStack(spacing: Spacing.sm) {
+                    HStack(spacing: Spacing.md) {
+                        decreaseButton
+                        increaseButton
+                    }
+                    skipButton
+                }
             }
         }
         .animation(reduceMotion ? nil : .smooth, value: remaining)
@@ -56,6 +65,16 @@ struct RestTimerView: View {
         }
     }
 
+    private var decreaseButton: some View {
+        adjustButton(title: "rest-timer.decrease-button", label: "rest-duration.decrease",
+                     identifier: AXID.RestTimer.decreaseButton, delta: -RestPolicy.stepSeconds)
+    }
+
+    private var increaseButton: some View {
+        adjustButton(title: "rest-timer.increase-button", label: "rest-duration.increase",
+                     identifier: AXID.RestTimer.increaseButton, delta: RestPolicy.stepSeconds)
+    }
+
     private func adjustButton(
         title: LocalizedStringKey,
         label: LocalizedStringKey,
@@ -75,6 +94,7 @@ struct RestTimerView: View {
         Button(action: onSkip) {
             Label("rest-timer.skip-button", systemImage: "forward.fill")
                 .font(.headline)
+                .lineLimit(1)
                 .padding(.horizontal, Spacing.lg)
                 .padding(.vertical, Spacing.sm)
         }

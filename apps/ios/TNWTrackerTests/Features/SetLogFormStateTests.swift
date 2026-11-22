@@ -7,13 +7,30 @@ import Testing
 
 @Suite("SetLogFormState")
 struct SetLogFormStateTests {
-    @Test("default state has reps 0, weight 0, no RIR, not a warm-up")
+    @Test("default state is empty so the fields show their placeholder")
     func defaultState() {
         let state = SetLogFormState()
-        #expect(state.reps == 0)
-        #expect(state.weight == 0.0)
+        #expect(state.reps == nil)
+        #expect(state.weight == nil)
         #expect(state.rir == nil)
         #expect(!state.warmup)
+    }
+
+    @Test("isValid is false while reps is empty or 0")
+    func emptyRepsIsInvalid() {
+        var state = SetLogFormState()
+        #expect(!state.isValid)
+        state.reps = 0
+        #expect(!state.isValid)
+    }
+
+    @Test("an empty or 0 weight logs no weight; a positive one logs it", arguments: [
+        (nil, nil), (0.0, nil), (42.5, 42.5)
+    ] as [(Double?, Double?)])
+    func loggedWeight(input: Double?, logged: Double?) {
+        var state = SetLogFormState()
+        state.weight = input
+        #expect(state.loggedWeightKilograms == logged)
     }
 
     @Test("isValid requires reps > 0")

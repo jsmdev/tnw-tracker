@@ -9,18 +9,25 @@ import TNWTrackerKit
 /// Effort is asked and stored as reps in reserve (format field `rir`, 0–10),
 /// with no conversion (D2). The selector offers 0 … N−1 and "N+" (`RIRScale`).
 struct SetLogFormState {
-    var reps: Int = 0
-    var weight: Double = 0.0
+    /// Empty (`nil`) until the user types, so the field shows its placeholder.
+    var reps: Int?
+    var weight: Double?
     var rir: Int?
     var warmup = false
 
     /// Valid when reps > 0 and, if RIR is set, it's in range 0–10.
     var isValid: Bool {
-        guard reps > 0 else { return false }
+        guard let reps, reps > 0 else { return false }
         if let rir {
             return (0 ... 10).contains(rir)
         }
         return true
+    }
+
+    /// The weight to log: none when empty or 0 (bodyweight exercises).
+    var loggedWeightKilograms: Double? {
+        guard let weight, weight > 0 else { return nil }
+        return weight
     }
 }
 
@@ -74,6 +81,8 @@ struct SetLogSheet: View {
             }
         }
         .presentationSizing(.form)
+        // Opens with the keyboard up on reps, the first thing to type.
+        .onAppear { focusedField = .reps }
     }
 
     // MARK: - Sections

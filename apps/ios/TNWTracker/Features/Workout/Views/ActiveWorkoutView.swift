@@ -34,8 +34,8 @@ struct ActiveWorkoutView: View {
                     setLogItem = nil
                     Task {
                         try? await coordinator.recordSet(
-                            reps: formState.reps,
-                            weight: formState.weight > 0 ? .kg(formState.weight) : nil,
+                            reps: formState.reps ?? 0,
+                            weight: formState.loggedWeightKilograms.map { .kg($0) },
                             rir: formState.rir,
                             warmup: formState.warmup
                         )
