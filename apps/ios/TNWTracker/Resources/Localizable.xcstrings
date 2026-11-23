@@ -2051,13 +2051,13 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Related videos"
+            "value": "Related information"
           }
         },
         "es-ES": {
           "stringUnit": {
             "state": "translated",
-            "value": "Vídeos relacionados"
+            "value": "Información relacionada"
           }
         }
       }
