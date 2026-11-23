@@ -223,8 +223,7 @@
                 )
             }
             if let row = try sessions.session(id: second.id)?.entries
-                .first(where: { $0.exerciseId == ExerciseID.seatedRow })
-            {
+                .first(where: { $0.exerciseId == ExerciseID.seatedRow }) {
                 try sessions.replaceExercise(entryId: row.id, with: ExerciseID.pushUp)
             }
             for reps in [15, 12] {
@@ -234,8 +233,7 @@
                 )
             }
             if let cardio = try sessions.session(id: second.id)?.entries
-                .first(where: { $0.exerciseId == ExerciseID.rowingMachine })
-            {
+                .first(where: { $0.exerciseId == ExerciseID.rowingMachine }) {
                 try sessions.removeEntry(id: cardio.id)
             }
             try sessions.logManualSet(
