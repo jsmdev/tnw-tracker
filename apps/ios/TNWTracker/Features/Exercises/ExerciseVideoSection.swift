@@ -6,7 +6,8 @@ import TNWTrackerKit
 
 /// The exercise's own video (#182 S9), under a collapsible "Ver vídeo" title.
 /// Closed at first: the video is read or downloaded only when the user opens
-/// it, and plays in the system player, with full screen and Picture in Picture.
+/// it, then starts on its own in the system player, with full screen and
+/// Picture in Picture.
 struct ExerciseVideoSection: View {
     let model: ExerciseHeroModel
     let exerciseName: String
@@ -60,8 +61,8 @@ struct ExerciseVideoSection: View {
 // MARK: - SystemVideoPlayer
 
 /// `AVPlayerViewController`: the system controls, full screen and Picture in
-/// Picture. Pauses when its section closes or the sheet goes away, unless the
-/// video went on in Picture in Picture.
+/// Picture. Starts when its section opens; pauses when the section closes or
+/// the sheet goes away, unless the video went on in Picture in Picture.
 private struct SystemVideoPlayer: UIViewControllerRepresentable {
     let url: URL
     let isActive: Bool
@@ -88,8 +89,17 @@ private struct SystemVideoPlayer: UIViewControllerRepresentable {
             context.coordinator.url = url
             controller.player?.replaceCurrentItem(with: AVPlayerItem(url: url))
         }
-        if !isActive, !context.coordinator.isInPictureInPicture {
-            controller.player?.pause()
+        // Also runs right after make: opening the section starts the video.
+        let change = VideoPlaybackChange.when(
+            wasOpen: context.coordinator.wasActive,
+            isOpen: isActive,
+            inPictureInPicture: context.coordinator.isInPictureInPicture
+        )
+        context.coordinator.wasActive = isActive
+        switch change {
+        case .play: controller.player?.play()
+        case .pause: controller.player?.pause()
+        case .none: break
         }
     }
 
@@ -105,6 +115,7 @@ private struct SystemVideoPlayer: UIViewControllerRepresentable {
 
     final class Coordinator: NSObject, AVPlayerViewControllerDelegate {
         var url: URL?
+        var wasActive = false
         var isInPictureInPicture = false
 
         func playerViewControllerWillStartPictureInPicture(_: AVPlayerViewController) {
