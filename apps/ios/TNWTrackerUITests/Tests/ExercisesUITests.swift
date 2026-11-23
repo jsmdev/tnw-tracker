@@ -95,8 +95,10 @@ final class ExercisesUITests: XCTestCase {
 
         // AC3: «Abrir en YouTube» opens it outside the app.
         let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        // Safari's first launch on a CI runner can take well over 10s.
+        let safariLaunch: TimeInterval = 30
         press.openInYouTube(1).tap()
-        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 10), "the video opens outside the app")
+        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: safariLaunch), "the video opens outside the app")
         app.activate()
 
         // AC6: collapsing the row stops it; opening the main video closes it too.
@@ -110,7 +112,7 @@ final class ExercisesUITests: XCTestCase {
 
         // AC4: a link to another site opens outside the app, with no player.
         other.tap()
-        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 10), "the link opens outside the app")
+        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: safariLaunch), "the link opens outside the app")
         app.activate()
         XCTAssertFalse(press.relatedVideoPlayer.exists, "no player for another site")
 
