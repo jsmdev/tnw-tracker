@@ -66,6 +66,21 @@ final class ExerciseSheetTests {
         #expect(content.secondaryMuscles.isEmpty)
         #expect(content.imagePath == image)
         #expect(content.videoPath == video)
+        #expect(content.relatedVideos.isEmpty, "no related videos: the section is absent")
+    }
+
+    @Test("#182 S9 the sheet lists the related videos in their stored order")
+    func sheetRelatedVideos() {
+        let content = ExerciseSheetContent(Exercise(
+            name: "Cable Row", type: .strength,
+            relatedVideos: [
+                RelatedVideo(title: "Invented row tips", url: "https://youtu.be/Abc123_-xyZ", source: "YouTube"),
+                RelatedVideo(title: "Invented article", url: "https://example.test/row", source: "Example")
+            ]
+        ))
+
+        #expect(content.relatedVideos.map(\.title) == ["Invented row tips", "Invented article"])
+        #expect(content.relatedVideos.map(\.playsInApp) == [true, false])
     }
 
     // MARK: - Hero
@@ -135,7 +150,7 @@ final class ExerciseSheetTests {
     }
 
     @Test("#182 S9 with a video but no photo, the photo placeholder shows and the video stays in its section")
-    func heroVideoWithoutPhoto() async throws {
+    func heroVideoWithoutPhoto() async {
         let video = InventedMedia.path(user: user, file: "clip.mp4")
         let source = RecordingMediaSource([video: InventedMedia.mp4()])
         let hero = ExerciseHeroModel(content: ExerciseSheetContent(exercise(video: video)), library: library(source))
@@ -149,7 +164,7 @@ final class ExerciseSheetTests {
     }
 
     @Test("S7 the placeholder says why: no media, offline before the first download, or a failed download")
-    func heroPlaceholder() async throws {
+    func heroPlaceholder() async {
         let image = InventedMedia.path(user: user, file: "photo.png")
         let video = InventedMedia.path(user: user, file: "clip.mp4")
 

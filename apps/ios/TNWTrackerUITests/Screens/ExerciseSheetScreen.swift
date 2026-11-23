@@ -38,6 +38,24 @@ struct ExerciseSheetScreen {
         (button.exists ? button : videoToggle).tap()
     }
 
+    var relatedVideos: XCUIElement {
+        app.descendants(matching: .any)[AXID.ExerciseSheet.relatedVideos].firstMatch
+    }
+
+    /// The `number`th related video's row, from 1.
+    func relatedVideo(_ number: Int) -> XCUIElement {
+        app.buttons[AXID.ExerciseSheet.relatedVideo(number)]
+    }
+
+    /// "Abrir en YouTube" under the `number`th related video, from 1.
+    func openInYouTube(_ number: Int) -> XCUIElement {
+        app.buttons[AXID.ExerciseSheet.relatedVideoOpen(number)]
+    }
+
+    var relatedVideoPlayer: XCUIElement {
+        app.descendants(matching: .any)[AXID.ExerciseSheet.relatedVideoPlayer].firstMatch
+    }
+
     var primaryMuscles: XCUIElement {
         app.descendants(matching: .any)[AXID.ExerciseSheet.primaryMuscles]
     }

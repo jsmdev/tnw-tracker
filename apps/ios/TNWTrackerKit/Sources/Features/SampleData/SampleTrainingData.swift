@@ -47,7 +47,20 @@
                     externalRef: ExternalRef(provider: importProvider, id: "ex-100"),
                     name: "Chest Press Machine", type: .strength, equipment: .connectedMachine,
                     muscleGroups: [.init(muscle: .chest, role: .primary), .init(muscle: .shoulders, role: .secondary)],
-                    media: ExerciseMedia(imageURI: "exercises/chest-press.jpg", videoURI: "exercises/chest-press.mp4")
+                    media: ExerciseMedia(imageURI: "exercises/chest-press.jpg", videoURI: "exercises/chest-press.mp4"),
+                    // Invented: a YouTube address shaped like a real one, and a link to any other site.
+                    relatedVideos: [
+                        RelatedVideo(
+                            title: "Chest press, step by step",
+                            url: "https://www.youtube.com/watch?v=Inv3nted_01",
+                            source: "YouTube"
+                        ),
+                        RelatedVideo(
+                            title: "Chest press guide",
+                            url: "https://example.test/chest-press-guide",
+                            source: "Example"
+                        )
+                    ]
                 ),
                 Exercise(
                     id: ExerciseID.seatedRow,
@@ -74,21 +87,47 @@
                 Routine(
                     id: RoutineID.fullBodyA, name: "Full Body A", description: "Squat, press and a plank.",
                     items: [
-                        RoutineItem(order: 1, exerciseId: ExerciseID.gobletSquat, targetSets: 3,
-                                    targetReps: RepRange(min: 8, max: 12), targetWeight: .kg(16), restSeconds: 90),
-                        RoutineItem(order: 2, exerciseId: ExerciseID.chestPress, targetSets: 3,
-                                    targetReps: RepRange(min: 8, max: 10), restSeconds: 90),
-                        RoutineItem(order: 3, exerciseId: ExerciseID.plank, targetSets: 2,
-                                    targetDurationSeconds: 45, restSeconds: 60)
+                        RoutineItem(
+                            order: 1,
+                            exerciseId: ExerciseID.gobletSquat,
+                            targetSets: 3,
+                            targetReps: RepRange(min: 8, max: 12),
+                            targetWeight: .kg(16),
+                            restSeconds: 90
+                        ),
+                        RoutineItem(
+                            order: 2,
+                            exerciseId: ExerciseID.chestPress,
+                            targetSets: 3,
+                            targetReps: RepRange(min: 8, max: 10),
+                            restSeconds: 90
+                        ),
+                        RoutineItem(
+                            order: 3,
+                            exerciseId: ExerciseID.plank,
+                            targetSets: 2,
+                            targetDurationSeconds: 45,
+                            restSeconds: 60
+                        )
                     ]
                 ),
                 Routine(
                     id: RoutineID.fullBodyB, name: "Full Body B",
                     items: [
-                        RoutineItem(order: 1, exerciseId: ExerciseID.benchPress, targetSets: 3,
-                                    targetReps: RepRange(min: 6, max: 8), restSeconds: 120),
-                        RoutineItem(order: 2, exerciseId: ExerciseID.seatedRow, targetSets: 3,
-                                    targetReps: RepRange(min: 10, max: 12), restSeconds: 90),
+                        RoutineItem(
+                            order: 1,
+                            exerciseId: ExerciseID.benchPress,
+                            targetSets: 3,
+                            targetReps: RepRange(min: 6, max: 8),
+                            restSeconds: 120
+                        ),
+                        RoutineItem(
+                            order: 2,
+                            exerciseId: ExerciseID.seatedRow,
+                            targetSets: 3,
+                            targetReps: RepRange(min: 10, max: 12),
+                            restSeconds: 90
+                        ),
                         RoutineItem(order: 3, exerciseId: ExerciseID.rowingMachine, targetDurationSeconds: 600)
                     ]
                 )
@@ -184,7 +223,8 @@
                 )
             }
             if let row = try sessions.session(id: second.id)?.entries
-                .first(where: { $0.exerciseId == ExerciseID.seatedRow }) {
+                .first(where: { $0.exerciseId == ExerciseID.seatedRow })
+            {
                 try sessions.replaceExercise(entryId: row.id, with: ExerciseID.pushUp)
             }
             for reps in [15, 12] {
@@ -194,7 +234,8 @@
                 )
             }
             if let cardio = try sessions.session(id: second.id)?.entries
-                .first(where: { $0.exerciseId == ExerciseID.rowingMachine }) {
+                .first(where: { $0.exerciseId == ExerciseID.rowingMachine })
+            {
                 try sessions.removeEntry(id: cardio.id)
             }
             try sessions.logManualSet(
