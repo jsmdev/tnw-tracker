@@ -82,7 +82,15 @@ final class ExercisesUITests: XCTestCase {
         // Audit once the row has finished opening: mid-animation the audit misreads contrast.
         waitUntilStill(press.relatedVideoPlayer)
         attachScreenshot(of: app, named: "exercise sheet, related video playing")
-        try app.auditAccessibility(screen: "exercise sheet, related video playing")
+        // Only the related section: the sheet has scrolled, so its top lies under
+        // the blurred top edge; test_homeOpensTheExerciseListAndASheet audits it.
+        try app.auditAccessibility(
+            screen: "exercise sheet, related video playing",
+            only: [
+                AXID.ExerciseSheet.relatedVideo(1), AXID.ExerciseSheet.relatedVideo(2),
+                AXID.ExerciseSheet.relatedVideoOpen(1), AXID.ExerciseSheet.relatedVideoPlayer
+            ]
+        )
 
         // AC3: «Abrir en YouTube» opens it outside the app.
         let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
