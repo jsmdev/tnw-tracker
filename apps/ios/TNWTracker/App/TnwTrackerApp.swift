@@ -15,6 +15,15 @@ struct TnwTrackerApp: App {
         return accounts.launchRoute
     }
 
+    /// UI tests never reach YouTube: related video covers and players show stand-ins.
+    private static var isUITesting: Bool {
+        #if DEBUG
+            ProcessInfo.processInfo.arguments.contains("--uitesting")
+        #else
+            false
+        #endif
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -40,6 +49,7 @@ struct TnwTrackerApp: App {
                         RootView()
                             .environment(env)
                             .environment(accounts)
+                            .environment(\.relatedVideosUseNetwork, !Self.isUITesting)
                             .id(env.userId)
                             .transition(.opacity)
                     }

@@ -11,8 +11,8 @@ import TNWTrackerKit
 struct ExerciseVideoSection: View {
     let model: ExerciseHeroModel
     let exerciseName: String
-
-    @State private var isExpanded = false
+    /// Owned by the sheet, which closes it when a related video starts.
+    @Binding var isExpanded: Bool
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
@@ -25,7 +25,9 @@ struct ExerciseVideoSection: View {
                 .accessibilityIdentifier(AXID.ExerciseSheet.videoToggle)
         }
         .task(id: isExpanded) {
-            if isExpanded { await model.loadVideo() }
+            if isExpanded {
+                await model.loadVideo()
+            }
         }
     }
 

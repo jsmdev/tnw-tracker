@@ -16,3 +16,4 @@
 --trimwhitespace always
 --header ignore
 --disable trailingCommas
+--disable wrapMultilineStatementBraces

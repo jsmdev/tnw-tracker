@@ -2045,6 +2045,108 @@
         }
       }
     },
+    "exercise-sheet.related": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Related information"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Información relacionada"
+          }
+        }
+      }
+    },
+    "exercise-sheet.related.hint.open": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens outside the app"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se abre fuera de la app"
+          }
+        }
+      }
+    },
+    "exercise-sheet.related.hint.play": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plays the video here"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduce el vídeo aquí"
+          }
+        }
+      }
+    },
+    "exercise-sheet.related.open-youtube": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open in YouTube"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir en YouTube"
+          }
+        }
+      }
+    },
+    "exercise-sheet.related.player-label %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Video: %@"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vídeo: %@"
+          }
+        }
+      }
+    },
+    "exercise-sheet.related.unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This video can't play right now. Check your connection."
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ahora no se puede reproducir el vídeo. Revisa la conexión."
+          }
+        }
+      }
+    },
     "exercise-sheet.setup": {
       "extractionState": "manual",
       "localizations": {

@@ -116,6 +116,21 @@ public enum AXID {
         public static let videoLoading = "exerciseSheet.videoLoading"
         public static let primaryMuscles = "exerciseSheet.primaryMuscles"
         public static let secondaryMuscles = "exerciseSheet.secondaryMuscles"
+        public static let relatedVideos = "exerciseSheet.relatedVideos"
+        /// The «Información relacionada» header.
+        public static let relatedHeader = "exerciseSheet.relatedHeader"
+        public static let relatedVideoPlayer = "exerciseSheet.relatedVideoPlayer"
+        public static let relatedVideoNotice = "exerciseSheet.relatedVideoNotice"
+
+        /// The `number`th related video's row, from 1.
+        public static func relatedVideo(_ number: Int) -> String {
+            "exerciseSheet.relatedVideo.\(number)"
+        }
+
+        /// "Abrir en YouTube" under the `number`th related video, from 1.
+        public static func relatedVideoOpen(_ number: Int) -> String {
+            "exerciseSheet.relatedVideoOpen.\(number)"
+        }
 
         /// The `number`th setup step, from 1.
         public static func setupStep(_ number: Int) -> String {

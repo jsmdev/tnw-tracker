@@ -5,11 +5,13 @@ import TNWTrackerKit
 
 /// The exercise sheet (#137 S7, #182 S9): the photo, else a neutral
 /// placeholder; then the name, type and equipment, the video under "Ver vídeo"
-/// when there is one, how to do it (setup and execution steps) and the
-/// muscles it works. Exercise text shows as stored.
+/// when there is one, how to do it (setup and execution steps), the muscles
+/// it works and its related videos. Exercise text shows as stored.
 struct ExerciseSheetView: View {
     let content: ExerciseSheetContent
     @State private var hero: ExerciseHeroModel
+    @State private var isVideoOpen = false
+    @State private var playingRelatedVideo: RelatedVideoLink.ID?
     @Environment(\.dismiss) private var dismiss
 
     init(content: ExerciseSheetContent, library: ExerciseMediaLibrary) {
@@ -24,15 +26,29 @@ struct ExerciseSheetView: View {
                     ExerciseHeroView(model: hero, exerciseName: content.name)
                     header
                     if hero.hasVideo {
-                        ExerciseVideoSection(model: hero, exerciseName: content.name)
+                        ExerciseVideoSection(model: hero, exerciseName: content.name, isExpanded: $isVideoOpen)
                     }
                     howTo
                     muscles
+                    if !content.relatedVideos.isEmpty {
+                        RelatedVideosSection(videos: content.relatedVideos, playing: $playingRelatedVideo)
+                    }
                 }
                 .padding(.horizontal, Spacing.md)
                 .padding(.bottom, Spacing.xl)
             }
             .background(Color.surfacePrimary)
+            // One video at a time: a related video closes the main one, and back.
+            .onChange(of: playingRelatedVideo) { _, playing in
+                if playing != nil {
+                    isVideoOpen = false
+                }
+            }
+            .onChange(of: isVideoOpen) { _, open in
+                if open {
+                    playingRelatedVideo = nil
+                }
+            }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

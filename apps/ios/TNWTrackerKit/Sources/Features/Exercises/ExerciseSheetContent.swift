@@ -13,6 +13,8 @@ public struct ExerciseSheetContent: Identifiable, Equatable, Sendable {
     public let executionSteps: [String]
     public let imagePath: String?
     public let videoPath: String?
+    /// External videos that explain it (#182 S9), in their stored order.
+    public let relatedVideos: [RelatedVideoLink]
 
     public init(_ exercise: Exercise) {
         id = exercise.id
@@ -25,6 +27,7 @@ public struct ExerciseSheetContent: Identifiable, Equatable, Sendable {
         executionSteps = exercise.instructions?.execution ?? []
         imagePath = exercise.media?.imageURI
         videoPath = exercise.media?.videoURI
+        relatedVideos = (exercise.relatedVideos ?? []).map(RelatedVideoLink.init)
     }
 
     /// True when the exercise has neither setup nor execution steps.
