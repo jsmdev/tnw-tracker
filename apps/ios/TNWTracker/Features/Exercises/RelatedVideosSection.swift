@@ -26,6 +26,7 @@ struct RelatedVideosSection: View {
             Text("exercise-sheet.related")
                 .font(.title3.weight(.semibold))
                 .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier(AXID.ExerciseSheet.relatedHeader)
             ForEach(Array(videos.enumerated()), id: \.element.id) { index, video in
                 RelatedVideoRow(video: video, number: index + 1, isPlaying: playing == video.id) {
                     playing = playing == video.id ? nil : video.id

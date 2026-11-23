@@ -87,7 +87,8 @@ final class ExercisesUITests: XCTestCase {
         try app.auditAccessibility(
             screen: "exercise sheet, related video playing",
             only: [
-                AXID.ExerciseSheet.relatedVideo(1), AXID.ExerciseSheet.relatedVideo(2),
+                AXID.ExerciseSheet.relatedHeader, AXID.ExerciseSheet.relatedVideo(1),
+                AXID.ExerciseSheet.relatedVideo(2),
                 AXID.ExerciseSheet.relatedVideoOpen(1), AXID.ExerciseSheet.relatedVideoPlayer
             ]
         )

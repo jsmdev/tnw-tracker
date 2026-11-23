@@ -117,6 +117,8 @@ public enum AXID {
         public static let primaryMuscles = "exerciseSheet.primaryMuscles"
         public static let secondaryMuscles = "exerciseSheet.secondaryMuscles"
         public static let relatedVideos = "exerciseSheet.relatedVideos"
+        /// The «Información relacionada» header.
+        public static let relatedHeader = "exerciseSheet.relatedHeader"
         public static let relatedVideoPlayer = "exerciseSheet.relatedVideoPlayer"
         public static let relatedVideoNotice = "exerciseSheet.relatedVideoNotice"
 
