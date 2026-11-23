@@ -49,13 +49,13 @@
                     muscleGroups: [.init(muscle: .chest, role: .primary), .init(muscle: .shoulders, role: .secondary)],
                     media: ExerciseMedia(imageURI: "exercises/chest-press.jpg", videoURI: "exercises/chest-press.mp4"),
                     // Invented: a YouTube address shaped like a real one, and a link to any other site.
-                    relatedVideos: [
-                        RelatedVideo(
+                    relatedLinks: [
+                        RelatedLink(
                             title: "Chest press, step by step",
                             url: "https://www.youtube.com/watch?v=Inv3nted_01",
                             source: "YouTube"
                         ),
-                        RelatedVideo(
+                        RelatedLink(
                             title: "Chest press guide",
                             url: "https://example.test/chest-press-guide",
                             source: "Example"

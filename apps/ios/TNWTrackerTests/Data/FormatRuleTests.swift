@@ -44,13 +44,13 @@ struct FormatRuleTests {
         #expect(entry.externalRef == fx.ref("a"), "the first ref stays the entry's format externalRef")
         let imported = entry.sets.filter { $0.source == .imported }
         #expect(imported.map(\.order) == [1, 2, 3, 4])
-        #expect(imported.map { $0.values.reps } == [10, 9, 8, 7])
+        #expect(imported.map(\.values.reps) == [10, 9, 8, 7])
 
         // A re-import of "b" updates in place: no duplicates, orders unchanged.
         try fx.sessions.importEntry(fx.importedSets("b", reps: [6, 5], weight: 40), into: session.id)
         let again = try #require(try reload(session.id).entries.first).sets.filter { $0.source == .imported }
         #expect(again.map(\.order) == [1, 2, 3, 4])
-        #expect(again.map { $0.values.reps } == [10, 9, 6, 5])
+        #expect(again.map(\.values.reps) == [10, 9, 6, 5])
     }
 
     @Test("B2: the merged second ref is still found in another session, and moves from it (D8)")
@@ -198,12 +198,12 @@ struct FormatRuleTests {
 
     private func video(
         title: String = "Setup", url: String = "https://video.example/a", source: String = "Example"
-    ) -> RelatedVideo {
-        RelatedVideo(title: title, url: url, source: source)
+    ) -> RelatedLink {
+        RelatedLink(title: title, url: url, source: source)
     }
 
     @Test("""
-    exercise: muscle groups are unique, media URIs and instruction steps are not empty; related videos \
+    exercise: muscle groups are unique, media URIs and instruction steps are not empty; related links \
     have a title, an https url and a source, and are unique
     """)
     func exerciseFieldRules() {
@@ -214,12 +214,12 @@ struct FormatRuleTests {
             Exercise(name: "X", type: .strength, media: ExerciseMedia(imageURI: "")),
             Exercise(name: "X", type: .strength, media: ExerciseMedia(videoURI: "")),
             Exercise(name: "X", type: .strength, instructions: ExerciseInstructions(setup: [""])),
-            Exercise(name: "X", type: .strength, relatedVideos: [video(title: "")]),
-            Exercise(name: "X", type: .strength, relatedVideos: [video(source: "")]),
-            Exercise(name: "X", type: .strength, relatedVideos: [video(url: "http://video.example/a")]),
-            Exercise(name: "X", type: .strength, relatedVideos: [video(url: "https://")]),
-            Exercise(name: "X", type: .strength, relatedVideos: [video(url: "https://video.example/a b")]),
-            Exercise(name: "X", type: .strength, relatedVideos: [video(), video()])
+            Exercise(name: "X", type: .strength, relatedLinks: [video(title: "")]),
+            Exercise(name: "X", type: .strength, relatedLinks: [video(source: "")]),
+            Exercise(name: "X", type: .strength, relatedLinks: [video(url: "http://video.example/a")]),
+            Exercise(name: "X", type: .strength, relatedLinks: [video(url: "https://")]),
+            Exercise(name: "X", type: .strength, relatedLinks: [video(url: "https://video.example/a b")]),
+            Exercise(name: "X", type: .strength, relatedLinks: [video(), video()])
         ]
         for exercise in invalid {
             #expect(throws: TrainingDataError.self) { try fx.exercises.save(exercise) }

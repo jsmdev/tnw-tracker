@@ -1,9 +1,9 @@
 import Foundation
 
-/// Format field `exercise.relatedVideos[]` (1.1): an external video that explains
-/// the exercise, curated with the catalogue. Shown by its own `title` and
-/// `source`, never by its address.
-public struct RelatedVideo: Hashable, Codable, Sendable {
+/// Format field `exercise.relatedLinks[]` (1.2; `relatedVideos` in 1.1): an external
+/// link (a video, an article…) that explains the exercise, curated with the
+/// catalogue. Shown by its own `title` and `source`, never by its address.
+public struct RelatedLink: Hashable, Codable, Sendable {
     public var title: String
     /// An `https` address.
     public var url: String

@@ -56,9 +56,9 @@ public struct Exercise: Identifiable, Hashable, Sendable {
     public var muscleGroups: [MuscleGroup]
     public var instructions: ExerciseInstructions?
     public var media: ExerciseMedia?
-    /// Curated external videos, in order. `nil` means unknown: saving an
+    /// Curated external links, in order. `nil` means unknown: saving an
     /// exercise without them keeps the ones stored; an empty list clears them.
-    public var relatedVideos: [RelatedVideo]?
+    public var relatedLinks: [RelatedLink]?
     /// True for a catalogue exercise: a curated app exercise shared with every user.
     /// A catalogue exercise never has an `externalRef`.
     public var isCatalogue: Bool
@@ -73,7 +73,7 @@ public struct Exercise: Identifiable, Hashable, Sendable {
         muscleGroups: [MuscleGroup] = [],
         instructions: ExerciseInstructions? = nil,
         media: ExerciseMedia? = nil,
-        relatedVideos: [RelatedVideo]? = nil
+        relatedLinks: [RelatedLink]? = nil
     ) {
         self.id = id
         self.externalRef = externalRef
@@ -84,7 +84,7 @@ public struct Exercise: Identifiable, Hashable, Sendable {
         self.muscleGroups = muscleGroups
         self.instructions = instructions
         self.media = media
-        self.relatedVideos = relatedVideos
+        self.relatedLinks = relatedLinks
     }
 
     /// True for an exercise imported from a provider: it has an `externalRef`.
@@ -382,12 +382,12 @@ public struct TrainingSession: Identifiable, Hashable, Sendable {
     }
 }
 
-extension TrainingSession {
+public extension TrainingSession {
     /// Whether the session has a working set (T6, D-T6a, M14): a set that is not
     /// a warm-up, imported or manual, strength or cardio, of an entry that was not
     /// removed. Warm-ups never count, an imported warm-up included. A session
     /// without one is never saved: ending it discards it.
-    public var hasWorkingSets: Bool {
+    var hasWorkingSets: Bool {
         entries.contains { entry in
             entry.status != .removed && entry.sets.contains { !$0.warmup }
         }

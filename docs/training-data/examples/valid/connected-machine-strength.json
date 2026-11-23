@@ -1,5 +1,5 @@
 {
-  "formatVersion": "1.1",
+  "formatVersion": "1.2",
   "generatedAt": "2030-03-05T06:00:00Z",
   "source": {
     "provider": "machines-atlas"
@@ -44,11 +44,16 @@
           "uri": "exercises/leg-press/video.mp4"
         }
       },
-      "relatedVideos": [
+      "relatedLinks": [
         {
           "title": "Leg press: setup and range of motion",
           "url": "https://www.youtube.com/watch?v=AAAAAAAAAAA",
           "source": "YouTube"
+        },
+        {
+          "title": "Leg press: common mistakes",
+          "url": "https://articles.example/leg-press-mistakes",
+          "source": "Example Articles"
         }
       ]
     },

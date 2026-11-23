@@ -57,8 +57,8 @@ final class SwiftDataExerciseRepository: ExerciseRepositoryProtocol {
         model.mediaImageURI = exercise.media?.imageURI
         model.mediaVideoURI = exercise.media?.videoURI
         // Optional means unknown: a save that does not state them keeps them.
-        if let videos = exercise.relatedVideos {
-            model.relatedVideos = videos
+        if let links = exercise.relatedLinks {
+            model.relatedLinks = links
         }
 
         for old in model.muscleGroups {
@@ -79,7 +79,9 @@ final class SwiftDataExerciseRepository: ExerciseRepositoryProtocol {
     /// Field rules of the format's `exercise` that a JSON Schema states.
     static func validate(_ exercise: Exercise) throws {
         guard !exercise.name.isEmpty else { throw TrainingDataError.invalidExercise("name is empty") }
-        if let ref = exercise.externalRef, !ref.isValid { throw TrainingDataError.invalidExternalRef }
+        if let ref = exercise.externalRef, !ref.isValid {
+            throw TrainingDataError.invalidExternalRef
+        }
         if exercise.isCatalogue, exercise.externalRef != nil {
             throw TrainingDataError.invalidExercise("a catalogue exercise has no externalRef")
         }
@@ -89,29 +91,29 @@ final class SwiftDataExerciseRepository: ExerciseRepositoryProtocol {
         if let media = exercise.media, media.imageURI == "" || media.videoURI == "" {
             throw TrainingDataError.invalidExercise("a media uri is empty")
         }
-        if let videos = exercise.relatedVideos {
-            try validate(videos)
+        if let links = exercise.relatedLinks {
+            try validate(links)
         }
         if let steps = exercise.instructions, (steps.setup + steps.execution + steps.tips).contains(where: \.isEmpty) {
             throw TrainingDataError.invalidExercise("an instruction step is empty")
         }
     }
 
-    /// `relatedVideo` of the format: a title, an `https` address with no spaces
-    /// and a source; no video twice.
-    private static func validate(_ videos: [RelatedVideo]) throws {
-        for video in videos {
-            guard !video.title.isEmpty, !video.source.isEmpty else {
-                throw TrainingDataError.invalidExercise("a related video needs a title and a source")
+    /// `relatedLink` of the format: a title, an `https` address with no spaces
+    /// and a source; no link twice.
+    private static func validate(_ links: [RelatedLink]) throws {
+        for link in links {
+            guard !link.title.isEmpty, !link.source.isEmpty else {
+                throw TrainingDataError.invalidExercise("a related link needs a title and a source")
             }
-            let address = video.url.dropFirst("https://".count)
-            guard video.url.hasPrefix("https://"), !address.isEmpty,
+            let address = link.url.dropFirst("https://".count)
+            guard link.url.hasPrefix("https://"), !address.isEmpty,
                   !address.contains(where: \.isWhitespace) else {
-                throw TrainingDataError.invalidExercise("a related video url is not https")
+                throw TrainingDataError.invalidExercise("a related link url is not https")
             }
         }
-        guard Set(videos).count == videos.count else {
-            throw TrainingDataError.invalidExercise("related videos must be unique")
+        guard Set(links).count == links.count else {
+            throw TrainingDataError.invalidExercise("related links must be unique")
         }
     }
 }

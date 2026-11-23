@@ -30,8 +30,8 @@ struct ExerciseSheetView: View {
                     }
                     howTo
                     muscles
-                    if !content.relatedVideos.isEmpty {
-                        RelatedVideosSection(videos: content.relatedVideos, playing: $playingRelatedVideo)
+                    if !content.relatedLinks.isEmpty {
+                        RelatedVideosSection(videos: content.relatedLinks, playing: $playingRelatedVideo)
                     }
                 }
                 .padding(.horizontal, Spacing.md)

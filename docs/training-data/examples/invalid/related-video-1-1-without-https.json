@@ -1,0 +1,62 @@
+{
+  "formatVersion": "1.1",
+  "generatedAt": "2030-03-05T06:00:00Z",
+  "source": {
+    "provider": "machines-atlas"
+  },
+  "locale": "en",
+  "exercises": [
+    {
+      "id": "7153f3ac-620d-533f-b316-d9e8af20ea02",
+      "externalRef": {
+        "provider": "machines-atlas",
+        "id": "9999"
+      },
+      "name": "Group class",
+      "type": "cardio",
+      "relatedVideos": [
+        {
+          "title": "Invented setup video",
+          "url": "http://video.example/setup",
+          "source": "Example"
+        }
+      ]
+    }
+  ],
+  "sessions": [
+    {
+      "id": "56df7384-6787-5528-a95a-2960d3ad9954",
+      "externalRef": {
+        "provider": "machines-atlas",
+        "id": "2030-03-10"
+      },
+      "completedAt": "2030-03-10T11:00:00Z",
+      "timeZone": "Europe/Madrid",
+      "entries": [
+        {
+          "id": "10a1d478-76ae-5df5-82a8-7299dbfa5312",
+          "externalRef": {
+            "provider": "machines-atlas",
+            "id": "7001"
+          },
+          "exerciseId": "7153f3ac-620d-533f-b316-d9e8af20ea02",
+          "order": 1,
+          "status": "done",
+          "completedAt": "2030-03-10T11:00:00Z",
+          "sets": [
+            {
+              "id": "5f86b055-0f7d-5b2d-b600-4465938c067e",
+              "externalRef": {
+                "provider": "machines-atlas",
+                "id": "7001#1"
+              },
+              "order": 1,
+              "source": "imported",
+              "durationSeconds": 2700
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

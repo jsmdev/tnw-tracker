@@ -124,6 +124,10 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["id", "name", "type"],
+      "not": {
+        "description": "relatedVideos is the 1.1 name of relatedLinks: a bundle states one of them, not both.",
+        "required": ["relatedLinks", "relatedVideos"]
+      },
       "properties": {
         "id": {
           "$ref": "#/$defs/id"
@@ -209,18 +213,26 @@
             }
           }
         },
+        "relatedLinks": {
+          "description": "External links (a video, an article…) that explain the exercise, curated with the catalogue. Since 1.2.",
+          "$ref": "#/$defs/relatedLinks"
+        },
         "relatedVideos": {
-          "description": "External videos that explain the exercise, curated with the catalogue. Since 1.1.",
-          "type": "array",
-          "minItems": 1,
-          "uniqueItems": true,
-          "items": {
-            "$ref": "#/$defs/relatedVideo"
-          }
+          "description": "The 1.1 name of relatedLinks, read as relatedLinks. Deprecated since 1.2.",
+          "deprecated": true,
+          "$ref": "#/$defs/relatedLinks"
         }
       }
     },
-    "relatedVideo": {
+    "relatedLinks": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/relatedLink"
+      }
+    },
+    "relatedLink": {
       "type": "object",
       "additionalProperties": false,
       "required": ["title", "url", "source"],
@@ -231,12 +243,12 @@
           "minLength": 1
         },
         "url": {
-          "description": "Web address of the video. HTTPS only.",
+          "description": "Web address of the link. HTTPS only.",
           "type": "string",
           "pattern": "^https://[^\\s]+$"
         },
         "source": {
-          "description": "Name of the site the video is on, shown to the user (for example YouTube).",
+          "description": "Name of the site the link is on, shown to the user (for example YouTube).",
           "type": "string",
           "minLength": 1
         }

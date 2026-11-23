@@ -136,34 +136,34 @@ struct RemoteTemplateRowsCodingTests {
         #expect(RemoteTable.sessions.parentColumn == nil)
     }
 
-    // MARK: - Related videos (#182 S9, format 1.1)
+    // MARK: - Related links (#182 S9, S10, format 1.2)
 
     /// Curated on the server: the app reads them and never sends the column, so
     /// a push cannot erase them.
-    @Test func relatedVideosAreReadButNeverSent() throws {
+    @Test func relatedLinksAreReadButNeverSent() throws {
         let json = Data("""
         {"id":"e1000001-0000-4000-8000-000000000001","user_id":null,"name":"Bench Press","type":"strength",
-         "related_videos":[{"title":"Setup","url":"https://video.example/a","source":"Example"},
+         "related_links":[{"title":"Setup","url":"https://video.example/a","source":"Example"},
                            {"title":"Range","url":"https://video.example/b","source":"Example"}]}
         """.utf8)
 
         var exercise = try JSONDecoder().decode(RemoteExerciseRow.self, from: json)
 
-        #expect(exercise.relatedVideos == [
-            RelatedVideo(title: "Setup", url: "https://video.example/a", source: "Example"),
-            RelatedVideo(title: "Range", url: "https://video.example/b", source: "Example")
+        #expect(exercise.relatedLinks == [
+            RelatedLink(title: "Setup", url: "https://video.example/a", source: "Example"),
+            RelatedLink(title: "Range", url: "https://video.example/b", source: "Example")
         ])
-        #expect(try encoded(exercise)["related_videos"] == nil)
-        exercise.relatedVideos = nil
-        #expect(try encoded(exercise)["related_videos"] == nil, "nil is not sent as null either")
+        #expect(try encoded(exercise)["related_links"] == nil)
+        exercise.relatedLinks = nil
+        #expect(try encoded(exercise)["related_links"] == nil, "nil is not sent as null either")
     }
 
-    @Test func anExerciseWithNullRelatedVideosDecodesWithNone() throws {
+    @Test func anExerciseWithNullRelatedLinksDecodesWithNone() throws {
         let json = Data("""
         {"id":"e1000001-0000-4000-8000-000000000001","user_id":null,"name":"Bench Press","type":"strength",
-         "related_videos":null}
+         "related_links":null}
         """.utf8)
-        #expect(try JSONDecoder().decode(RemoteExerciseRow.self, from: json).relatedVideos == nil)
+        #expect(try JSONDecoder().decode(RemoteExerciseRow.self, from: json).relatedLinks == nil)
     }
 
     private func encoded(_ row: some Encodable) throws -> [String: Any] {

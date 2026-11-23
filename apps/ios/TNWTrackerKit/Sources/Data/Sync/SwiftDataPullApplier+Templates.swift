@@ -39,10 +39,14 @@ extension SwiftDataPullApplier {
         guard row.userId != nil else { return try applyCatalogue(row) }
         let aggregate = SyncAggregateRef(.exercise, id: row.id)
         if let model = try context.fetchExercise(id: row.id) ?? adoptExercise(row, run) {
-            if run.rule(for: aggregate, model: model) == .serverApplied { write(row, to: model) }
+            if run.rule(for: aggregate, model: model) == .serverApplied {
+                write(row, to: model)
+            }
             return
         }
-        if try hasTombstone(.exercise, row.id) { return run.report.skip(.exercises, row.id, .deletedOnDevice) }
+        if try hasTombstone(.exercise, row.id) {
+            return run.report.skip(.exercises, row.id, .deletedOnDevice)
+        }
         let model = ExerciseModel(id: row.id, name: row.name, typeRaw: row.type.rawValue)
         context.insert(model)
         write(row, to: model)
@@ -82,7 +86,7 @@ extension SwiftDataPullApplier {
         model.mediaImageURI = row.imageURI
         model.mediaVideoURI = row.videoURI
         // The server holds the curated list; `null` there means none.
-        model.relatedVideos = row.relatedVideos
+        model.relatedLinks = row.relatedLinks
         model.externalProvider = row.externalRef?.provider
         model.externalId = row.externalRef?.id
     }
@@ -119,10 +123,14 @@ extension SwiftDataPullApplier {
     private func applyRoutine(_ row: RemoteRoutineRow, _ run: PullRun) throws {
         let aggregate = SyncAggregateRef(.routine, id: row.id)
         if let model = try context.fetchRoutine(id: row.id) ?? adoptRoutine(row, run) {
-            if run.rule(for: aggregate, model: model) == .serverApplied { write(row, to: model) }
+            if run.rule(for: aggregate, model: model) == .serverApplied {
+                write(row, to: model)
+            }
             return
         }
-        if try hasTombstone(.routine, row.id) { return run.report.skip(.routines, row.id, .deletedOnDevice) }
+        if try hasTombstone(.routine, row.id) {
+            return run.report.skip(.routines, row.id, .deletedOnDevice)
+        }
         let model = RoutineModel(id: row.id, name: row.name)
         context.insert(model)
         write(row, to: model)
