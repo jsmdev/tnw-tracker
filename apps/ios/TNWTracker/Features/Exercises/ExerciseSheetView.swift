@@ -3,9 +3,10 @@ import TNWTrackerKit
 
 // MARK: - ExerciseSheetView
 
-/// The exercise sheet (#137 S7): the video, else the image, else a neutral
-/// placeholder; then the name, type and equipment, how to do it (setup and
-/// execution steps) and the muscles it works. Exercise text shows as stored.
+/// The exercise sheet (#137 S7, #182 S9): the photo, else a neutral
+/// placeholder; then the name, type and equipment, the video under "Ver vídeo"
+/// when there is one, how to do it (setup and execution steps) and the
+/// muscles it works. Exercise text shows as stored.
 struct ExerciseSheetView: View {
     let content: ExerciseSheetContent
     @State private var hero: ExerciseHeroModel
@@ -22,6 +23,9 @@ struct ExerciseSheetView: View {
                 VStack(alignment: .leading, spacing: Spacing.lg) {
                     ExerciseHeroView(model: hero, exerciseName: content.name)
                     header
+                    if hero.hasVideo {
+                        ExerciseVideoSection(model: hero, exerciseName: content.name)
+                    }
                     howTo
                     muscles
                 }

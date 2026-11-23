@@ -112,6 +112,8 @@ public enum AXID {
         public static let placeholder = "exerciseSheet.placeholder"
         public static let loading = "exerciseSheet.loading"
         public static let videoNotice = "exerciseSheet.videoNotice"
+        public static let videoToggle = "exerciseSheet.videoToggle"
+        public static let videoLoading = "exerciseSheet.videoLoading"
         public static let primaryMuscles = "exerciseSheet.primaryMuscles"
         public static let secondaryMuscles = "exerciseSheet.secondaryMuscles"
 
