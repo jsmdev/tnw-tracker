@@ -65,8 +65,7 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
     var instructionsTips: [String]?
     var mediaImageURI: String?
     var mediaVideoURI: String?
-    /// `relatedLinks` (format 1.2) as JSON, `nil` when none; optional, so it migrates lightly.
-    /// Stored under its 1.1 name, so existing stores need no migration.
+    /// `relatedLinks` (format 1.2) as JSON, `nil` when none; kept under its 1.1 name: no store migration.
     var relatedVideosData: Data?
 
     // Sync state (app-local, see `ModelContext+SyncTracking.swift`): the revision
