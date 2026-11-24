@@ -174,10 +174,12 @@ final class ExercisesUITests: XCTestCase {
         // Audit once the scroll has settled: mid-scroll the audit misreads contrast.
         waitUntilStill(personal)
         attachScreenshot(of: app, named: "related links, personal added")
+        // Without the header: after this scroll the CI simulator measures it where
+        // the first row is shown; test_relatedVideosPlayInTheSheetAndOpenOutside audits it.
         try app.auditAccessibility(
             screen: "related links, personal added",
             only: [
-                AXID.ExerciseSheet.relatedHeader, AXID.ExerciseSheet.relatedLink(1),
+                AXID.ExerciseSheet.relatedLink(1),
                 AXID.ExerciseSheet.relatedLink(2), AXID.ExerciseSheet.relatedLink(3),
                 AXID.ExerciseSheet.relatedLinkMenu(3), AXID.ExerciseSheet.addLinkButton
             ]
