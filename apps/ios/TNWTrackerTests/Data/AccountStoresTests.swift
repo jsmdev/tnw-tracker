@@ -47,15 +47,20 @@ final class AccountStoresTests {
         return try (opened.store.routines.routines(RoutineQuery()).map(\.name), opened.isNew)
     }
 
-    /// Writes the store every account shared before, stamped with `owner` (or nobody).
+    /// Writes the store every account shared before, stamped with `owner` (or nobody),
+    /// and closes it before returning: a container released later checkpoints its
+    /// log into the file after the test has read its bytes.
     private func writeLegacyStore(owner: UUID?) throws {
-        let store = try TrainingStore(url: legacy)
-        if let owner { _ = try store.ownership.claim(userId: owner, at: TrainingFixtures.t0) }
-        let routine = routine("Legacy")
-        try store.exercises.save(Exercise(
-            id: try #require(routine.items.first).exerciseId, isCatalogue: true, name: "Bench Press", type: .strength
-        ))
-        try store.routines.save(routine)
+        try autoreleasepool {
+            let store = try TrainingStore(url: legacy)
+            if let owner { _ = try store.ownership.claim(userId: owner, at: TrainingFixtures.t0) }
+            let routine = routine("Legacy")
+            try store.exercises.save(Exercise(
+                id: try #require(routine.items.first).exerciseId,
+                isCatalogue: true, name: "Bench Press", type: .strength
+            ))
+            try store.routines.save(routine)
+        }
     }
 
     private func legacyBytes() throws -> Data {
