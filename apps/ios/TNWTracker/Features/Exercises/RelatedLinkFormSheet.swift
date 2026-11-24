@@ -36,8 +36,10 @@ struct RelatedLinkFormSheet: View {
                 }
                 if let problem = model.problem {
                     Section {
-                        Label(problem.message, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(Color.red)
+                        // Primary text, not red: red text does not reach the contrast
+                        // minimum on the grouped background (as in SettingsView).
+                        Label(problem.message, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.primary)
                             .accessibilityIdentifier(AXID.RelatedLinkForm.problem)
                     }
                 }

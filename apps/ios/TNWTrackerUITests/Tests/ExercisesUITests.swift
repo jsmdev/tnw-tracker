@@ -141,6 +141,9 @@ final class ExercisesUITests: XCTestCase {
         form.saveButton.tap()
         XCTAssertTrue(form.problem.waitForExistence(timeout: 3), "refused with a message")
         attachScreenshot(of: app, named: "add link, address refused")
+        try app.auditAccessibility(
+            screen: "add link, address refused", only: formIDs.union([AXID.RelatedLinkForm.problem])
+        )
         form.cancel()
         XCTAssertFalse(press.relatedLink(3).exists, "nothing was added")
 
