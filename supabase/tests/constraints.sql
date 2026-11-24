@@ -397,65 +397,65 @@ SELECT throws_ok(
   '23514', NULL, 'an instruction list has at least one step'
 );
 SELECT lives_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'With videos', 'strength',
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'With links', 'strength',
              '[{"title":"Setup","url":"https://video.example/a","source":"Example"}, {"title":"Range","url":"https://video.example/b","source":"Example"}]') $$,
-  'an exercise lists related videos with a title, an https url and a source'
+  'an exercise lists related links with a title, an https url and a source'
 );
 SELECT throws_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '{"title":"Setup","url":"https://video.example/a","source":"Example"}') $$,
-  '23514', NULL, 'related videos are a list, not an object'
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad links', 'strength', '{"title":"Setup","url":"https://video.example/a","source":"Example"}') $$,
+  '23514', NULL, 'related links are a list, not an object'
 );
 SELECT throws_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[]') $$,
-  '23514', NULL, 'the list of related videos is never empty'
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad links', 'strength', '[]') $$,
+  '23514', NULL, 'the list of related links is never empty'
 );
 SELECT throws_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"http://video.example/a","source":"Example"}]') $$,
-  '23514', NULL, 'a related video url is https'
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad links', 'strength', '[{"title":"Setup","url":"http://video.example/a","source":"Example"}]') $$,
+  '23514', NULL, 'a related link url is https'
 );
 SELECT throws_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"","url":"https://video.example/a","source":"Example"}]') $$,
-  '23514', NULL, 'a related video has a title'
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad links', 'strength', '[{"title":"","url":"https://video.example/a","source":"Example"}]') $$,
+  '23514', NULL, 'a related link has a title'
 );
 SELECT throws_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a"}]') $$,
-  '23514', NULL, 'a related video has a source'
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad links', 'strength', '[{"title":"Setup","url":"https://video.example/a"}]') $$,
+  '23514', NULL, 'a related link has a source'
 );
 SELECT throws_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a","source":"Example","extra":1}]') $$,
-  '23514', NULL, 'a related video has no other fields'
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad links', 'strength', '[{"title":"Setup","url":"https://video.example/a","source":"Example","extra":1}]') $$,
+  '23514', NULL, 'a related link has no other fields'
 );
 SELECT throws_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '["https://video.example/a"]') $$,
-  '23514', NULL, 'every related video is an object'
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad links', 'strength', '["https://video.example/a"]') $$,
+  '23514', NULL, 'every related link is an object'
 );
 SELECT throws_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a","source":"Example"}, {"title":"Setup","url":"https://video.example/a","source":"Example"}]') $$,
-  '23514', NULL, 'no related video is listed twice'
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad links', 'strength', '[{"title":"Setup","url":"https://video.example/a","source":"Example"}, {"title":"Setup","url":"https://video.example/a","source":"Example"}]') $$,
+  '23514', NULL, 'no related link is listed twice'
 );
 SELECT throws_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":1,"url":"https://video.example/a","source":"Example"}]') $$,
-  '23514', NULL, 'a related video title is text'
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad links', 'strength', '[{"title":1,"url":"https://video.example/a","source":"Example"}]') $$,
+  '23514', NULL, 'a related link title is text'
 );
 SELECT throws_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a","source":1}]') $$,
-  '23514', NULL, 'a related video source is text'
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad links', 'strength', '[{"title":"Setup","url":"https://video.example/a","source":1}]') $$,
+  '23514', NULL, 'a related link source is text'
 );
 SELECT throws_ok(
-  $$ INSERT INTO public.exercises (user_id, name, type, related_videos)
-     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad videos', 'strength', '[{"title":"Setup","url":"https://video.example/a b","source":"Example"}]') $$,
-  '23514', NULL, 'a related video url has no spaces'
+  $$ INSERT INTO public.exercises (user_id, name, type, related_links)
+     VALUES ('00000000-0000-0000-0000-000000000001', 'Bad links', 'strength', '[{"title":"Setup","url":"https://video.example/a b","source":"Example"}]') $$,
+  '23514', NULL, 'a related link url has no spaces'
 );
 SELECT lives_ok(
   $$ INSERT INTO public.exercise_muscle_groups (exercise_id, muscle, role)

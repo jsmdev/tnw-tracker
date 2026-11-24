@@ -20,15 +20,15 @@ extension ExerciseModel {
             muscleGroups: MuscleGroupModel.inOrder(muscleGroups).compactMap(\.snapshot),
             instructions: instructions.isEmpty ? nil : instructions,
             media: media.isEmpty ? nil : media,
-            relatedVideos: relatedVideos
+            relatedLinks: relatedLinks
         )
     }
 
-    /// The stored related videos; `nil` when there are none. Setting `nil` or an
+    /// The stored related links; `nil` when there are none. Setting `nil` or an
     /// empty list clears them.
-    var relatedVideos: [RelatedVideo]? {
+    var relatedLinks: [RelatedLink]? {
         get {
-            relatedVideosData.flatMap { try? JSONDecoder().decode([RelatedVideo].self, from: $0) }
+            relatedVideosData.flatMap { try? JSONDecoder().decode([RelatedLink].self, from: $0) }
         }
         set {
             relatedVideosData = newValue.flatMap { $0.isEmpty ? nil : try? JSONEncoder().encode($0) }

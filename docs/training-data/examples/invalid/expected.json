@@ -63,8 +63,16 @@
     "rule": "range",
     "path": "/sessions/0/durationSeconds"
   },
-  "related-video-without-https.json": {
+  "related-link-without-https.json": {
+    "rule": "schema:pattern",
+    "path": "/exercises/0/relatedLinks/0/url"
+  },
+  "related-video-1-1-without-https.json": {
     "rule": "schema:pattern",
     "path": "/exercises/0/relatedVideos/0/url"
+  },
+  "related-links-and-videos.json": {
+    "rule": "schema:not",
+    "path": "/exercises/0"
   }
 }

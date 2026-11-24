@@ -38,7 +38,9 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     enum PushStep: Int, Comparable, Sendable {
         case deleteSets, deleteEntries, session, entries, sets
 
-        static func < (lhs: Self, rhs: Self) -> Bool { lhs.rawValue < rhs.rawValue }
+        static func < (lhs: Self, rhs: Self) -> Bool {
+            lhs.rawValue < rhs.rawValue
+        }
     }
 
     enum Call: Equatable, Sendable {
@@ -47,25 +49,6 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         case delete(RemoteTable, ids: [UUID])
         case deleteChildren(RemoteTable, parentId: UUID, keeping: [UUID])
         case pull(RemoteTable, after: RemoteCursor?, limit: Int)
-    }
-
-    static let networkDown = URLError(.notConnectedToInternet)
-
-    /// What the server answers for a broken foreign key or check.
-    static func foreignKeyViolation(_ constraint: String) -> RemoteStoreError {
-        .rejected(code: "23503", message: constraint)
-    }
-
-    /// What the server answers for a row whose policy names an exercise the user cannot see.
-    static func rowLevelSecurity(_ table: RemoteTable) -> RemoteStoreError {
-        .rejected(code: "42501", message: "new row violates row-level security policy for table \"\(table.rawValue)\"")
-    }
-
-    static let skippedEntryWithSets = RemoteStoreError.rejected(code: "23514", message: "a skipped entry has no sets")
-
-    /// What the server answers for a second row of the user with the same external ref.
-    static func duplicateExternalRef(_ table: RemoteTable) -> RemoteStoreError {
-        .rejected(code: "23505", message: "\(table.rawValue)_external_ref_key")
     }
 
     private(set) var calls: [Call] = []
@@ -127,7 +110,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     }
 
     /// Writes a row as another client would (an importer, another device).
-    func insertOnServer<Row: RemoteRow>(_ row: Row) throws {
+    func insertOnServer(_ row: some RemoteRow) throws {
         try write([row], asClient: false)
     }
 
@@ -146,7 +129,9 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         row.updatedAt = Self.timestamp(clock - seconds * 1_000_000)
         let inserted = tables[Row.table]?[row.id] == nil
         tables[Row.table, default: [:]][row.id] = row
-        if inserted { clearTombstones(Row.table, ids: [row.id]) }
+        if inserted {
+            clearTombstones(Row.table, ids: [row.id])
+        }
     }
 
     /// Rows of `type` stored now, in cursor order.
@@ -165,7 +150,9 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         pushFailure = nil
 
         func run(_ step: PushStep, _ write: () throws -> Void) throws {
-            if let failure, failure.step == step { throw failure.error }
+            if let failure, failure.step == step {
+                throw failure.error
+            }
             try write()
         }
         let entryIds = Set(aggregate.entries.map(\.id) + aggregate.removedEntryIds)
@@ -262,7 +249,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
 
     /// One statement: every row gets the same new `updated_at`, or none is written.
     /// `asClient`: an app upsert, which never sends the columns the app only
-    /// reads (`related_videos`); like the server, the stored value stays.
+    /// reads (`related_links`); like the server, the stored value stays.
     private func write<Row: RemoteRow>(_ rows: [Row], asClient: Bool) throws {
         guard !rows.isEmpty else { return }
         for row in rows {
@@ -276,8 +263,10 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         for var row in rows {
             row.updatedAt = now
             if asClient, var exercise = row as? RemoteExerciseRow {
-                exercise.relatedVideos = (tables[Row.table]?[row.id] as? RemoteExerciseRow)?.relatedVideos
-                if let typed = exercise as? Row { row = typed }
+                exercise.relatedLinks = (tables[Row.table]?[row.id] as? RemoteExerciseRow)?.relatedLinks
+                if let typed = exercise as? Row {
+                    row = typed
+                }
             }
             tables[Row.table, default: [:]][row.id] = row
         }
@@ -294,7 +283,9 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
             guard let entry = tables[.entries]?[set.entryId] as? RemoteEntryRow else {
                 throw Self.foreignKeyViolation("sets_entry_fkey")
             }
-            if entry.status == .skipped { throw Self.skippedEntryWithSets }
+            if entry.status == .skipped {
+                throw Self.skippedEntryWithSets
+            }
         case let group as RemoteMuscleGroupRow:
             // The policy: the user's own exercise.
             guard tables[.exercises]?[group.exerciseId] != nil else {
@@ -314,7 +305,9 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         try requireExercise(entry.exerciseId, .entries)
         try requireExercise(entry.replacedExerciseId, .entries)
         try require(entry.sessionId, in: .sessions, "entries_session_fkey")
-        if entry.status == .skipped, !setsOf(entry.id).isEmpty { throw Self.skippedEntryWithSets }
+        if entry.status == .skipped, !setsOf(entry.id).isEmpty {
+            throw Self.skippedEntryWithSets
+        }
     }
 
     /// `UNIQUE (user_id, external_provider, external_id)`: another row of the
@@ -324,7 +317,9 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         let stored = (tables[Row.table]?.values.compactMap { $0 as? Row } ?? []).filter { !written.contains($0.id) }
         var seen: [UUID: String] = [:]
         for row in rows + stored {
-            if let key = Self.externalRefKey(row) { seen[row.id] = key }
+            if let key = Self.externalRefKey(row) {
+                seen[row.id] = key
+            }
         }
         guard Set(seen.values).count == seen.count else { throw Self.duplicateExternalRef(Row.table) }
     }

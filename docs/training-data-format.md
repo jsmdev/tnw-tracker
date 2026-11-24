@@ -5,7 +5,7 @@ This document defines the provider-neutral format the app uses for exercises, ro
 - **Schema:** [`training-data/schema.json`](training-data/schema.json) (JSON Schema 2020-12)
 - **Examples:** [`training-data/examples/`](training-data/examples), all with invented data
 - **Validator:** [`training-data/validate.py`](training-data/validate.py)
-- **Format version:** 1.1 (1.1 adds `relatedVideos` to the exercise; a 1.0 bundle is still valid)
+- **Format version:** 1.2 (1.1 added `relatedVideos` to the exercise; 1.2 renames it `relatedLinks`, for any external link, and still reads `relatedVideos` as `relatedLinks`; 1.0 and 1.1 bundles are still valid)
 
 ## Why it exists
 
@@ -60,19 +60,19 @@ There are two kinds of bundle, and they differ only in what they contain:
 
 ### Exercise
 
-| Field           | Required | Meaning                                                                                   |
-| --------------- | -------- | ----------------------------------------------------------------------------------------- |
-| `id`            | yes      | UUID.                                                                                     |
-| `externalRef`   | no       | Identity in the provider's catalogue.                                                     |
-| `name`          | yes      | Display name.                                                                             |
-| `type`          | yes      | `strength`, `bodyweight` or `cardio`. Decides how the exercise is logged.                 |
-| `equipment`     | no       | `none`, `free_weights`, `machine`, `connected_machine`, `cardio_machine` or `other`.      |
-| `muscleGroups`  | no       | List of `{ muscle, role }`, with `role` being `primary` or `secondary`.                   |
-| `instructions`  | no       | `setup`, `execution` and `tips`, each a list of steps.                                    |
-| `media`         | no       | `image` and `video`, each with a `uri`: absolute, or relative to an agreed media root.    |
-| `relatedVideos` | no       | Since 1.1. External videos that explain the exercise: a list of `{ title, url, source }`. |
+| Field          | Required | Meaning                                                                                                           |
+| -------------- | -------- | ----------------------------------------------------------------------------------------------------------------- |
+| `id`           | yes      | UUID.                                                                                                             |
+| `externalRef`  | no       | Identity in the provider's catalogue.                                                                             |
+| `name`         | yes      | Display name.                                                                                                     |
+| `type`         | yes      | `strength`, `bodyweight` or `cardio`. Decides how the exercise is logged.                                         |
+| `equipment`    | no       | `none`, `free_weights`, `machine`, `connected_machine`, `cardio_machine` or `other`.                              |
+| `muscleGroups` | no       | List of `{ muscle, role }`, with `role` being `primary` or `secondary`.                                           |
+| `instructions` | no       | `setup`, `execution` and `tips`, each a list of steps.                                                            |
+| `media`        | no       | `image` and `video`, each with a `uri`: absolute, or relative to an agreed media root.                            |
+| `relatedLinks` | no       | Since 1.2 (`relatedVideos` in 1.1). External links that explain the exercise: a list of `{ title, url, source }`. |
 
-`relatedVideos` are curated with the catalogue, not written by the user: `title` is our own title, shown instead of the address; `url` is an `https` address; `source` is the name of the site shown to the user (for example YouTube). The list is never empty and lists no video twice, and an exercise without the field keeps the videos the receiver already holds for it (principle: optional means unknown).
+`relatedLinks` are curated with the catalogue, not written by the user, and may point to a video, an article or any other page: `title` is our own title, shown instead of the address; `url` is an `https` address; `source` is the name of the site shown to the user (for example YouTube). The list is never empty and lists no link twice, and an exercise without the field keeps the links the receiver already holds for it (principle: optional means unknown). A 1.1 bundle's `relatedVideos` is read as `relatedLinks`; an exercise states one of them, never both.
 
 `connected_machine` marks the exercises whose sets can arrive by import, so the app knows where reconciliation may apply.
 

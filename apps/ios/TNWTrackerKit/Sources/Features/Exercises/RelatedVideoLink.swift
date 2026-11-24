@@ -14,7 +14,7 @@ public struct RelatedVideoLink: Identifiable, Hashable, Sendable {
         externalURL?.absoluteString ?? title
     }
 
-    public init(_ video: RelatedVideo) {
+    public init(_ video: RelatedLink) {
         title = video.title
         source = video.source
         let url = URL(string: video.url)

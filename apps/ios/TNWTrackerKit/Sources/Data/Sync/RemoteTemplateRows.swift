@@ -4,7 +4,7 @@ import Foundation
 // Rows of the exercise and routine tables, with the same encoding rules as
 // `RemoteRows.swift`: every column the client owns is written, `null` included,
 // and `created_at`/`updated_at` are never sent. The columns the app only reads
-// (`related_videos`) are never sent either, so an upsert keeps them.
+// (`related_links`) are never sent either, so an upsert keeps them.
 
 // MARK: - exercises
 
@@ -23,8 +23,8 @@ public struct RemoteExerciseRow: RemoteRow {
     public var tips: [String]?
     public var imageURI: String?
     public var videoURI: String?
-    /// Curated on the server (format 1.1): read, never sent.
-    public var relatedVideos: [RelatedVideo]?
+    /// Curated on the server (format 1.2): read, never sent.
+    public var relatedLinks: [RelatedLink]?
     public var externalRef: ExternalRef?
     public var updatedAt: String?
 
@@ -65,7 +65,7 @@ public struct RemoteExerciseRow: RemoteRow {
         case tips
         case imageURI = "image_uri"
         case videoURI = "video_uri"
-        case relatedVideos = "related_videos"
+        case relatedLinks = "related_links"
         case updatedAt = "updated_at"
     }
 
@@ -81,7 +81,7 @@ public struct RemoteExerciseRow: RemoteRow {
         tips = try values.decodeIfPresent([String].self, forKey: .tips)
         imageURI = try values.decodeIfPresent(String.self, forKey: .imageURI)
         videoURI = try values.decodeIfPresent(String.self, forKey: .videoURI)
-        relatedVideos = try values.decodeIfPresent([RelatedVideo].self, forKey: .relatedVideos)
+        relatedLinks = try values.decodeIfPresent([RelatedLink].self, forKey: .relatedLinks)
         externalRef = try ExternalRefColumns.decode(from: decoder)
         updatedAt = try values.decodeIfPresent(String.self, forKey: .updatedAt)
     }

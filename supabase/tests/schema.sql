@@ -3,7 +3,7 @@
 -- and the API roles have exactly the privileges they need.
 BEGIN;
 
-SELECT plan(76);
+SELECT plan(80);
 
 -- ---------------------------------------------------------------
 -- Old schema removed (S5)
@@ -191,8 +191,12 @@ SELECT col_type_is('public', 'sets', 'warmup', 'boolean', 'sets.warmup is a bool
 SELECT col_default_is('public', 'sets', 'warmup', 'false', 'sets.warmup defaults to false');
 SELECT col_not_null('public', 'sets', 'warmup', 'sets.warmup is never null');
 SELECT col_type_is('public', 'exercises', 'setup_steps', 'text[]', 'instruction steps are text arrays');
-SELECT has_column('public', 'exercises', 'related_videos', 'exercises.related_videos exists (format 1.1)');
-SELECT col_type_is('public', 'exercises', 'related_videos', 'jsonb', 'exercises.related_videos is jsonb');
+SELECT has_column('public', 'exercises', 'related_links', 'exercises.related_links exists (format 1.2)');
+SELECT col_type_is('public', 'exercises', 'related_links', 'jsonb', 'exercises.related_links is jsonb');
+SELECT hasnt_column('public', 'exercises', 'related_videos', 'format 1.2 renamed exercises.related_videos to related_links');
+SELECT has_function('public', 'related_links_are_valid', ARRAY['jsonb'], 'related_links_are_valid(jsonb) checks exercises.related_links');
+SELECT hasnt_function('public', 'related_videos_are_valid', ARRAY['jsonb'], 'the 1.1 checker is renamed, not left behind');
+SELECT ok(EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'exercises_related_links_valid' AND conrelid = 'public.exercises'::regclass), 'exercises_related_links_valid checks exercises.related_links');
 
 -- exercise_settings: per-user rest between sets (L15, AC7.1, AC7.2)
 SELECT col_is_pk('public', 'exercise_settings', ARRAY['user_id', 'exercise_id'], 'exercise_settings key is (user_id, exercise_id)');

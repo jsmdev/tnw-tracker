@@ -42,21 +42,21 @@ Every `externalRef` is stored as two columns, `external_provider` and `external_
 
 ### Exercise
 
-| Format field                      | Column                                                                                                                           |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `id`                              | `exercises.id`                                                                                                                   |
-| `externalRef.provider` / `.id`    | `exercises.external_provider` / `exercises.external_id`                                                                          |
-| `name`                            | `exercises.name`                                                                                                                 |
-| `type`                            | `exercises.type` (`exercise_type`)                                                                                               |
-| `equipment`                       | `exercises.equipment` (`equipment`)                                                                                              |
-| `muscleGroups[].muscle` / `.role` | `exercise_muscle_groups.muscle` / `.role`, one row each, linked by `exercise_id`                                                 |
-| order of `muscleGroups[]`         | `exercise_muscle_groups.position`, from 1                                                                                        |
-| `instructions.setup`              | `exercises.setup_steps` (`text[]`)                                                                                               |
-| `instructions.execution`          | `exercises.execution_steps` (`text[]`)                                                                                           |
-| `instructions.tips`               | `exercises.tips` (`text[]`)                                                                                                      |
-| `media.image.uri`                 | `exercises.image_uri`                                                                                                            |
-| `media.video.uri`                 | `exercises.video_uri`                                                                                                            |
-| `relatedVideos` (1.1)             | `exercises.related_videos` (`jsonb`, the list as in the format; checked by `related_videos_are_valid`; never written by the app) |
+| Format field                      | Column                                                                                                                         |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `id`                              | `exercises.id`                                                                                                                 |
+| `externalRef.provider` / `.id`    | `exercises.external_provider` / `exercises.external_id`                                                                        |
+| `name`                            | `exercises.name`                                                                                                               |
+| `type`                            | `exercises.type` (`exercise_type`)                                                                                             |
+| `equipment`                       | `exercises.equipment` (`equipment`)                                                                                            |
+| `muscleGroups[].muscle` / `.role` | `exercise_muscle_groups.muscle` / `.role`, one row each, linked by `exercise_id`                                               |
+| order of `muscleGroups[]`         | `exercise_muscle_groups.position`, from 1                                                                                      |
+| `instructions.setup`              | `exercises.setup_steps` (`text[]`)                                                                                             |
+| `instructions.execution`          | `exercises.execution_steps` (`text[]`)                                                                                         |
+| `instructions.tips`               | `exercises.tips` (`text[]`)                                                                                                    |
+| `media.image.uri`                 | `exercises.image_uri`                                                                                                          |
+| `media.video.uri`                 | `exercises.video_uri`                                                                                                          |
+| `relatedLinks` (1.2)              | `exercises.related_links` (`jsonb`, the list as in the format; checked by `related_links_are_valid`; never written by the app) |
 
 ### Routine
 

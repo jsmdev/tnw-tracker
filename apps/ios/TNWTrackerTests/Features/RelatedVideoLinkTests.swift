@@ -7,7 +7,7 @@ import Testing
 @Suite("Related video link")
 struct RelatedVideoLinkTests {
     private func link(_ url: String) -> RelatedVideoLink {
-        RelatedVideoLink(RelatedVideo(title: "Invented title", url: url, source: "YouTube"))
+        RelatedVideoLink(RelatedLink(title: "Invented title", url: url, source: "YouTube"))
     }
 
     @Test(arguments: [
