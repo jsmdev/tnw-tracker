@@ -14,10 +14,10 @@ import Foundation
 /// exercise the server does not hold is refused by row-level security (42501),
 /// as the server's policies check it before the foreign key.
 /// Like the server's triggers, every delete records a tombstone of each deleted
-/// session, entry, set, routine, user exercise, muscle group, routine item and
-/// exercise setting (a session's cascade included; the children deleted with
-/// their exercise or routine leave none), and writing a row again under its id
-/// clears its tombstone.
+/// session, entry, set, routine, user exercise, muscle group, routine item,
+/// exercise setting and personal link (a session's cascade included; the other
+/// children deleted with their exercise or routine leave none, links do), and
+/// writing a row again under its id clears its tombstone.
 ///
 /// Exercise settings are stored by their exercise id, which is their key for
 /// the one user a fake serves.
@@ -294,10 +294,8 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
         case let item as RemoteRoutineItemRow:
             try requireExercise(item.exerciseId, .routineItems)
             try require(item.routineId, in: .routines, "routine_items_routine_fkey")
-        case let setting as RemoteExerciseSettingRow:
-            try requireExercise(setting.exerciseId, .exerciseSettings)
         default:
-            break
+            try checkUserData(row)
         }
     }
 
@@ -364,7 +362,7 @@ actor InMemoryTrainingRemoteStore: TrainingRemoteStore {
     }
 
     /// Row-level security of `table`: the exercise is one the user can see.
-    private func requireExercise(_ id: UUID?, _ table: RemoteTable) throws {
+    func requireExercise(_ id: UUID?, _ table: RemoteTable) throws {
         guard let id else { return }
         guard catalogue.contains(id) || tables[.exercises]?[id] != nil else {
             throw Self.rowLevelSecurity(table)

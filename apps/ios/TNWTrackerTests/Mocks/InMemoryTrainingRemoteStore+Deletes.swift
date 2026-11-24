@@ -1,8 +1,8 @@
 import Foundation
 @testable import TNWTrackerKit
 
-// Deletes and tombstones of the in-memory server, as its triggers write them
-// (supabase/migrations/20261119120000_sync_tombstones.sql).
+/// Deletes and tombstones of the in-memory server, as its triggers write them
+/// (supabase/migrations/20261119120000_sync_tombstones.sql).
 extension InMemoryTrainingRemoteStore {
     /// One delete statement: the rows with `ids` and every row its cascades
     /// reach go at once, each tracked one leaving a tombstone of its owner at the
@@ -16,7 +16,9 @@ extension InMemoryTrainingRemoteStore {
             let used = rows(RemoteEntryRow.self).contains { ids.contains($0.exerciseId) }
                 || rows(RemoteEntryRow.self).contains { $0.replacedExerciseId.map(ids.contains) ?? false }
                 || rows(RemoteRoutineItemRow.self).contains { ids.contains($0.exerciseId) }
-            if used { throw Self.foreignKeyViolation("entries_exercise_id_fkey") }
+            if used {
+                throw Self.foreignKeyViolation("entries_exercise_id_fkey")
+            }
         }
         clock += 1
         let now = Self.timestamp(clock)
@@ -42,6 +44,8 @@ extension InMemoryTrainingRemoteStore {
     /// from them, and whether each leaves a tombstone. A session's entries and
     /// sets do; the muscle groups, items and settings deleted with their
     /// exercise or routine do not (their parent's tombstone covers them).
+    /// Personal links do: every deleted link leaves its owner one
+    /// (20261124120000_exercise_links.sql).
     private func cascade(_ table: RemoteTable, _ ids: [UUID]) -> [Reached] {
         let children: [Reached] = switch table {
         case .sessions:
@@ -59,6 +63,9 @@ extension InMemoryTrainingRemoteStore {
                 + rows(RemoteExerciseSettingRow.self)
                 .filter { ids.contains($0.exerciseId) }
                 .map { Reached(.exerciseSettings, $0.id, tracked: false) }
+                + rows(RemoteExerciseLinkRow.self)
+                .filter { ids.contains($0.exerciseId) }
+                .map { Reached(.exerciseLinks, $0.id, tracked: true) }
         default:
             []
         }
@@ -89,6 +96,7 @@ extension InMemoryTrainingRemoteStore {
         case let row as RemoteExerciseRow: row.userId
         case let row as RemoteRoutineItemRow: row.userId
         case let row as RemoteExerciseSettingRow: row.userId
+        case let row as RemoteExerciseLinkRow: row.userId
         case let row as RemoteMuscleGroupRow: (tables[.exercises]?[row.exerciseId] as? RemoteExerciseRow)?.userId
         default: nil
         }

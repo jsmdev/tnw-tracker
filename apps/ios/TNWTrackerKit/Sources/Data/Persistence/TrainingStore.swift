@@ -13,6 +13,8 @@ public final class TrainingStore {
     public let sessions: any SessionRepositoryProtocol
     public let importer: any TrainingImporterProtocol
     public let exerciseSettings: any ExerciseSettingRepositoryProtocol
+    /// The user's personal related links of exercises (S10).
+    public let exerciseLinks: any ExerciseLinkRepositoryProtocol
     /// The owner stamp of the store (S10).
     public let ownership: any StoreOwnershipProtocol
     /// Change tracking and local tombstones for the sync (S7, S11).
@@ -41,12 +43,13 @@ public final class TrainingStore {
         sessions = sessionRepository
         importer = SwiftDataTrainingImporter(context: context, sessions: sessionRepository)
         exerciseSettings = SwiftDataExerciseSettingRepository(context: context)
+        exerciseLinks = SwiftDataExerciseLinkRepository(context: context)
         ownership = SwiftDataStoreOwnership(context: context)
         syncState = SwiftDataSyncStateRepository(context: context)
         pulled = SwiftDataPullApplier(context: context, sessions: sessionRepository)
     }
 
-    /// Deletes every exercise, routine and session, and the exercises' settings.
+    /// Deletes every exercise, routine and session, and the exercises' settings and personal links.
     /// A local reset: it leaves no tombstone, forgets the pending ones, the pull
     /// cursors and the owner stamp, so nothing it deletes or writes next is sent
     /// to the server until a sign-in claims the store again, and the next pull
@@ -65,6 +68,9 @@ public final class TrainingStore {
         }
         for setting in try context.fetch(FetchDescriptor<ExerciseSettingModel>()) {
             context.delete(setting)
+        }
+        for link in try context.fetch(FetchDescriptor<ExerciseLinkModel>()) {
+            context.delete(link)
         }
         for tombstone in try context.fetch(FetchDescriptor<SyncTombstoneModel>()) {
             context.delete(tombstone)

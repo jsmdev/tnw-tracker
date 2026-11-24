@@ -27,7 +27,9 @@ struct SyncSchedulerTests {
     /// Syncs run so far: every sync starts its pull with the tombstones.
     private func syncRuns() async -> Int {
         await server.calls.filter {
-            if case .pull(.tombstones, _, _) = $0 { return true }
+            if case .pull(.tombstones, _, _) = $0 {
+                return true
+            }
             return false
         }.count
     }
@@ -197,12 +199,14 @@ struct SyncSchedulerTests {
     /// The tables every pull reads, in order.
     static let pullOrder: [RemoteTable] = [
         .tombstones, .sets, .entries, .sessions, .routineItems, .routines, .exerciseMuscleGroups,
-        .exerciseSettings, .exercises
+        .exerciseSettings, .exerciseLinks, .exercises
     ]
 
-    @Test("S10 signing in again during a sync stops the running engine first: it reads nothing more",
-          .timeLimit(.minutes(1)))
-    func signInAgainStopsTheRunningEngine() async throws {
+    @Test(
+        "S10 signing in again during a sync stops the running engine first: it reads nothing more",
+        .timeLimit(.minutes(1))
+    )
+    func signInAgainStopsTheRunningEngine() async {
         let gates = await holdNextPull()
         scheduler.signIn(userId: user)
         await gates.reached.wait()
@@ -212,7 +216,9 @@ struct SyncSchedulerTests {
         await scheduler.waitUntilIdle()
 
         let pulls = await server.calls.compactMap { call -> RemoteTable? in
-            if case let .pull(table, _, _) = call { return table }
+            if case let .pull(table, _, _) = call {
+                return table
+            }
             return nil
         }
         // The first engine had its tombstones page answered; the new one reads every table.

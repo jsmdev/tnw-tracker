@@ -27,6 +27,7 @@ extension ExerciseModel: SyncTrackedModel {}
 extension RoutineModel: SyncTrackedModel {}
 extension SessionModel: SyncTrackedModel {}
 extension ExerciseSettingModel: SyncTrackedModel {}
+extension ExerciseLinkModel: SyncTrackedModel {}
 
 extension ModelContext {
     /// True when the store has an owner, so the aggregates created now are the owner's data.
@@ -69,6 +70,13 @@ extension ModelContext {
         }
         guard session.syncSent, session.isSyncable else { return }
         try insertTombstone(.session, rowId: session.id, sessionId: nil, revision: session.syncRevision + 1)
+    }
+
+    /// A personal link about to be deleted. Leaves a tombstone only when the
+    /// link may exist on the server.
+    func recordDeletion(of link: ExerciseLinkModel) throws {
+        guard link.syncSent, link.isSyncable else { return }
+        try insertTombstone(.exerciseLink, rowId: link.id, sessionId: nil, revision: link.syncRevision + 1)
     }
 
     /// A set that joins `session` again is no longer removed from it.

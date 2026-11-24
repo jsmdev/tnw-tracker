@@ -124,4 +124,8 @@ public enum TrainingDataError: Error, Equatable, Sendable {
     case sessionInProgress
     /// The session holds imported data, which the next import would bring back.
     case sessionHasImportedData
+    /// A personal link without a title or a source, or whose address is not `https`.
+    case invalidLink(String)
+    /// The exercise already has a personal link with this address.
+    case duplicateLink
 }

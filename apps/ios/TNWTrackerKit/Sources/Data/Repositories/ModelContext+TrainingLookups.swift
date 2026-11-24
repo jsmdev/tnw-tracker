@@ -104,4 +104,16 @@ extension ModelContext {
         descriptor.fetchLimit = 1
         return try fetch(descriptor).first
     }
+
+    /// A personal link of an exercise, by its id.
+    func fetchExerciseLink(id: UUID) throws -> ExerciseLinkModel? {
+        var descriptor = FetchDescriptor<ExerciseLinkModel>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return try fetch(descriptor).first
+    }
+
+    /// The personal links of an exercise, unordered.
+    func fetchExerciseLinks(exerciseId: UUID) throws -> [ExerciseLinkModel] {
+        try fetch(FetchDescriptor<ExerciseLinkModel>(predicate: #Predicate { $0.exerciseId == exerciseId }))
+    }
 }

@@ -41,7 +41,7 @@ SELECT tables_are(
   'public',
   ARRAY[
     'users', 'exercises', 'exercise_muscle_groups', 'routines', 'routine_items',
-    'sessions', 'entries', 'sets', 'exercise_settings', 'tombstones'
+    'sessions', 'entries', 'sets', 'exercise_settings', 'exercise_links', 'tombstones'
   ],
   'public holds exactly the new tables'
 );
@@ -96,7 +96,7 @@ SELECT is_empty(
   $$
     SELECT t FROM unnest(ARRAY[
       'users', 'exercises', 'exercise_muscle_groups', 'routines', 'routine_items',
-      'sessions', 'entries', 'sets', 'exercise_settings'
+      'sessions', 'entries', 'sets', 'exercise_settings', 'exercise_links'
     ]) AS t
     WHERE has_table_privilege('anon', 'public.' || t, 'SELECT')
        OR has_table_privilege('anon', 'public.' || t, 'INSERT')
@@ -110,7 +110,7 @@ SELECT is_empty(
   $$
     SELECT t FROM unnest(ARRAY[
       'users', 'exercises', 'exercise_muscle_groups', 'routines', 'routine_items',
-      'sessions', 'entries', 'sets', 'exercise_settings'
+      'sessions', 'entries', 'sets', 'exercise_settings', 'exercise_links'
     ]) AS t
     WHERE NOT (
       has_table_privilege('authenticated', 'public.' || t, 'SELECT')
@@ -126,7 +126,7 @@ SELECT is_empty(
   $$
     SELECT t FROM unnest(ARRAY[
       'users', 'exercises', 'exercise_muscle_groups', 'routines', 'routine_items',
-      'sessions', 'entries', 'sets', 'exercise_settings'
+      'sessions', 'entries', 'sets', 'exercise_settings', 'exercise_links'
     ]) AS t
     WHERE NOT (
       has_table_privilege('service_role', 'public.' || t, 'SELECT')

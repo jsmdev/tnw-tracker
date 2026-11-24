@@ -87,6 +87,14 @@ struct SupabaseTrainingRemoteStoreContractTests {
         try await run(TrainingRemoteStoreContract.settingsAreKeyedByExercise)
     }
 
+    @Test func linksReadBackAndLeaveTombstones() async throws {
+        try await run(TrainingRemoteStoreContract.linksReadBackAndLeaveTombstones)
+    }
+
+    @Test func invalidLinksAreRejected() async throws {
+        try await run(TrainingRemoteStoreContract.invalidLinksAreRejected)
+    }
+
     private func run(_ scenario: (RemoteStoreHarness) async throws -> Void) async throws {
         try await LocalSupabaseStack.withThrowawayUser { client, userId in
             let store = SupabaseTrainingRemoteStore(client: client, userId: userId)

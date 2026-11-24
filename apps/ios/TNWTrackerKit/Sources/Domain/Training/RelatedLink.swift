@@ -16,3 +16,12 @@ public struct RelatedLink: Hashable, Codable, Sendable {
         self.source = source
     }
 }
+
+public extension RelatedLink {
+    /// The address rule of a related link, curated or personal, as the server
+    /// checks it: `https://` followed by an address with no spaces.
+    static func isHTTPSAddress(_ url: String) -> Bool {
+        let address = url.dropFirst("https://".count)
+        return url.hasPrefix("https://") && !address.isEmpty && !address.contains(where: \.isWhitespace)
+    }
+}

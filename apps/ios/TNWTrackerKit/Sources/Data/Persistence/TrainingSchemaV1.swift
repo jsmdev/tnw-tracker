@@ -28,6 +28,7 @@ public enum TrainingSchemaV1: VersionedSchema {
             EntryExternalRefModel.self,
             ExerciseSetModel.self,
             ExerciseSettingModel.self,
+            ExerciseLinkModel.self,
             WorkoutIntentEvent.self,
             StoreOwnerModel.self,
             SyncTombstoneModel.self,
@@ -306,36 +307,6 @@ public enum TrainingMigrationPlan: SchemaMigrationPlan {
         self.id = id
         self.order = order
         self.sourceRaw = sourceRaw
-    }
-}
-
-// MARK: - App-local settings
-
-/// The user's settings for one exercise (app-local, not in the training data
-/// format). Keyed by the exercise id; it outlives no exercise, see
-/// `TrainingStore.deleteAllTrainingData`.
-@Model final class ExerciseSettingModel {
-    @Attribute(.unique) var exerciseId: UUID
-    var restEnabled: Bool = true
-    var restSeconds: Int
-
-    // Sync state (app-local, see `ModelContext+SyncTracking.swift`): the revision
-    // grows with every local change, `syncedRevision` is the last one the server
-    // acknowledged, `syncSent` means it may exist on the server, and
-    // `isSyncable` (fixed at creation) keeps unowned and catalogue data local.
-    // None of them is user data: changing them never raises the revision.
-    var syncRevision: Int = 0
-    var syncedRevision: Int = 0
-    var syncSent: Bool = false
-    var isSyncable: Bool = false
-    /// Pushes the server refused since the last acknowledged one, and why the last did.
-    var syncFailureCount: Int = 0
-    var syncLastError: String?
-
-    init(exerciseId: UUID, restEnabled: Bool, restSeconds: Int) {
-        self.exerciseId = exerciseId
-        self.restEnabled = restEnabled
-        self.restSeconds = restSeconds
     }
 }
 

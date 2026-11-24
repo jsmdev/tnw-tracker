@@ -281,3 +281,4 @@ These are not settled. Each has the default this version assumes, so work can co
 - How an importer reads its source. That lives outside this repository.
 - The database tables and the app's persistence model. They follow this format, and each is defined in its own issue.
 - Body measurements, health data and anything not about training sessions.
+- The links a user adds to an exercise themselves («Personal» in the app). They are user data kept by the app and the database (`exercise_links`), never exported or imported.
