@@ -15,6 +15,8 @@ struct SettingsView: View {
     private var changeExerciseRestEnabled = ChangeExerciseRestPreference.defaultEnabled
     @AppStorage(ChangeExerciseRestPreference.secondsKey)
     private var changeExerciseRestSeconds = ChangeExerciseRestPreference.defaultSeconds
+    @AppStorage(OpenLinksInAppPreference.enabledKey)
+    private var openLinksInApp = OpenLinksInAppPreference.defaultEnabled
 
     var body: some View {
         Form {
@@ -42,6 +44,15 @@ struct SettingsView: View {
                 Text("settings.effort-section")
             } footer: {
                 Text("settings.rir-maximum-footer")
+            }
+            Section {
+                Toggle("settings.open-links-in-app-toggle", isOn: $openLinksInApp)
+                    .accessibilityIdentifier(AXID.Settings.openLinksInAppToggle)
+            } header: {
+                Text("settings.links-section")
+            } footer: {
+                Text("settings.open-links-in-app-footer")
+                    .accessibilityIdentifier(AXID.Settings.openLinksInAppFooter)
             }
             Section {
                 // Primary colour, not the destructive red: red text does not reach
@@ -105,10 +116,10 @@ struct SettingsView: View {
 }
 
 #if DEBUG
-#Preview {
-    NavigationStack {
-        SettingsView()
+    #Preview {
+        NavigationStack {
+            SettingsView()
+        }
+        .environment(AppEnvironment.preview())
     }
-    .environment(AppEnvironment.preview())
-}
 #endif

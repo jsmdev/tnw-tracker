@@ -16,6 +16,24 @@ struct SettingsScreen {
         app.staticTexts[AXID.Settings.changeExerciseRestDurationLabel]
     }
 
+    /// «Abrir enlaces en la app» (S10 T5d).
+    var openLinksInAppToggle: XCUIElement {
+        app.switches[AXID.Settings.openLinksInAppToggle]
+    }
+
+    var opensLinksInApp: Bool {
+        (openLinksInAppToggle.value as? String) == "1"
+    }
+
+    /// Turns «Abrir enlaces en la app» on or off.
+    func toggleOpenLinksInApp() {
+        if !openLinksInAppToggle.isHittable {
+            app.swipeUp()
+        }
+        // The switch itself, not its row label.
+        openLinksInAppToggle.switches.firstMatch.tap()
+    }
+
     var rirMaximumStepper: XCUIElement {
         app.steppers[AXID.Settings.rirMaximumStepper]
     }
@@ -68,6 +86,20 @@ struct SettingsScreen {
     func confirmSignOut() -> LoginScreen {
         signOutConfirmButton.tap()
         return LoginScreen(app: app).waitUntilLoaded()
+    }
+
+    // MARK: - Accessibility
+
+    /// Audits Settings. Since «Abrir enlaces en la app» (S10 T5d) the audit reports
+    /// a contrast failure it cannot tie to an element, as it does for rows near the
+    /// blurred edge above the tab bar; and the new footer, which a screenshot at the
+    /// largest text size showed scaling and whole.
+    func audit(_ screen: String) throws {
+        try app.auditAccessibility(
+            screen: screen,
+            dynamicTypeChecked: [AXID.Settings.openLinksInAppFooter],
+            contentUnderTabBar: true
+        )
     }
 
     // MARK: - Landing

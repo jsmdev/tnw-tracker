@@ -141,6 +141,8 @@ public enum AXID {
         public static let relatedLinkDelete = "exerciseSheet.relatedLinkDelete"
         /// «Eliminar» in the confirmation of a personal link's deletion.
         public static let relatedLinkDeleteConfirm = "exerciseSheet.relatedLinkDeleteConfirm"
+        /// The in-app browser a related link opens in (S10 T5d).
+        public static let inAppBrowser = "exerciseSheet.inAppBrowser"
 
         /// The `number`th related link's row, from 1: ours, then the user's.
         public static func relatedLink(_ number: Int) -> String {
@@ -214,6 +216,8 @@ public enum AXID {
         public static let changeExerciseRestDurationLabel = "settings.changeExerciseRestDurationLabel"
         public static let changeExerciseRestDecreaseButton = "settings.changeExerciseRestDecreaseButton"
         public static let changeExerciseRestIncreaseButton = "settings.changeExerciseRestIncreaseButton"
+        public static let openLinksInAppToggle = "settings.openLinksInAppToggle"
+        public static let openLinksInAppFooter = "settings.openLinksInAppFooter"
         public static let signOutButton = "settings.signOutButton"
         public static let signOutConfirmButton = "settings.signOutConfirmButton"
         public static let signOutCancelButton = "settings.signOutCancelButton"

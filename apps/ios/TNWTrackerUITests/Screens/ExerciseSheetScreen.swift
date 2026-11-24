@@ -56,6 +56,20 @@ struct ExerciseSheetScreen {
         app.descendants(matching: .any)[AXID.ExerciseSheet.relatedLinkPlayer].firstMatch
     }
 
+    /// The in-app browser a related link opens in (S10 T5d).
+    var inAppBrowser: XCUIElement {
+        app.descendants(matching: .any)[AXID.ExerciseSheet.inAppBrowser].firstMatch
+    }
+
+    /// Closes the in-app browser with its own Done button, back to the sheet.
+    func closeInAppBrowser() {
+        // The browser's own Done button: «OK» in Spanish, "Done" in English.
+        let done = app.buttons.matching(NSPredicate(format: "label IN %@", ["OK", "Done"])).firstMatch
+        XCTAssertTrue(done.waitForExistence(timeout: 5), "the in-app browser has its Done button")
+        done.tap()
+        XCTAssertTrue(inAppBrowser.waitForNonExistence(timeout: 5), "the in-app browser closes")
+    }
+
     var relatedHeader: XCUIElement {
         app.staticTexts[AXID.ExerciseSheet.relatedHeader]
     }

@@ -52,6 +52,6 @@ final class RestSettingsUITests: XCTestCase {
         // Settings: "Descanso al cambiar de ejercicio".
         let settings = homeLast.tapSettings()
         XCTAssertTrue(settings.changeExerciseRestDuration.exists)
-        try app.auditAccessibility(screen: "settings")
+        try settings.audit("settings")
     }
 }

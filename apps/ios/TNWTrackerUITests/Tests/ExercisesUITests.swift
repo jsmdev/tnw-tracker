@@ -112,13 +112,53 @@ final class ExercisesUITests: XCTestCase {
         youTube.tap()
         XCTAssertTrue(press.relatedLinkPlayer.waitForNonExistence(timeout: 5), "tapping it again stops it")
 
-        // AC4: a link to another site opens outside the app, with no player.
+        // S10 AC6: a link to another site opens in the in-app browser by default,
+        // with no player; the app stays in front and Safari does not open.
+        // The page itself never loads in tests (no network): only the browser is checked.
         other.tap()
-        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: safariLaunch), "the link opens outside the app")
-        app.activate()
+        XCTAssertTrue(press.inAppBrowser.waitForExistence(timeout: 10), "the link opens in the app")
+        XCTAssertEqual(app.state, .runningForeground)
+        XCTAssertNotEqual(safari.state, .runningForeground, "Safari does not open")
+        attachScreenshot(of: app, named: "related link in the in-app browser")
+        press.closeInAppBrowser()
+        XCTAssertTrue(other.waitForExistence(timeout: 5), "back to the sheet")
         XCTAssertFalse(press.relatedLinkPlayer.exists, "no player for another site")
 
         _ = press.close().openHomeTab()
+    }
+
+    /// S10 T5d AC7: «Abrir enlaces en la app» shows in Settings, on by default,
+    /// and is remembered on the device. AC6: off, a link to another site opens
+    /// in Safari outside the app.
+    func test_linksOpenOutsideWhenTheSettingIsOff() throws {
+        var app = launchUITestApp()
+        var settings = HomeScreen(app: app).waitUntilLoaded(timeout: 10).tapSettings()
+        XCTAssertTrue(settings.openLinksInAppToggle.waitForExistence(timeout: 5))
+        XCTAssertTrue(settings.opensLinksInApp, "on by default")
+        try settings.audit("settings, open links in the app")
+        settings.toggleOpenLinksInApp()
+        XCTAssertFalse(settings.opensLinksInApp)
+        attachScreenshot(of: app, named: "settings, open links in the app off")
+
+        // Remembered on the device: still off after the app relaunches.
+        app.terminate()
+        app = launchUITestApp(extraArguments: ["--keep-device-preferences"])
+        settings = HomeScreen(app: app).waitUntilLoaded(timeout: 10).tapSettings()
+        XCTAssertTrue(settings.openLinksInAppToggle.waitForExistence(timeout: 5))
+        XCTAssertFalse(settings.opensLinksInApp, "remembered after relaunching")
+
+        // AC6 off: the link to another site opens in Safari, outside the app.
+        let press = HomeScreen(app: app).openExercises().openSheet(Sample.chestPress)
+        let other = press.relatedLink(2)
+        XCTAssertTrue(other.waitForExistence(timeout: 5))
+        other.tap()
+        let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
+        // Safari's first launch on a CI runner can take well over 10s.
+        let safariLaunch: TimeInterval = 30
+        XCTAssertTrue(safari.wait(for: .runningForeground, timeout: safariLaunch), "the link opens outside the app")
+        XCTAssertFalse(press.inAppBrowser.exists, "no in-app browser")
+        app.activate()
+        XCTAssertTrue(other.waitForExistence(timeout: 5), "back to the sheet")
     }
 
     /// S10 T5c (AC1-AC4): the user adds a link from a pasted address with its

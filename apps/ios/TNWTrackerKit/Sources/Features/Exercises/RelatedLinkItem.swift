@@ -2,7 +2,8 @@ import Foundation
 
 /// How the exercise sheet shows a related link (#182 S9, S10): ours, curated
 /// with the catalogue, or one of the user's own («Personal»). A YouTube video
-/// has a cover and plays in the app; any other link only opens outside it.
+/// has a cover and plays in the sheet; any other link opens as a web page
+/// (`opening(opensLinksInApp:)`, T5d).
 public struct RelatedLinkItem: Identifiable, Hashable, Sendable {
     public let title: String
     public let source: String
