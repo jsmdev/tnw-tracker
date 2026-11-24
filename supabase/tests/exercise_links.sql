@@ -5,7 +5,7 @@
 -- its exercise, leaves its owner a tombstone; writing it again clears it.
 BEGIN;
 
-SELECT plan(59);
+SELECT plan(64);
 
 -- ---------------------------------------------------------------
 -- Fixtures (as postgres, RLS bypassed)
@@ -272,6 +272,58 @@ SELECT is(
   pg_temp.tombstones_of('00000000-0000-0000-0000-000000000002'), '{}'::text[],
   'the refused delete records no tombstone'
 );
+
+-- Unfiltered writes: with no WHERE the select policy hides nothing the
+-- update and delete policies would not, so only they keep user one's rows.
+-- user one's links and tombstones as they are now, read as postgres.
+RESET role;
+CREATE TEMP TABLE one_links AS
+  SELECT id, user_id, exercise_id, title FROM public.exercise_links
+  WHERE user_id = '00000000-0000-0000-0000-000000000001';
+CREATE TEMP TABLE one_tombstones AS
+  SELECT id FROM public.tombstones WHERE user_id = '00000000-0000-0000-0000-000000000001';
+SET LOCAL role = authenticated;
+
+SAVEPOINT unfiltered_update;
+UPDATE public.exercise_links
+SET user_id = '00000000-0000-0000-0000-000000000002', exercise_id = 'c0000000-0000-0000-0000-000000000002';
+RESET role;
+SELECT set_eq(
+  $$ SELECT id, user_id, exercise_id, title FROM public.exercise_links WHERE id IN (SELECT id FROM one_links) $$,
+  $$ SELECT id, user_id, exercise_id, title FROM one_links $$,
+  'other user''s unfiltered update changes none of user one''s links'
+);
+ROLLBACK TO SAVEPOINT unfiltered_update;
+
+SAVEPOINT unfiltered_delete;
+DELETE FROM public.exercise_links;
+RESET role;
+SELECT set_eq(
+  $$ SELECT id, user_id, exercise_id, title FROM public.exercise_links WHERE user_id = '00000000-0000-0000-0000-000000000001' $$,
+  $$ SELECT id, user_id, exercise_id, title FROM one_links $$,
+  'other user''s unfiltered delete leaves user one''s links'
+);
+SELECT set_eq(
+  $$ SELECT id FROM public.tombstones WHERE user_id = '00000000-0000-0000-0000-000000000001' $$,
+  $$ SELECT id FROM one_tombstones $$,
+  'and records no tombstone of them'
+);
+ROLLBACK TO SAVEPOINT unfiltered_delete;
+
+-- The owner cannot give all their links away in one unfiltered update.
+SET LOCAL "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';
+SELECT throws_ok(
+  $$ UPDATE public.exercise_links SET user_id = '00000000-0000-0000-0000-000000000002' $$,
+  '42501', NULL, 'owner''s unfiltered update giving the links to another user is refused'
+);
+RESET role;
+SELECT set_eq(
+  $$ SELECT id, user_id, exercise_id, title FROM public.exercise_links WHERE id IN (SELECT id FROM one_links) $$,
+  $$ SELECT id, user_id, exercise_id, title FROM one_links $$,
+  'and every link keeps its owner'
+);
+SET LOCAL role = authenticated;
+SET LOCAL "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000002","role":"authenticated"}';
 
 -- Another user reusing a deleted id clears nothing of user one's.
 SET LOCAL "request.jwt.claims" = '{"sub":"00000000-0000-0000-0000-000000000001","role":"authenticated"}';

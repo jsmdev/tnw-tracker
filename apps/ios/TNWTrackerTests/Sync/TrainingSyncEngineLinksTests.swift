@@ -102,6 +102,31 @@ struct TrainingSyncEngineLinksTests {
         try tablet.expectNothingPending()
     }
 
+    @Test("a link renamed on the device while another device changed it keeps the device's title and pushes it")
+    func localRenameWinsOverTheServer() async throws {
+        let tablet = try PushWorld(sharing: world)
+        let link = try add(world.bench.id, "bench")
+        try await world.engine.sync()
+        try await tablet.engine.sync()
+        try world.store.exerciseLinks.rename(id: link.id, title: "Phone title")
+        try await world.engine.sync()
+        try tablet.store.exerciseLinks.rename(id: link.id, title: "Tablet title")
+
+        let report = try await tablet.engine.pull()
+
+        let aggregate = SyncAggregateRef(.exerciseLink, id: link.id)
+        #expect(report.resolved.contains(.init(aggregate: aggregate, rule: .localKept)))
+        #expect(try tablet.store.exerciseLinks.links(exerciseId: world.bench.id).map(\.title) == ["Tablet title"])
+        #expect(try tablet.store.syncState.pending(.exerciseLink).map(\.id) == [link.id])
+
+        // The device's title goes up with the next sync, and both devices settle on it.
+        try await tablet.engine.sync()
+        try await world.engine.sync()
+        #expect(try store.exerciseLinks.links(exerciseId: world.bench.id).map(\.title) == ["Tablet title"])
+        try world.expectNothingPending()
+        try tablet.expectNothingPending()
+    }
+
     @Test("a link deleted on one device goes from the other through its tombstone (AC5)")
     func deletedLinkGoesFromTheOther() async throws {
         let tablet = try PushWorld(sharing: world)
