@@ -171,6 +171,8 @@ final class ExercisesUITests: XCTestCase {
         XCTAssertTrue(press.relatedLinkMenu(3).exists, "a personal link has a menu")
         // The new row in full, «Personal» included, for the screenshot.
         app.swipeUp()
+        // Audit once the scroll has settled: mid-scroll the audit misreads contrast.
+        waitUntilStill(personal)
         attachScreenshot(of: app, named: "related links, personal added")
         try app.auditAccessibility(
             screen: "related links, personal added",
