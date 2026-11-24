@@ -5,9 +5,9 @@ import Testing
 /// #182 S9 (T4b-ui): a related video plays in the app when it is a YouTube
 /// video, with its cover; any other link only opens outside the app.
 @Suite("Related video link")
-struct RelatedVideoLinkTests {
-    private func link(_ url: String) -> RelatedVideoLink {
-        RelatedVideoLink(RelatedLink(title: "Invented title", url: url, source: "YouTube"))
+struct RelatedLinkItemTests {
+    private func link(_ url: String) -> RelatedLinkItem {
+        RelatedLinkItem(RelatedLink(title: "Invented title", url: url, source: "YouTube"))
     }
 
     @Test(arguments: [
@@ -56,20 +56,20 @@ struct RelatedVideoLinkTests {
     /// The player loads under an `https` origin of the app: without one,
     /// YouTube refuses to play (error 153).
     @Test func thePlayerPageNamesTheVideoAndPlaysInline() throws {
-        let html = try #require(RelatedVideoLink.playerHTML(videoID: "Abc123_-xyZ"))
+        let html = try #require(RelatedLinkItem.playerHTML(videoID: "Abc123_-xyZ"))
 
         #expect(html.contains("videoId:'Abc123_-xyZ'"))
         #expect(html.contains("host:'https://www.youtube-nocookie.com'"))
         #expect(html.contains("playsinline:1"))
         #expect(html.contains("autoplay:1"))
         #expect(html.contains("rel:0"))
-        #expect(RelatedVideoLink.playerOrigin(bundleID: "com.Invented.App") == URL(string: "https://com.invented.app"))
-        #expect(RelatedVideoLink.playerOrigin(bundleID: nil) == nil)
+        #expect(RelatedLinkItem.playerOrigin(bundleID: "com.Invented.App") == URL(string: "https://com.invented.app"))
+        #expect(RelatedLinkItem.playerOrigin(bundleID: nil) == nil)
     }
 
     /// Only a well-formed id reaches the page, so no address can inject script.
     @Test func thePlayerPageRefusesAnythingButAnId() {
-        #expect(RelatedVideoLink.playerHTML(videoID: "Abc'</script>") == nil)
-        #expect(RelatedVideoLink.playerHTML(videoID: "") == nil)
+        #expect(RelatedLinkItem.playerHTML(videoID: "Abc'</script>") == nil)
+        #expect(RelatedLinkItem.playerHTML(videoID: "") == nil)
     }
 }

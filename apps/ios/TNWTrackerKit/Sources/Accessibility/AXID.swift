@@ -102,6 +102,19 @@ public enum AXID {
         }
     }
 
+    /// The sheet that adds a personal related link or edits its title (`RelatedLinkFormSheet`, S10).
+    public enum RelatedLinkForm {
+        public static let address = "relatedLinkForm.address"
+        public static let title = "relatedLinkForm.title"
+        public static let site = "relatedLinkForm.site"
+        public static let previewImage = "relatedLinkForm.previewImage"
+        public static let previewLoading = "relatedLinkForm.previewLoading"
+        public static let noPreview = "relatedLinkForm.noPreview"
+        public static let problem = "relatedLinkForm.problem"
+        public static let saveButton = "relatedLinkForm.saveButton"
+        public static let cancelButton = "relatedLinkForm.cancelButton"
+    }
+
     /// Exercise sheet (`ExerciseSheetView`, #137 S7).
     public enum ExerciseSheet {
         public static let closeButton = "exerciseSheet.closeButton"
@@ -116,20 +129,32 @@ public enum AXID {
         public static let videoLoading = "exerciseSheet.videoLoading"
         public static let primaryMuscles = "exerciseSheet.primaryMuscles"
         public static let secondaryMuscles = "exerciseSheet.secondaryMuscles"
-        public static let relatedVideos = "exerciseSheet.relatedVideos"
+        public static let relatedLinks = "exerciseSheet.relatedLinks"
         /// The «Información relacionada» header.
         public static let relatedHeader = "exerciseSheet.relatedHeader"
-        public static let relatedVideoPlayer = "exerciseSheet.relatedVideoPlayer"
-        public static let relatedVideoNotice = "exerciseSheet.relatedVideoNotice"
+        public static let relatedLinkPlayer = "exerciseSheet.relatedLinkPlayer"
+        public static let relatedLinkNotice = "exerciseSheet.relatedLinkNotice"
+        /// «Añadir enlace», at the end of «Información relacionada» (S10).
+        public static let addLinkButton = "exerciseSheet.addLinkButton"
+        /// «Editar título» and «Eliminar» in a personal link's menu.
+        public static let relatedLinkEditTitle = "exerciseSheet.relatedLinkEditTitle"
+        public static let relatedLinkDelete = "exerciseSheet.relatedLinkDelete"
+        /// «Eliminar» in the confirmation of a personal link's deletion.
+        public static let relatedLinkDeleteConfirm = "exerciseSheet.relatedLinkDeleteConfirm"
 
-        /// The `number`th related video's row, from 1.
-        public static func relatedVideo(_ number: Int) -> String {
-            "exerciseSheet.relatedVideo.\(number)"
+        /// The `number`th related link's row, from 1: ours, then the user's.
+        public static func relatedLink(_ number: Int) -> String {
+            "exerciseSheet.relatedLink.\(number)"
         }
 
-        /// "Abrir en YouTube" under the `number`th related video, from 1.
-        public static func relatedVideoOpen(_ number: Int) -> String {
-            "exerciseSheet.relatedVideoOpen.\(number)"
+        /// "Abrir en YouTube" under the `number`th related link, from 1.
+        public static func relatedLinkOpen(_ number: Int) -> String {
+            "exerciseSheet.relatedLinkOpen.\(number)"
+        }
+
+        /// The menu of the `number`th related link, from 1; only personal links have one.
+        public static func relatedLinkMenu(_ number: Int) -> String {
+            "exerciseSheet.relatedLinkMenu.\(number)"
         }
 
         /// The `number`th setup step, from 1.
