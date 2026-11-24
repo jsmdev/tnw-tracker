@@ -5,7 +5,7 @@ import SwiftData
 // docs/database-schema.md, "Sync":
 //
 // - Children first (sets, entries, sessions, routine items, routines, muscle
-//   groups, exercise settings, exercises), so a session's rows go before it
+//   groups, exercise settings, personal links, exercises), so a session's rows go before it
 //   and an exercise goes after the rows this pull deleted that used it.
 // - A muscle group or routine item is found by the id the server holds it
 //   under (`serverId`, else the one derived from its natural key); a setting
@@ -23,7 +23,8 @@ import SwiftData
 extension SwiftDataPullApplier {
     func applyTombstones(_ rows: [RemoteTombstoneRow], _ run: PullRun) throws {
         let order: [RemoteTable] = [
-            .sets, .entries, .sessions, .routineItems, .routines, .exerciseMuscleGroups, .exerciseSettings, .exercises
+            .sets, .entries, .sessions, .routineItems, .routines, .exerciseMuscleGroups, .exerciseSettings,
+            .exerciseLinks, .exercises
         ]
         for table in order {
             for row in rows where row.deletedTable == table {
@@ -41,6 +42,7 @@ extension SwiftDataPullApplier {
         case .routines: try deleteRoutine(id, run)
         case .exerciseMuscleGroups: try deleteMuscleGroup(id, run)
         case .exerciseSettings: try deleteSetting(id, run)
+        case .exerciseLinks: try deleteLink(id, run)
         case .exercises: try deleteExercise(id, run)
         case .tombstones: break
         }
@@ -74,27 +76,45 @@ extension SwiftDataPullApplier {
         context.delete(setting)
     }
 
+    private func deleteLink(_ id: UUID, _ run: PullRun) throws {
+        guard let link = try context.fetchExerciseLink(id: id), link.isSyncable, decide(
+            .exerciseLinks,
+            id,
+            aggregate: .init(.exerciseLink, id: id),
+            model: link,
+            run
+        ) else { return }
+        context.delete(link)
+    }
+
     private func deleteSet(_ id: UUID, _ run: PullRun) throws {
         guard let set = try fetchSetModel(id: id), let entry = set.entry, let session = entry.session,
-              session.isSyncable
-        else { return }
-        guard decide(.sets, id, aggregate: .init(.session, id: session.id), model: session, run) else { return }
+              session.isSyncable,
+              decide(.sets, id, aggregate: .init(.session, id: session.id), model: session, run) else { return }
         entry.sets.removeAll { $0.id == id }
         context.delete(set)
     }
 
     private func deleteEntry(_ id: UUID, _ run: PullRun) throws {
-        guard let entry = try fetchEntryModel(id: id), let session = entry.session, session.isSyncable else { return }
-        guard decide(.entries, id, aggregate: .init(.session, id: session.id), model: session, run) else { return }
+        guard let entry = try fetchEntryModel(id: id), let session = entry.session, session.isSyncable, decide(
+            .entries,
+            id,
+            aggregate: .init(.session, id: session.id),
+            model: session,
+            run
+        ) else { return }
         session.entries.removeAll { $0.id == id }
         context.delete(entry)
     }
 
     private func deleteSession(_ id: UUID, _ run: PullRun) throws {
-        guard let session = try context.fetchSession(id: id), session.isSyncable, session.completedAt != nil else {
-            return
-        }
-        guard decide(.sessions, id, aggregate: .init(.session, id: id), model: session, run) else { return }
+        guard let session = try context.fetchSession(id: id), session.isSyncable, session.completedAt != nil, decide(
+            .sessions,
+            id,
+            aggregate: .init(.session, id: id),
+            model: session,
+            run
+        ) else { return }
         let sessionId: UUID? = id
         for child in try context.fetch(FetchDescriptor<SyncTombstoneModel>(
             predicate: #Predicate { $0.sessionId == sessionId }
@@ -105,8 +125,13 @@ extension SwiftDataPullApplier {
     }
 
     private func deleteRoutine(_ id: UUID, _ run: PullRun) throws {
-        guard let routine = try context.fetchRoutine(id: id), routine.isSyncable else { return }
-        guard decide(.routines, id, aggregate: .init(.routine, id: id), model: routine, run) else { return }
+        guard let routine = try context.fetchRoutine(id: id), routine.isSyncable, decide(
+            .routines,
+            id,
+            aggregate: .init(.routine, id: id),
+            model: routine,
+            run
+        ) else { return }
         // Its sessions keep their rows without it, as on the server (`ON DELETE SET NULL`).
         context.delete(routine)
     }
@@ -130,11 +155,14 @@ extension SwiftDataPullApplier {
             return run.report.skip(.exercises, id, .conflict("the device still uses it, so it is sent again"))
         }
         guard decide(.exercises, id, aggregate: .init(.exercise, id: id), model: exercise, run) else { return }
-        // The server deletes the exercise's settings with it.
+        // The server deletes the exercise's settings and links with it.
         for setting in try context.fetch(FetchDescriptor<ExerciseSettingModel>(
             predicate: #Predicate { $0.exerciseId == id }
         )) {
             context.delete(setting)
+        }
+        for link in try context.fetchExerciseLinks(exerciseId: id) {
+            context.delete(link)
         }
         context.delete(exercise)
     }
@@ -153,7 +181,9 @@ extension SwiftDataPullApplier {
     /// Reports the deletion's rule; `true` when the row goes.
     private func report(_ table: RemoteTable, _ id: UUID, rule: SyncConflictRule, _ run: PullRun) -> Bool {
         run.report.deletions.append(.init(table: table, id: id, rule: rule))
-        if rule == .serverApplied { run.markDeleted(table, id) }
+        if rule == .serverApplied {
+            run.markDeleted(table, id)
+        }
         return rule == .serverApplied
     }
 }

@@ -11,9 +11,11 @@ struct PulledBatch: Sendable {
     var entries: [RemoteEntryRow] = []
     var sets: [RemoteSetRow] = []
     var exerciseSettings: [RemoteExerciseSettingRow] = []
+    var exerciseLinks: [RemoteExerciseLinkRow] = []
 
     /// Every user a row of the batch belongs to. Catalogue exercises belong to
-    /// nobody; muscle groups follow their exercise.
+    /// nobody; muscle groups follow their exercise. A link is its user's, also
+    /// on a catalogue exercise.
     var userIds: Set<UUID> {
         var ids = Set(tombstones.map(\.userId))
         ids.formUnion(exercises.compactMap(\.userId))
@@ -23,6 +25,7 @@ struct PulledBatch: Sendable {
         ids.formUnion(entries.map(\.userId))
         ids.formUnion(sets.map(\.userId))
         ids.formUnion(exerciseSettings.map(\.userId))
+        ids.formUnion(exerciseLinks.map(\.userId))
         return ids
     }
 }
@@ -51,6 +54,7 @@ extension TrainingSyncEngine {
         batch.routines = try await readAll(RemoteRoutineRow.self)
         batch.muscleGroups = try await readAll(RemoteMuscleGroupRow.self)
         batch.exerciseSettings = try await readAll(RemoteExerciseSettingRow.self)
+        batch.exerciseLinks = try await readAll(RemoteExerciseLinkRow.self)
         batch.exercises = try await readAll(RemoteExerciseRow.self)
         // The store may have changed hands while the pages were read.
         try requireOwner()

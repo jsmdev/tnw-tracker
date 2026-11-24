@@ -42,7 +42,7 @@ public struct SyncPushReport: Equatable, Sendable {
     /// Refused by the server; recorded on the aggregate, which stays pending.
     /// A refused deletion keeps its tombstone and is tried again next push.
     public var rejected: [Rejection] = []
-    /// Sessions, routines and exercises deleted on the device whose deletion the
+    /// Sessions, routines, exercises and links deleted on the device whose deletion the
     /// server acknowledged, in push order. Their tombstones are gone.
     public var deleted: [SyncAggregateRef] = []
 
@@ -65,8 +65,9 @@ public enum TrainingSyncError: Error, Equatable, Sendable {
 ///
 /// Push rules (docs/database-schema.md, "Sync"):
 /// - Only when the store's owner is the signed-in user (S10).
-/// - Exercises, then routines, then exercise settings, then sessions, so every
-///   row a session or setting refers to is on the server first. Catalogue
+/// - Exercises, then routines, then exercise settings and personal links, then
+///   sessions, so every row a session, setting or link refers to is on the
+///   server first. Catalogue
 ///   exercises are already there. An exercise or routine push sends its muscle
 ///   groups or items only when that list changed on the device since the server
 ///   last held it (`SyncConflictRule.childListChanged`, L12), and then leaves on
@@ -78,7 +79,8 @@ public enum TrainingSyncError: Error, Equatable, Sendable {
 ///   and the push carries on with the next; any other error stops the push and
 ///   is thrown, leaving everything not acknowledged pending (S3, S4).
 /// - Every pending aggregate is tried at most once per push.
-/// - Deletions made on the device (S11) go children first: sessions before the
+/// - Deletions made on the device (S11) go children first: personal links
+///   (they block nothing, so right after their own upserts), sessions before the
 ///   sessions are uploaded (a re-import may reuse a removed session's refs),
 ///   routines and exercises after them (the server refuses to delete an
 ///   exercise a session still uses). A tombstone is forgotten only once the
@@ -127,7 +129,9 @@ public final class TrainingSyncEngine {
     /// Throws `CancellationError` once the engine is stopped: checked before
     /// every request and after every answer, before the store is written.
     func checkRunning() throws {
-        if isStopped { throw CancellationError() }
+        if isStopped {
+            throw CancellationError()
+        }
         try Task.checkCancellation()
     }
 
@@ -211,6 +215,8 @@ public final class TrainingSyncEngine {
         try await pushPending(.exercise, run: run)
         try await pushPending(.routine, run: run)
         try await pushPending(.exerciseSetting, run: run)
+        try await pushPending(.exerciseLink, run: run)
+        try await pushDeletions(.exerciseLink, run: run)
         try await pushDeletions(.session, run: run)
         try await pushPending(.session, run: run)
         try await pushDeletions(.routine, run: run)
@@ -296,6 +302,10 @@ public final class TrainingSyncEngine {
             return try context.fetchExerciseSetting(exerciseId: pending.id).map {
                 try rows.setting($0, exercise: context.fetchExercise(id: pending.id))
             }
+        case .exerciseLink:
+            return try context.fetchExerciseLink(id: pending.id).map {
+                try rows.link($0, exercise: context.fetchExercise(id: $0.exerciseId))
+            }
         }
     }
 }
@@ -308,6 +318,7 @@ private extension SyncTombstoneKind {
         case .session: (.session, .sessions)
         case .routine: (.routine, .routines)
         case .exercise: (.exercise, .exercises)
+        case .exerciseLink: (.exerciseLink, .exerciseLinks)
         case .entry, .set: nil
         }
     }

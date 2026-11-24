@@ -52,7 +52,9 @@ struct PushRows {
             // Without its exercise the item would be left out, and the push
             // would delete its row on the server.
             guard let exercise = item.exercise else { return .skip(.incomplete) }
-            if let reason = missingOnServer(exercise) { return .skip(reason) }
+            if let reason = missingOnServer(exercise) {
+                return .skip(reason)
+            }
         }
         let routine = model.snapshot
         let rowIds = Dictionary(
@@ -94,7 +96,9 @@ struct PushRows {
     /// A setting goes up once its exercise is on the server (catalogue ones are).
     func setting(_ model: ExerciseSettingModel, exercise: ExerciseModel?) -> TrainingSyncEngine.Upload {
         guard let exercise else { return .skip(.incomplete) }
-        if let reason = missingOnServer(exercise) { return .skip(reason) }
+        if let reason = missingOnServer(exercise) {
+            return .skip(reason)
+        }
         let row = RemoteExerciseSettingRow(
             exerciseId: model.exerciseId,
             userId: userId,
@@ -106,9 +110,31 @@ struct PushRows {
         }
     }
 
+    /// A personal link goes up once its exercise is on the server (catalogue ones are).
+    func link(_ model: ExerciseLinkModel, exercise: ExerciseModel?) -> TrainingSyncEngine.Upload {
+        guard let exercise else { return .skip(.incomplete) }
+        if let reason = missingOnServer(exercise) {
+            return .skip(reason)
+        }
+        let row = RemoteExerciseLinkRow(
+            id: model.id,
+            userId: userId,
+            exerciseId: model.exerciseId,
+            title: model.title,
+            url: model.url,
+            source: model.source,
+            position: model.position
+        )
+        return .send { remote in
+            try await remote.upsert([row])
+        }
+    }
+
     /// `pending` carries the entries and sets removed since the last acknowledged push.
     func session(_ model: SessionModel, completedAt: Date, pending: PendingSyncAggregate) -> TrainingSyncEngine.Upload {
-        if let reason = model.routine.flatMap(missingOnServer) { return .skip(reason) }
+        if let reason = model.routine.flatMap(missingOnServer) {
+            return .skip(reason)
+        }
         for entry in model.entries {
             // The store keeps an entry's exercise (delete rule `deny`); without
             // it the session would go out incomplete.

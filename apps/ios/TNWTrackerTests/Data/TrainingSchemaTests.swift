@@ -20,7 +20,7 @@ struct TrainingSchemaTests {
         #expect(names == [
             "ExerciseModel", "MuscleGroupModel", "RoutineModel", "RoutineItemModel",
             "SessionModel", "SessionEntryModel", "EntryExternalRefModel", "ExerciseSetModel",
-            "ExerciseSettingModel", "WorkoutIntentEvent", "StoreOwnerModel", "SyncTombstoneModel",
+            "ExerciseSettingModel", "ExerciseLinkModel", "WorkoutIntentEvent", "StoreOwnerModel", "SyncTombstoneModel",
             "SyncCursorModel"
         ])
     }

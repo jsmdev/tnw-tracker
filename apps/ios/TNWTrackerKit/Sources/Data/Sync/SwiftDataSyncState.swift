@@ -20,8 +20,12 @@ final class SwiftDataStoreOwnership: StoreOwnershipProtocol {
 
     func claim(userId: UUID, at date: Date) throws -> StoreOwnership {
         let owners = try context.fetch(FetchDescriptor<StoreOwnerModel>()).map(\.userId)
-        if let other = owners.first(where: { $0 != userId }) { return .mismatch(ownerId: other) }
-        if !owners.isEmpty { return .owned }
+        if let other = owners.first(where: { $0 != userId }) {
+            return .mismatch(ownerId: other)
+        }
+        if !owners.isEmpty {
+            return .owned
+        }
         context.insert(StoreOwnerModel(userId: userId, claimedAt: date))
         try context.save()
         return .claimed
@@ -60,6 +64,11 @@ final class SwiftDataSyncStateRepository: SyncStateRepositoryProtocol {
                 predicate: #Predicate { $0.isSyncable && $0.syncRevision > $0.syncedRevision }
             ))
             return Self.byId(models.map { Self.pending(kind, id: $0.exerciseId, model: $0) })
+        case .exerciseLink:
+            let models = try context.fetch(FetchDescriptor<ExerciseLinkModel>(
+                predicate: #Predicate { $0.isSyncable && $0.syncRevision > $0.syncedRevision }
+            ))
+            return Self.byId(models.map { Self.pending(kind, id: $0.id, model: $0) })
         }
     }
 
@@ -161,13 +170,15 @@ final class SwiftDataSyncStateRepository: SyncStateRepositoryProtocol {
     private func trackedModel(_ kind: SyncAggregateKind, id: UUID) throws -> (any SyncTrackedModel)? {
         switch kind {
         case .session:
-            return try context.fetchSession(id: id)
+            try context.fetchSession(id: id)
         case .routine:
-            return try context.fetchRoutine(id: id)
+            try context.fetchRoutine(id: id)
         case .exercise:
-            return try context.fetchExercise(id: id)
+            try context.fetchExercise(id: id)
         case .exerciseSetting:
-            return try context.fetchExerciseSetting(exerciseId: id)
+            try context.fetchExerciseSetting(exerciseId: id)
+        case .exerciseLink:
+            try context.fetchExerciseLink(id: id)
         }
     }
 

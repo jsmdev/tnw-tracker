@@ -7,7 +7,7 @@ import Foundation
 // Rules the repositories keep, in the same save as the change itself:
 // - Every command that changes user data raises the revision of the aggregate
 //   it changed (a session with its entries and sets, a routine, an exercise,
-//   an exercise setting).
+//   an exercise setting, a personal link).
 // - An aggregate is syncable only when the store had an owner when it was
 //   created, and an exercise only when it is not a catalogue exercise. Data
 //   written before any sign-in (the debug sample data) stays on the device.
@@ -22,6 +22,8 @@ public enum SyncAggregateKind: String, Sendable, CaseIterable {
     case exercise
     /// Keyed by its exercise id.
     case exerciseSetting
+    /// A personal related link of an exercise (S10), keyed by its own id.
+    case exerciseLink
 }
 
 /// The kind of a row deleted on the device.
@@ -31,6 +33,7 @@ public enum SyncTombstoneKind: String, Sendable, CaseIterable {
     case set
     case routine
     case exercise
+    case exerciseLink
 }
 
 /// An aggregate changed on the device since the server last acknowledged it.
@@ -140,8 +143,8 @@ public protocol SyncStateRepositoryProtocol: AnyObject {
     @discardableResult
     func markFailed(_ kind: SyncAggregateKind, id: UUID, reason: String) throws -> Bool
 
-    /// Sessions, routines and exercises deleted on the device that may exist on
-    /// the server, oldest first.
+    /// Sessions, routines, exercises and personal links deleted on the device
+    /// that may exist on the server, oldest first.
     func tombstones() throws -> [SyncTombstone]
 
     /// Forgets a tombstone once the server applied it. Returns `false` when it is

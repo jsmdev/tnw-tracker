@@ -31,6 +31,9 @@ extension SwiftDataPullApplier {
         for row in batch.exerciseSettings {
             try applySetting(row, run)
         }
+        for row in batch.exerciseLinks {
+            try applyLink(row, run)
+        }
     }
 
     // MARK: - Exercises
@@ -205,5 +208,43 @@ extension SwiftDataPullApplier {
         context.insert(model)
         model.markPulled()
         run.create(aggregate)
+    }
+
+    // MARK: - Personal links
+
+    /// Like a setting, but a link can be deleted on the device: one deleted
+    /// there is not brought back, its deletion goes up with the next push.
+    private func applyLink(_ row: RemoteExerciseLinkRow, _ run: PullRun) throws {
+        guard try context.fetchExercise(id: row.exerciseId) != nil else {
+            if try hasTombstone(.exercise, row.exerciseId) {
+                return run.report.skip(.exerciseLinks, row.id, .deletedOnDevice)
+            }
+            return run.hold(.exerciseLinks, row.id)
+        }
+        let aggregate = SyncAggregateRef(.exerciseLink, id: row.id)
+        if let model = try context.fetchExerciseLink(id: row.id) {
+            if run.rule(for: aggregate, model: model) == .serverApplied {
+                write(row, to: model)
+            }
+            return
+        }
+        if try hasTombstone(.exerciseLink, row.id) {
+            return run.report.skip(.exerciseLinks, row.id, .deletedOnDevice)
+        }
+        let model = ExerciseLinkModel(
+            id: row.id, exerciseId: row.exerciseId, title: row.title, url: row.url, source: row.source,
+            position: row.position
+        )
+        context.insert(model)
+        model.markPulled()
+        run.create(aggregate)
+    }
+
+    private func write(_ row: RemoteExerciseLinkRow, to model: ExerciseLinkModel) {
+        model.exerciseId = row.exerciseId
+        model.title = row.title
+        model.url = row.url
+        model.source = row.source
+        model.position = row.position
     }
 }

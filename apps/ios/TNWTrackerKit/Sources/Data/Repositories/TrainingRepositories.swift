@@ -129,6 +129,26 @@ public protocol ExerciseSettingRepositoryProtocol: AnyObject {
     func save(_ setting: ExerciseSetting) throws
 }
 
+/// The user's personal related links of an exercise (S10; app user data, not
+/// imported or exported). The curated `Exercise.relatedLinks` are not here and
+/// cannot be changed.
+@MainActor
+public protocol ExerciseLinkRepositoryProtocol: AnyObject {
+    /// The exercise's personal links, by position, ties by id.
+    func links(exerciseId: UUID) throws -> [ExerciseLink]
+    /// Adds a link after the exercise's others, with the title, address and
+    /// source trimmed. Throws `notFound` for an exercise that does not exist,
+    /// `invalidLink` for an empty title or source or an address that is not
+    /// `https`, and `duplicateLink` when the exercise already has the address.
+    @discardableResult
+    func add(exerciseId: UUID, title: String, url: String, source: String) throws -> ExerciseLink
+    /// Renames a link, the title trimmed. Throws `notFound` and `invalidLink` for an empty title.
+    func rename(id: UUID, title: String) throws
+    /// Deletes a link. One that may be on the server leaves a tombstone, so the
+    /// other devices drop it too. Throws `notFound`.
+    func delete(id: UUID) throws
+}
+
 /// Imports an importer's bundle (format decision B: receivers own their keys).
 @MainActor
 public protocol TrainingImporterProtocol: AnyObject {

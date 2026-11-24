@@ -106,9 +106,7 @@ final class SwiftDataExerciseRepository: ExerciseRepositoryProtocol {
             guard !link.title.isEmpty, !link.source.isEmpty else {
                 throw TrainingDataError.invalidExercise("a related link needs a title and a source")
             }
-            let address = link.url.dropFirst("https://".count)
-            guard link.url.hasPrefix("https://"), !address.isEmpty,
-                  !address.contains(where: \.isWhitespace) else {
+            guard RelatedLink.isHTTPSAddress(link.url) else {
                 throw TrainingDataError.invalidExercise("a related link url is not https")
             }
         }

@@ -51,6 +51,7 @@ final class SwiftDataPullApplier {
             try saveCursor(batch.routines, run)
             try saveCursor(batch.routineItems, run)
             try saveCursor(batch.exerciseSettings, run)
+            try saveCursor(batch.exerciseLinks, run)
             try saveCursor(batch.sessions, run)
             try saveCursor(batch.entries, run)
             try saveCursor(batch.sets, run)
@@ -141,11 +142,15 @@ final class PullRun {
         model: any SyncTrackedModel,
         change: SyncServerChange = .updated
     ) -> SyncConflictRule {
-        if created.contains(aggregate) { return .serverApplied }
+        if created.contains(aggregate) {
+            return .serverApplied
+        }
         let localPending = pending[aggregate] ?? (model.syncRevision > model.syncedRevision)
         pending[aggregate] = localPending
         let rule = SyncConflictRule.rule(localPending: localPending, change: change)
-        if change == .updated { report.resolve(aggregate, rule: rule) }
+        if change == .updated {
+            report.resolve(aggregate, rule: rule)
+        }
         return rule
     }
 
@@ -161,7 +166,9 @@ final class PullRun {
         let changed = !created.contains(aggregate) && (childListsChanged[aggregate] ?? model.childListChanged)
         childListsChanged[aggregate] = changed
         let rule = SyncConflictRule.rule(localPending: changed, change: change)
-        if rule == .serverApplied { serverLists[aggregate] = model }
+        if rule == .serverApplied {
+            serverLists[aggregate] = model
+        }
         return rule
     }
 
@@ -176,7 +183,9 @@ final class PullRun {
     func stampServerLists() {
         for (aggregate, model) in serverLists {
             let table: RemoteTable = aggregate.kind == .routine ? .routines : .exercises
-            if !deletes(table, aggregate.id) { model.markChildrenSynced() }
+            if !deletes(table, aggregate.id) {
+                model.markChildrenSynced()
+            }
         }
     }
 
@@ -205,7 +214,9 @@ final class PullRun {
     }
 
     func touch(_ entry: SessionEntryModel) {
-        if !touchedEntries.contains(where: { $0 === entry }) { touchedEntries.append(entry) }
+        if !touchedEntries.contains(where: { $0 === entry }) {
+            touchedEntries.append(entry)
+        }
     }
 }
 

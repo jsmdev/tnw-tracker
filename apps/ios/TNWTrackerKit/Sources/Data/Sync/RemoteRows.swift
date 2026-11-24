@@ -21,6 +21,8 @@ public enum RemoteTable: String, Sendable, CaseIterable {
     case sets
     /// Keyed by `exercise_id` for its owner (`RemoteExerciseSettingRow`).
     case exerciseSettings = "exercise_settings"
+    /// Personal related links of exercises (`RemoteExerciseLinkRow`).
+    case exerciseLinks = "exercise_links"
     /// Rows the server deleted from the tables above (`RemoteTombstoneRow`).
     case tombstones
 }
