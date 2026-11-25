@@ -38,22 +38,62 @@ struct ExerciseSheetScreen {
         (button.exists ? button : videoToggle).tap()
     }
 
-    var relatedVideos: XCUIElement {
-        app.descendants(matching: .any)[AXID.ExerciseSheet.relatedVideos].firstMatch
+    var relatedLinks: XCUIElement {
+        app.descendants(matching: .any)[AXID.ExerciseSheet.relatedLinks].firstMatch
     }
 
     /// The `number`th related video's row, from 1.
-    func relatedVideo(_ number: Int) -> XCUIElement {
-        app.buttons[AXID.ExerciseSheet.relatedVideo(number)]
+    func relatedLink(_ number: Int) -> XCUIElement {
+        app.buttons[AXID.ExerciseSheet.relatedLink(number)]
     }
 
     /// "Abrir en YouTube" under the `number`th related video, from 1.
     func openInYouTube(_ number: Int) -> XCUIElement {
-        app.buttons[AXID.ExerciseSheet.relatedVideoOpen(number)]
+        app.buttons[AXID.ExerciseSheet.relatedLinkOpen(number)]
     }
 
-    var relatedVideoPlayer: XCUIElement {
-        app.descendants(matching: .any)[AXID.ExerciseSheet.relatedVideoPlayer].firstMatch
+    var relatedLinkPlayer: XCUIElement {
+        app.descendants(matching: .any)[AXID.ExerciseSheet.relatedLinkPlayer].firstMatch
+    }
+
+    var relatedHeader: XCUIElement {
+        app.staticTexts[AXID.ExerciseSheet.relatedHeader]
+    }
+
+    /// «Añadir enlace» (S10).
+    var addLinkButton: XCUIElement {
+        app.buttons[AXID.ExerciseSheet.addLinkButton]
+    }
+
+    /// The menu of the `number`th related link, from 1: only personal links have one.
+    func relatedLinkMenu(_ number: Int) -> XCUIElement {
+        app.buttons[AXID.ExerciseSheet.relatedLinkMenu(number)]
+    }
+
+    /// «Añadir enlace»: opens the form.
+    func openAddLink() -> RelatedLinkFormScreen {
+        addLinkButton.tap()
+        return RelatedLinkFormScreen(app: app).waitUntilLoaded()
+    }
+
+    /// «Editar título» in the `number`th link's menu.
+    func openEditTitle(_ number: Int) -> RelatedLinkFormScreen {
+        relatedLinkMenu(number).tap()
+        let edit = app.buttons[AXID.ExerciseSheet.relatedLinkEditTitle]
+        XCTAssertTrue(edit.waitForExistence(timeout: 3), "the menu offers «Editar título»")
+        edit.tap()
+        return RelatedLinkFormScreen(app: app).waitUntilLoaded()
+    }
+
+    /// «Eliminar» in the `number`th link's menu; returns the confirmation's «Eliminar».
+    func askToDelete(_ number: Int) -> XCUIElement {
+        relatedLinkMenu(number).tap()
+        let delete = app.buttons[AXID.ExerciseSheet.relatedLinkDelete]
+        XCTAssertTrue(delete.waitForExistence(timeout: 3), "the menu offers «Eliminar»")
+        delete.tap()
+        let confirm = app.alerts.buttons[AXID.ExerciseSheet.relatedLinkDeleteConfirm].firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 3), "deleting asks first")
+        return confirm
     }
 
     var primaryMuscles: XCUIElement {

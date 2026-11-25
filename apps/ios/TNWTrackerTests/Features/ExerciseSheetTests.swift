@@ -66,7 +66,7 @@ final class ExerciseSheetTests {
         #expect(content.secondaryMuscles.isEmpty)
         #expect(content.imagePath == image)
         #expect(content.videoPath == video)
-        #expect(content.relatedLinks.isEmpty, "no related links: the section is absent")
+        #expect(content.relatedLinks.isEmpty, "no related links of ours")
     }
 
     @Test("#182 S9 the sheet lists the related links in their stored order")

@@ -23,6 +23,8 @@ public final class AppEnvironment {
     public let routineRepository: any RoutineRepositoryProtocol
     public let sessionRepository: any SessionRepositoryProtocol
     public let exerciseSettingRepository: any ExerciseSettingRepositoryProtocol
+    /// The user's own related links of an exercise (S10).
+    public let exerciseLinkRepository: any ExerciseLinkRepositoryProtocol
 
     /// Sync (#135): claims the store at sign-in and runs the sync on its triggers.
     public let syncScheduler: SyncScheduler
@@ -57,6 +59,7 @@ public final class AppEnvironment {
         routineRepository = store.routines
         sessionRepository = store.sessions
         exerciseSettingRepository = store.exerciseSettings
+        exerciseLinkRepository = store.exerciseLinks
     }
 
     /// The account signed out: the workout in progress stays where it is in this

@@ -1,25 +1,43 @@
 import Foundation
 
-/// How the exercise sheet shows a related video (#182 S9): a YouTube video
+/// How the exercise sheet shows a related link (#182 S9, S10): ours, curated
+/// with the catalogue, or one of the user's own («Personal»). A YouTube video
 /// has a cover and plays in the app; any other link only opens outside it.
-public struct RelatedVideoLink: Identifiable, Hashable, Sendable {
+public struct RelatedLinkItem: Identifiable, Hashable, Sendable {
     public let title: String
     public let source: String
+    /// The user's own link (`ExerciseLink.id`); `nil` for ours, which cannot be
+    /// edited or deleted.
+    public let personalID: UUID?
     /// The YouTube video id, `nil` when the link is not a YouTube video.
     public let youTubeID: String?
     /// Where "Abrir en YouTube" (or the row, for other links) goes.
     public let externalURL: URL?
 
+    /// A personal link by its own id: it may share its address with one of ours.
     public var id: String {
-        externalURL?.absoluteString ?? title
+        personalID?.uuidString ?? externalURL?.absoluteString ?? title
     }
 
-    public init(_ video: RelatedLink) {
-        title = video.title
-        source = video.source
-        let url = URL(string: video.url)
+    public init(_ link: RelatedLink) {
+        self.init(title: link.title, url: link.url, source: link.source, personalID: nil)
+    }
+
+    public init(_ link: ExerciseLink) {
+        self.init(title: link.title, url: link.url, source: link.source, personalID: link.id)
+    }
+
+    private init(title: String, url: String, source: String, personalID: UUID?) {
+        self.title = title
+        self.source = source
+        self.personalID = personalID
+        let url = URL(string: url)
         youTubeID = url.flatMap(Self.youTubeID(in:))
         externalURL = youTubeID.flatMap { URL(string: "https://www.youtube.com/watch?v=\($0)") } ?? url
+    }
+
+    public var isPersonal: Bool {
+        personalID != nil
     }
 
     public var playsInApp: Bool {

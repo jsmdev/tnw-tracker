@@ -6,17 +6,25 @@ import TNWTrackerKit
 /// The exercise sheet (#137 S7, #182 S9): the photo, else a neutral
 /// placeholder; then the name, type and equipment, the video under "Ver vídeo"
 /// when there is one, how to do it (setup and execution steps), the muscles
-/// it works and its related videos. Exercise text shows as stored.
+/// it works and «Información relacionada»: our links, then the user's own
+/// (S10). Exercise text shows as stored.
 struct ExerciseSheetView: View {
     let content: ExerciseSheetContent
     @State private var hero: ExerciseHeroModel
+    @State private var related: RelatedLinksModel
     @State private var isVideoOpen = false
-    @State private var playingRelatedVideo: RelatedVideoLink.ID?
+    @State private var playingRelatedLink: RelatedLinkItem.ID?
     @Environment(\.dismiss) private var dismiss
 
-    init(content: ExerciseSheetContent, library: ExerciseMediaLibrary) {
+    init(
+        content: ExerciseSheetContent,
+        library: ExerciseMediaLibrary,
+        links: any ExerciseLinkRepositoryProtocol,
+        previews: any LinkPreviewProviding
+    ) {
         self.content = content
         _hero = State(initialValue: ExerciseHeroModel(content: content, library: library))
+        _related = State(initialValue: RelatedLinksModel(content: content, repository: links, previews: previews))
     }
 
     var body: some View {
@@ -30,23 +38,21 @@ struct ExerciseSheetView: View {
                     }
                     howTo
                     muscles
-                    if !content.relatedLinks.isEmpty {
-                        RelatedVideosSection(videos: content.relatedLinks, playing: $playingRelatedVideo)
-                    }
+                    RelatedLinksSection(model: related, playing: $playingRelatedLink)
                 }
                 .padding(.horizontal, Spacing.md)
                 .padding(.bottom, Spacing.xl)
             }
             .background(Color.surfacePrimary)
             // One video at a time: a related video closes the main one, and back.
-            .onChange(of: playingRelatedVideo) { _, playing in
+            .onChange(of: playingRelatedLink) { _, playing in
                 if playing != nil {
                     isVideoOpen = false
                 }
             }
             .onChange(of: isVideoOpen) { _, open in
                 if open {
-                    playingRelatedVideo = nil
+                    playingRelatedLink = nil
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -58,6 +64,7 @@ struct ExerciseSheetView: View {
             }
         }
         .task {
+            related.load()
             await hero.load()
         }
         .presentationDetents([.large])
@@ -175,13 +182,20 @@ struct ExerciseSheetView: View {
 #if DEBUG
     #Preview("ExerciseSheetView — steps, no media") {
         if let squat = SampleTrainingData.exercises.first {
-            ExerciseSheetView(content: ExerciseSheetContent(squat), library: .offlineForTesting())
+            ExerciseSheetView(
+                content: ExerciseSheetContent(squat), library: .offlineForTesting(),
+                links: AppEnvironment.preview().exerciseLinkRepository, previews: StandInLinkPreviewProvider()
+            )
         }
     }
 
     #Preview("ExerciseSheetView — invented image") {
         if let press = SampleTrainingData.exercises.first(where: { $0.media != nil }) {
-            ExerciseSheetView(content: ExerciseSheetContent(press), library: .sampleForUITesting())
+            ExerciseSheetView(
+                content: ExerciseSheetContent(press), library: .sampleForUITesting(),
+                links: AppEnvironment.preview().exerciseLinkRepository, previews: StandInLinkPreviewProvider()
+            )
+            .environment(\.relatedLinksUseNetwork, false)
         }
     }
 #endif

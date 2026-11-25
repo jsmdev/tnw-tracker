@@ -49,7 +49,7 @@ struct TnwTrackerApp: App {
                         RootView()
                             .environment(env)
                             .environment(accounts)
-                            .environment(\.relatedVideosUseNetwork, !Self.isUITesting)
+                            .environment(\.relatedLinksUseNetwork, !Self.isUITesting)
                             .id(env.userId)
                             .transition(.opacity)
                     }

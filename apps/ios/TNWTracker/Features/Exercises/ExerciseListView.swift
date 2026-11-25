@@ -9,6 +9,7 @@ import TNWTrackerKit
 /// With `onPick`, a row picks the exercise instead (adding one to a session, #137 S5).
 struct ExerciseListView: View {
     @Environment(AppEnvironment.self) private var appEnv
+    @Environment(\.relatedLinksUseNetwork) private var useNetwork
     @State private var model: ExerciseListModel
     private let onPick: ((UUID) -> Void)?
 
@@ -44,7 +45,13 @@ struct ExerciseListView: View {
             model.load()
         }
         .sheet(item: $model.selected) { content in
-            ExerciseSheetView(content: content, library: appEnv.exerciseMedia)
+            ExerciseSheetView(
+                content: content,
+                library: appEnv.exerciseMedia,
+                links: appEnv.exerciseLinkRepository,
+                // UI tests never fetch a preview: the stand-in answers instead.
+                previews: useNetwork ? LiveLinkPreviewProvider() : StandInLinkPreviewProvider()
+            )
         }
     }
 
