@@ -15,7 +15,8 @@ extension EnvironmentValues {
 /// («Personal»), each by its cover, title and source, never its address; then
 /// «Añadir enlace». It shows even with no links, so the user can add one. A
 /// YouTube video plays in the sheet with sound when tapped, one at a time; any
-/// other link opens outside the app. Only the user's own have a menu to edit
+/// other link opens in the in-app browser, or outside the app when «Abrir
+/// enlaces en la app» is off (T5d). Only the user's own have a menu to edit
 /// their title or delete them.
 struct RelatedLinksSection: View {
     let model: RelatedLinksModel
@@ -90,19 +91,19 @@ private struct RelatedLinkRow: View {
     let delete: () -> Void
 
     @Environment(\.openURL) private var openURL
+    @AppStorage(OpenLinksInAppPreference.enabledKey)
+    private var opensLinksInApp = OpenLinksInAppPreference.defaultEnabled
 
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: Spacing.sm) {
                 HStack(alignment: .top, spacing: Spacing.sm) {
-                    Button(action: link.playsInApp ? toggle : openOutside) {
+                    Button(action: tapRow) {
                         rowLabel
                     }
                     .buttonStyle(.plain)
                     .accessibilityElement(children: .combine)
-                    .accessibilityHint(
-                        link.playsInApp ? "exercise-sheet.related.hint.play" : "exercise-sheet.related.hint.open"
-                    )
+                    .accessibilityHint(hint)
                     .accessibilityIdentifier(AXID.ExerciseSheet.relatedLink(number))
 
                     if link.isPersonal {
@@ -115,7 +116,7 @@ private struct RelatedLinkRow: View {
                         .frame(maxWidth: .infinity)
                         .aspectRatio(16 / 9, contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: Radius.md))
-                    Button(action: openOutside) {
+                    Button { open(link.youTubeOpening) } label: {
                         Label("exercise-sheet.related.open-youtube", systemImage: "arrow.up.right.square")
                             .font(.subheadline.weight(.semibold))
                             .frame(minHeight: 44)
@@ -177,14 +178,33 @@ private struct RelatedLinkRow: View {
         .accessibilityIdentifier(AXID.ExerciseSheet.relatedLinkMenu(number))
     }
 
+    private var hint: LocalizedStringKey {
+        switch link.opening(opensLinksInApp: opensLinksInApp) {
+        case .playInSheet: "exercise-sheet.related.hint.play"
+        case .inApp: "exercise-sheet.related.hint.open-in-app"
+        case .outside, nil: "exercise-sheet.related.hint.open"
+        }
+    }
+
     private var trailingSymbol: String {
         guard link.playsInApp else { return "arrow.up.right.square" }
         return isPlaying ? "chevron.up" : "play.circle"
     }
 
-    private func openOutside() {
-        if let url = link.externalURL {
+    private func tapRow() {
+        open(link.opening(opensLinksInApp: opensLinksInApp))
+    }
+
+    private func open(_ opening: RelatedLinkOpening?) {
+        switch opening {
+        case .playInSheet:
+            toggle()
+        case let .inApp(url):
+            InAppBrowser.present(url)
+        case let .outside(url):
             openURL(url)
+        case nil:
+            break
         }
     }
 }

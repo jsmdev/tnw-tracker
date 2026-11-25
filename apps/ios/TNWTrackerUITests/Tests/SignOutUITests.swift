@@ -10,7 +10,7 @@ final class SignOutUITests: XCTestCase {
         let app = launchUITestApp()
         let settings = HomeScreen(app: app).waitUntilLoaded(timeout: 10).tapSettings()
         attachScreenshot(of: app, named: "Settings with Sign out")
-        try app.auditAccessibility(screen: "settings")
+        try settings.audit("settings")
 
         // Dismissing the confirmation keeps the account open.
         settings.tapSignOut()

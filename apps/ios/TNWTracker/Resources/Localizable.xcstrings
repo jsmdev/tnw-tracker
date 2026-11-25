@@ -1550,6 +1550,54 @@
         }
       }
     },
+    "settings.links-section": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Links"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enlaces"
+          }
+        }
+      }
+    },
+    "settings.open-links-in-app-footer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Off, links open in Safari."
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apagado, se abren en Safari."
+          }
+        }
+      }
+    },
+    "settings.open-links-in-app-toggle": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open links in the app"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir enlaces en la app"
+          }
+        }
+      }
+    },
     "settings.rest-section": {
       "localizations": {
         "en": {
@@ -1939,6 +1987,23 @@
           "stringUnit": {
             "state": "translated",
             "value": "¿Cerrar sesión?"
+          }
+        }
+      }
+    },
+    "exercise-sheet.related.hint.open-in-app": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens in the app"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se abre en la app"
           }
         }
       }

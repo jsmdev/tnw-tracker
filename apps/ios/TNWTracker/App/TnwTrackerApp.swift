@@ -63,6 +63,11 @@ struct TnwTrackerApp: App {
             .task {
                 #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("--uitesting") {
+                        // Each UI test starts from the default «Abrir enlaces en la
+                        // app», unless it relaunches to check it was remembered.
+                        if !ProcessInfo.processInfo.arguments.contains("--keep-device-preferences") {
+                            UserDefaults.standard.removeObject(forKey: OpenLinksInAppPreference.enabledKey)
+                        }
                         // UI test bypass: pre-authenticated, in-memory store with the
                         // invented sample data, no real auth and no sync.
                         let accounts = await AppAccounts.bootstrapForUITesting()
