@@ -14,6 +14,10 @@ struct WorkoutSummaryView: View {
 
     @State private var summary: WorkoutSummary?
     @State private var isLoading = true
+    /// Where the workout's name ends in the content, and whether it has
+    /// scrolled under the bar, which then shows it instead of «Resumen» (AC6).
+    @State private var nameBottom: CGFloat = 0
+    @State private var showsNameInBar = false
 
     var body: some View {
         NavigationStack {
@@ -33,6 +37,22 @@ struct WorkoutSummaryView: View {
             .navigationTitle(Text("summary.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    ZStack {
+                        BarTitle(
+                            text: Text("summary.title"),
+                            isShown: !showsNameInBar,
+                            identifier: AXID.Summary.title
+                        )
+                        if let summary {
+                            BarTitle(
+                                text: Text(verbatim: summary.workoutName),
+                                isShown: showsNameInBar,
+                                identifier: AXID.Summary.barTitle
+                            )
+                        }
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     closeButton
                 }
@@ -55,7 +75,9 @@ struct WorkoutSummaryView: View {
             }
             .padding(.horizontal, Spacing.md)
             .padding(.bottom, Spacing.xl)
+            .scrollAwayTitleContent()
         }
+        .scrollAwayTitle(below: nameBottom, isScrolledAway: $showsNameInBar)
     }
 
     // MARK: - Workout name header
@@ -66,6 +88,7 @@ struct WorkoutSummaryView: View {
             .fontWeight(.bold)
             .padding(.top, Spacing.sm)
             .accessibilityIdentifier(AXID.Summary.workoutNameLabel)
+            .scrollAwayTitleHeader(bottom: $nameBottom)
     }
 
     // MARK: - Stats (duration + volume)
@@ -238,12 +261,12 @@ struct WorkoutSummaryView: View {
 // MARK: - Preview
 
 #if DEBUG
-#Preview("WorkoutSummaryView") {
-    let appEnv = AppEnvironment.preview()
-    let lastSession = try? appEnv.sessionRepository.completedSessions(
-        in: DateInterval(start: .distantPast, end: Date())
-    ).first
-    WorkoutSummaryView(workoutId: lastSession?.id ?? UUID())
-        .environment(appEnv)
-}
+    #Preview("WorkoutSummaryView") {
+        let appEnv = AppEnvironment.preview()
+        let lastSession = try? appEnv.sessionRepository.completedSessions(
+            in: DateInterval(start: .distantPast, end: Date())
+        ).first
+        WorkoutSummaryView(workoutId: lastSession?.id ?? UUID())
+            .environment(appEnv)
+    }
 #endif

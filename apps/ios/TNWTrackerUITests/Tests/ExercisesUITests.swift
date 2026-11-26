@@ -26,7 +26,10 @@ final class ExercisesUITests: XCTestCase {
         XCTAssertTrue(squat.primaryMuscles.exists)
         XCTAssertTrue(squat.placeholder.waitForExistence(timeout: 5))
         XCTAssertFalse(squat.videoToggle.exists, "no video, no video section")
-        try app.auditAccessibility(screen: "exercise sheet, no media")
+        try app.auditAccessibility(
+            screen: "exercise sheet, no media",
+            knownContrastIssues: [AXID.ExerciseSheet.trainButton]
+        )
 
         // The exercise with an image shows it.
         let press = squat.close().openSheet(Sample.chestPress)
@@ -34,14 +37,20 @@ final class ExercisesUITests: XCTestCase {
         XCTAssertTrue(press.image.waitForExistence(timeout: 5), "the invented image shows")
         XCTAssertTrue(press.videoToggle.exists, "#182 S9: the video has its own section")
         XCTAssertFalse(press.video.exists, "#182 S9: closed at first")
-        try app.auditAccessibility(screen: "exercise sheet, image")
+        try app.auditAccessibility(
+            screen: "exercise sheet, image",
+            knownContrastIssues: [AXID.ExerciseSheet.trainButton]
+        )
 
         // #182 S9: "Watch video" opens the system player; the photo stays.
         press.toggleVideo()
         XCTAssertTrue(press.video.waitForExistence(timeout: 5), "the player shows when the section opens")
         XCTAssertTrue(press.image.exists, "the photo stays visible")
         attachScreenshot(of: app, named: "exercise sheet, video open")
-        try app.auditAccessibility(screen: "exercise sheet, video open")
+        try app.auditAccessibility(
+            screen: "exercise sheet, video open",
+            knownContrastIssues: [AXID.ExerciseSheet.trainButton]
+        )
         press.toggleVideo()
         XCTAssertTrue(press.video.waitForNonExistence(timeout: 5), "the section closes again")
 

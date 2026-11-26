@@ -7,22 +7,29 @@ import TNWTrackerKit
 /// placeholder; then the name, type and equipment, the video under "Ver vídeo"
 /// when there is one, how to do it (setup and execution steps), the muscles
 /// it works and «Información relacionada»: our links, then the user's own
-/// (S10). Exercise text shows as stored.
+/// (S10). Exercise text shows as stored. With `actions`, the header is followed
+/// by «Entrenar este ejercicio» and «Añadir a rutina».
 struct ExerciseSheetView: View {
     let content: ExerciseSheetContent
+    private let actions: ExerciseSheetActions?
     @State private var hero: ExerciseHeroModel
     @State private var related: RelatedLinksModel
     @State private var isVideoOpen = false
     @State private var playingRelatedLink: RelatedLinkItem.ID?
+    /// Where the name ends in the content, and whether it has scrolled under the bar (AC6).
+    @State private var nameBottom: CGFloat = 0
+    @State private var showsBarTitle = false
     @Environment(\.dismiss) private var dismiss
 
     init(
         content: ExerciseSheetContent,
         library: ExerciseMediaLibrary,
         links: any ExerciseLinkRepositoryProtocol,
-        previews: any LinkPreviewProviding
+        previews: any LinkPreviewProviding,
+        actions: ExerciseSheetActions? = nil
     ) {
         self.content = content
+        self.actions = actions
         _hero = State(initialValue: ExerciseHeroModel(content: content, library: library))
         _related = State(initialValue: RelatedLinksModel(content: content, repository: links, previews: previews))
     }
@@ -33,6 +40,9 @@ struct ExerciseSheetView: View {
                 VStack(alignment: .leading, spacing: Spacing.lg) {
                     ExerciseHeroView(model: hero, exerciseName: content.name)
                     header
+                    if let actions {
+                        ExerciseSheetActionsSection(exerciseId: content.id, actions: actions)
+                    }
                     if hero.hasVideo {
                         ExerciseVideoSection(model: hero, exerciseName: content.name, isExpanded: $isVideoOpen)
                     }
@@ -42,7 +52,9 @@ struct ExerciseSheetView: View {
                 }
                 .padding(.horizontal, Spacing.md)
                 .padding(.bottom, Spacing.xl)
+                .scrollAwayTitleContent()
             }
+            .scrollAwayTitle(below: nameBottom, isScrolledAway: $showsBarTitle)
             .background(Color.surfacePrimary)
             // One video at a time: a related video closes the main one, and back.
             .onChange(of: playingRelatedLink) { _, playing in
@@ -55,8 +67,16 @@ struct ExerciseSheetView: View {
                     playingRelatedLink = nil
                 }
             }
+            .navigationTitle(Text(verbatim: content.name))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    BarTitle(
+                        text: Text(verbatim: content.name),
+                        isShown: showsBarTitle,
+                        identifier: AXID.ExerciseSheet.barTitle
+                    )
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(role: .close) { dismiss() }
                         .accessibilityIdentifier(AXID.ExerciseSheet.closeButton)
@@ -83,6 +103,7 @@ struct ExerciseSheetView: View {
                 .font(.title2.weight(.bold))
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier(AXID.ExerciseSheet.name)
+                .scrollAwayTitleHeader(bottom: $nameBottom)
             if let equipment = content.equipment {
                 Text(equipment.label)
                     .font(.subheadline)

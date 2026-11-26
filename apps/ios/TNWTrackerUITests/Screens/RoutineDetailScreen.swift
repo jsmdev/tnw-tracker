@@ -46,6 +46,20 @@ struct RoutineDetailScreen {
         return ActiveWorkoutScreen(app: app).waitUntilLoaded()
     }
 
+    /// Taps an exercise of the routine: its sheet opens (AC2).
+    func openExercise(named name: String) -> ExerciseSheetScreen {
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "no exercise row for \(name)")
+        row.waitUntilHittable()
+        row.tap()
+        return ExerciseSheetScreen(app: app).waitUntilLoaded()
+    }
+
+    /// Whether the routine lists an exercise named `name`.
+    func hasExercise(named name: String) -> Bool {
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch.waitForExistence(timeout: 5)
+    }
+
     /// Back to Home, when the detail was opened from "Otras rutinas".
     func backToHome() -> HomeScreen {
         app.navigationBars.buttons.element(boundBy: 0).tap()

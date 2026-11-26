@@ -7,11 +7,19 @@ public struct ActiveWorkoutPresentation: Identifiable, Equatable {
     public let id: UUID
     /// A free session: no routine, the user picks the exercises (#137 S5).
     public var isFree = false
+    /// The exercise to add to the session once it has started or resumed
+    /// («Entrenar este ejercicio» in the exercise sheet).
+    public var startingExerciseId: UUID?
 
     /// A free session, started without a routine.
-    public static func free() -> ActiveWorkoutPresentation {
-        ActiveWorkoutPresentation(id: UUID(), isFree: true)
+    public static func free(startingWith exerciseId: UUID? = nil) -> ActiveWorkoutPresentation {
+        ActiveWorkoutPresentation(id: UUID(), isFree: true, startingExerciseId: exerciseId)
     }
+}
+
+/// The exercise whose sheet shows; `id` is the exercise's.
+public struct ExercisePresentation: Identifiable, Equatable {
+    public let id: UUID
 }
 
 public struct WorkoutSummaryPresentation: Identifiable, Equatable {
@@ -33,6 +41,11 @@ public final class Router {
     public var exercisesPath = NavigationPath()
     public var presentedActiveWorkout: ActiveWorkoutPresentation?
     public var presentedWorkoutSummary: WorkoutSummaryPresentation?
+    /// The exercise sheet, one for the whole app: the catalogue, a finished
+    /// workout, a routine and the exercise deep link all open it.
+    public var presentedExercise: ExercisePresentation?
+    /// The exercise picked in its sheet to train, waiting for the sheet to close.
+    public private(set) var exerciseToTrain: UUID?
 
     public init() {}
 
@@ -50,8 +63,39 @@ public final class Router {
         set { setPath(newValue, for: selectedTab) }
     }
 
+    /// Shows `route`. An exercise opens its sheet instead of a screen.
     public func push(_ route: Route) {
+        if case let .exerciseDetail(exerciseID) = route {
+            presentExercise(exerciseID)
+            return
+        }
         path.append(route)
+    }
+
+    public func presentExercise(_ exerciseId: UUID) {
+        exerciseToTrain = nil
+        presentedExercise = ExercisePresentation(id: exerciseId)
+    }
+
+    /// «Entrenar este ejercicio»: closes the sheet; the workout opens once it
+    /// has closed (`exerciseSheetDidClose`), as one cover cannot open while a
+    /// sheet is still closing.
+    public func train(_ exerciseId: UUID) {
+        exerciseToTrain = exerciseId
+        presentedExercise = nil
+    }
+
+    /// The exercise sheet has closed. With an exercise to train, reopens the
+    /// workout in progress (`sessionInProgressId`) with it, or starts a free
+    /// session with it when there is none.
+    public func exerciseSheetDidClose(sessionInProgressId: UUID?) {
+        guard let exerciseId = exerciseToTrain else { return }
+        exerciseToTrain = nil
+        if let sessionInProgressId {
+            presentedActiveWorkout = ActiveWorkoutPresentation(id: sessionInProgressId, startingExerciseId: exerciseId)
+        } else {
+            presentedActiveWorkout = .free(startingWith: exerciseId)
+        }
     }
 
     public func pop() {

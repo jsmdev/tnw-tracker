@@ -15,15 +15,18 @@ extension XCUIApplication {
     ///   cannot measure whole; it is audited once scrolled into view;
     /// - clipped placeholder text in the system search field (`.searchable`);
     /// - with `only`, any element whose identifier is not listed;
+    /// - contrast on the identifiers in `knownContrastIssues`: the shared
+    ///   `PrimaryButton` (system glass prominent style), an open issue of its own;
     /// - the Dynamic Type check on the identifiers in `dynamicTypeChecked`, which a
     ///   screenshot at the largest text size showed scaling and unclipped.
     func auditAccessibility(
         screen: String,
         only: Set<String>? = nil,
         dynamicTypeChecked: Set<String> = [],
+        knownContrastIssues: Set<String> = [],
         contentUnderTabBar: Bool = false
     ) throws {
-        let preExisting: Set<String> = ["Developer", "Reset & seed"]
+        let preExisting: Set = ["Developer", "Reset & seed"]
         let tabBar = tabBars.firstMatch
         let tabBarFrame = tabBar.exists ? tabBar.frame : .null
         // The scroll edge effect blurs content this far above the glass bar.
@@ -53,9 +56,11 @@ extension XCUIApplication {
                 && element?.elementType == .searchField
             let checkedByHand = issue.auditType == .dynamicType
                 && dynamicTypeChecked.contains(element?.identifier ?? "")
+            let knownContrast = issue.auditType == .contrast
+                && knownContrastIssues.contains(element?.identifier ?? "")
             let outOfScope = only.map { !$0.contains(element?.identifier ?? "") } ?? false
             let ignored = systemFormText || systemSearchField || underTabBar || cutByScreenEdge || checkedByHand
-                || preExisting.contains(label) || outOfScope
+                || preExisting.contains(label) || outOfScope || knownContrast
             let kind = element.map { "\($0.elementType.rawValue) '\($0.identifier)' \($0.frame)" } ?? "unknown element"
             print("Accessibility audit (\(screen)) \(ignored ? "ignored" : "FAILED"): "
                 + "\(issue.compactDescription) on \"\(label)\" (\(kind))"

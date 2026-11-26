@@ -42,8 +42,8 @@ struct TabRoutingTests {
         #expect(router.path(for: .home).count == 1)
     }
 
+    /// The exercise deep link opens its sheet instead (RouterExerciseSheetTests).
     @Test("a deep link selects the tab that owns the screen", arguments: [
-        ("tnwtracker://exercise/AAAABBBB-CCCC-DDDD-EEEE-FFFFFFFFFFFF", AppTab.exercises),
         ("tnwtracker://settings", AppTab.home),
         ("tnwtracker://session-history", AppTab.home),
         ("tnwtracker://session/8400E1D8-3F4A-4B3F-9DAB-1234567890AB", AppTab.home)
@@ -51,7 +51,7 @@ struct TabRoutingTests {
     func deepLinkSelectsTab(link: String, tab: AppTab) throws {
         let router = Router()
         router.selectedTab = .history
-        router.handle(deepLink: try #require(URL(string: link)))
+        try router.handle(deepLink: #require(URL(string: link)))
         #expect(router.selectedTab == tab)
         #expect(router.path(for: tab).count == 1)
         #expect(router.path(for: .history).isEmpty)
@@ -66,7 +66,7 @@ struct TabRoutingTests {
     func workoutLinkKeepsTab() throws {
         let router = Router()
         router.selectedTab = .history
-        router.handle(deepLink: try #require(URL(string: "tnwtracker://workout/active")))
+        try router.handle(deepLink: #require(URL(string: "tnwtracker://workout/active")))
         #expect(router.selectedTab == .history)
     }
 }

@@ -137,5 +137,88 @@ struct RouterTests {
         let router = Router()
         #expect(router.presentedActiveWorkout == nil)
         #expect(router.presentedWorkoutSummary == nil)
+        #expect(router.presentedExercise == nil)
+        #expect(router.exerciseToTrain == nil)
+    }
+}
+
+/// Exercise sheet actions, AC1-AC4: one exercise sheet for the whole app, and
+/// training the exercise picked in it once the sheet has closed.
+@Suite("Router — exercise sheet")
+@MainActor
+struct RouterExerciseSheetTests {
+    @Test("AC2 an exercise route opens its sheet instead of a screen")
+    func exerciseRouteOpensTheSheet() {
+        let router = Router()
+        let id = UUID()
+
+        router.push(.exerciseDetail(exerciseID: id))
+
+        #expect(router.presentedExercise == ExercisePresentation(id: id))
+        #expect(router.path.isEmpty, "nothing is pushed")
+    }
+
+    @Test("AC2 the exercise deep link opens the sheet on the Exercises tab")
+    func deepLinkOpensTheSheet() throws {
+        let router = Router()
+        let id = UUID()
+        let url = try #require(URL(string: "tnwtracker://exercise/\(id.uuidString)"))
+
+        router.handle(deepLink: url)
+
+        #expect(router.selectedTab == .exercises)
+        #expect(router.presentedExercise == ExercisePresentation(id: id))
+        #expect(router.exercisesPath.isEmpty)
+    }
+
+    @Test("AC3 with no workout in progress, the picked exercise starts a free session once the sheet closes")
+    func trainStartsAFreeSession() throws {
+        let router = Router()
+        let exercise = UUID()
+        router.presentExercise(exercise)
+
+        router.train(exercise)
+
+        #expect(router.presentedExercise == nil, "the sheet closes first")
+        #expect(router.presentedActiveWorkout == nil, "nothing opens while the sheet is still closing")
+        router.exerciseSheetDidClose(sessionInProgressId: nil)
+        let presented = try #require(router.presentedActiveWorkout)
+        #expect(presented.isFree)
+        #expect(presented.startingExerciseId == exercise)
+        #expect(router.exerciseToTrain == nil)
+    }
+
+    @Test("AC4 with a workout in progress, the picked exercise reopens that workout")
+    func trainReopensTheWorkoutInProgress() {
+        let router = Router()
+        let exercise = UUID()
+        let inProgress = UUID()
+        router.presentExercise(exercise)
+
+        router.train(exercise)
+        router.exerciseSheetDidClose(sessionInProgressId: inProgress)
+
+        let expected = ActiveWorkoutPresentation(id: inProgress, startingExerciseId: exercise)
+        #expect(router.presentedActiveWorkout == expected)
+        #expect(router.presentedActiveWorkout?.isFree == false)
+    }
+
+    @Test("closing the sheet without training opens nothing")
+    func closingWithoutTrainingOpensNothing() {
+        let router = Router()
+        router.presentExercise(UUID())
+        router.presentedExercise = nil
+
+        router.exerciseSheetDidClose(sessionInProgressId: UUID())
+
+        #expect(router.presentedActiveWorkout == nil)
+    }
+
+    @Test("other routes are still pushed")
+    func otherRoutesArePushed() {
+        let router = Router()
+        router.push(.workoutDetail(sessionID: UUID()))
+        #expect(router.path.count == 1)
+        #expect(router.presentedExercise == nil)
     }
 }

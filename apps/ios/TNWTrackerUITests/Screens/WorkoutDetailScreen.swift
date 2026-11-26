@@ -32,6 +32,21 @@ struct WorkoutDetailScreen {
         return HistoryScreen(app: app)
     }
 
+    /// Taps the exercise's row: its sheet opens (AC1).
+    func openExercise(named name: String) -> ExerciseSheetScreen {
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "no exercise row for \(name)")
+        // A row near the bottom sits under the tab bar and the «Sesión en curso»
+        // accessory, which would take the tap: scroll it up first.
+        let bottomChrome = app.tabBars.firstMatch.frame.minY - 100
+        if row.frame.maxY > bottomChrome {
+            list.swipeUp()
+        }
+        row.waitUntilHittable()
+        row.tap()
+        return ExerciseSheetScreen(app: app).waitUntilLoaded()
+    }
+
     /// Goes back to the history and waits until the detail has gone.
     func back() -> HistoryScreen {
         let named = app.navigationBars.buttons["BackButton"]
