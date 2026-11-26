@@ -203,6 +203,18 @@ struct RouterExerciseSheetTests {
         #expect(router.presentedActiveWorkout?.isFree == false)
     }
 
+    @Test("opening another exercise forgets an exercise picked to train before")
+    func openingAnotherExerciseForgetsTheEarlierPick() {
+        let router = Router()
+        router.train(UUID())
+
+        router.presentExercise(UUID())
+        router.presentedExercise = nil
+        router.exerciseSheetDidClose(sessionInProgressId: nil)
+
+        #expect(router.presentedActiveWorkout == nil)
+    }
+
     @Test("closing the sheet without training opens nothing")
     func closingWithoutTrainingOpensNothing() {
         let router = Router()

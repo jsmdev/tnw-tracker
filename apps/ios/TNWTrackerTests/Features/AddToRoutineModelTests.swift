@@ -55,6 +55,7 @@ struct AddToRoutineModelTests {
         let saved = try #require(try store.routines.routine(id: original.id))
         #expect(saved.items == original.items + [RoutineItem(order: 5, exerciseId: squat.id)])
         #expect(saved.name == "Push")
+        #expect(model.routines.first?.items.last?.exerciseId == squat.id, "the menu shows the routine as saved")
     }
 
     @Test("AC5 a routine that already has the exercise is left as it was")
@@ -93,6 +94,7 @@ struct AddToRoutineModelTests {
         #expect(saved.items == [RoutineItem(order: 1, exerciseId: press.id)])
         #expect(!saved.isFavorite)
         #expect(try store.routines.routines(RoutineQuery()).count == 1)
+        #expect(model.routines.map(\.name) == ["Upper body"], "the menu lists the new routine")
     }
 
     @Test("AC5 a blank name creates nothing")

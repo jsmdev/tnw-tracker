@@ -42,6 +42,12 @@ struct SessionDetailView: View {
         .task {
             await load()
         }
+        // The exercise sheet may have added the exercise to this routine.
+        .onChange(of: appEnv.router.presentedExercise == nil) { _, closed in
+            if closed {
+                Task { await load() }
+            }
+        }
     }
 
     // MARK: - Content

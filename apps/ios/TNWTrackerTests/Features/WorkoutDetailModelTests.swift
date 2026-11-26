@@ -29,14 +29,27 @@ struct WorkoutDetailModelTests {
         let open = try fx.sessions.startSession(
             routineId: routine.id, name: "Legs", at: t0, timeZone: TrainingFixtures.zone
         )
-        try fx.sessions.logManualSet(SetValues(reps: 12, weight: .kg(8)), warmup: true,
-                                     exerciseId: fx.squat.id, sessionId: open.id, at: t0)
+        try fx.sessions.logManualSet(
+            SetValues(reps: 12, weight: .kg(8)),
+            warmup: true,
+            exerciseId: fx.squat.id,
+            sessionId: open.id,
+            at: t0
+        )
         for reps in [10, 9] {
-            try fx.sessions.logManualSet(SetValues(reps: reps, weight: .kg(16)),
-                                         exerciseId: fx.squat.id, sessionId: open.id, at: t0)
+            try fx.sessions.logManualSet(
+                SetValues(reps: reps, weight: .kg(16)),
+                exerciseId: fx.squat.id,
+                sessionId: open.id,
+                at: t0
+            )
         }
-        let pressSet = try fx.sessions.logManualSet(SetValues(reps: 5, weight: .kg(30)),
-                                                    exerciseId: fx.press.id, sessionId: open.id, at: t0)
+        let pressSet = try fx.sessions.logManualSet(
+            SetValues(reps: 5, weight: .kg(30)),
+            exerciseId: fx.press.id,
+            sessionId: open.id,
+            at: t0
+        )
         let pressEntry = try #require(try fx.sessions.session(id: open.id)?.entries
             .first { $0.sets.contains { $0.id == pressSet.id } })
         try fx.sessions.removeEntry(id: pressEntry.id)
@@ -48,7 +61,7 @@ struct WorkoutDetailModelTests {
                 into: open.id
             )
         }
-        return try fx.sessions.finishSession(id: open.id, at: t0.addingTimeInterval(2_400), durationSeconds: 2_400)
+        return try fx.sessions.finishSession(id: open.id, at: t0.addingTimeInterval(2400), durationSeconds: 2400)
     }
 
     @Test("shows the performed exercises in order with their sets; warm-ups are not numbered")
@@ -60,6 +73,7 @@ struct WorkoutDetailModelTests {
 
         #expect(detail.session == workout)
         #expect(detail.sections.map(\.exerciseName) == ["Goblet Squat"], "skipped and removed entries are left out")
+        #expect(detail.sections.map(\.exerciseId) == [fx.squat.id], "a row opens its exercise's sheet (AC1)")
         let squat = try #require(detail.sections.first)
         #expect(squat.sets.map(\.value.values.reps) == [12, 10, 9])
         #expect(squat.sets.map(\.number) == [nil, 1, 2])
