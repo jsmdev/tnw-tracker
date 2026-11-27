@@ -4,13 +4,53 @@ import TNWTrackerKit
 
 private let logger = Logger(subsystem: "com.tnwtracker", category: "coordinator")
 
-// Deleting any logged set and removing an exercise from the session in progress.
+// Undoing the last set, deleting any logged set and removing an exercise from the
+// session in progress.
 
-extension ActiveWorkoutCoordinator {
+public extension ActiveWorkoutCoordinator {
+    /// Deshace la última serie si todavía está en la ventana de undo.
+    func undoLastSet() async throws {
+        guard let setId = undoLastSetId else { return }
+        undoTask?.cancel()
+        undoLastSetId = nil
+        let restore = undoRestore
+        undoRestore = nil
+        if restingSet?.setId == setId {
+            restingSet = nil
+        }
+        if setWithoutTimer?.setId == setId {
+            setWithoutTimer = nil
+        }
+        let exerciseId = entries.first { $0.sets.contains { $0.id == setId } }?.exerciseId
+        try sessions.deleteManualSet(id: setId)
+        try refreshSession()
+        // An exercise the user picked stays in the session when its only set is undone.
+        keepPickedIfUnsaved(exerciseId)
+        // The undone set's own rest stops; a rest it cut short is not resumed (D-T3k).
+        await timerService.skip()
+        if let restore {
+            // As if the undone set was never logged: the previous set's rest is
+            // measured again until the next real set.
+            recordRest(nil, setId: restore.setId)
+            restingSet = nil
+            setWithoutTimer = restore
+        }
+        // Back to the exercise of the undone set, for example after an auto-advance (D-T3d).
+        let previousIndex = currentExerciseIndex
+        if let exerciseId, let index = entries.firstIndex(where: { $0.exerciseId == exerciseId }) {
+            currentExerciseIndex = index
+        }
+        if phase == .restingBetweenSets || phase == .restingBetweenExercises || currentExerciseIndex != previousIndex {
+            phase = .active
+            logger.info("Coordinator phase → .active (undoLastSet)")
+        }
+        publishLiveActivity()
+    }
+
     /// Deletes a manual set of the session in progress. The last set, while its
     /// undo window is open, is undone exactly as `undoLastSet()`. A rest running
     /// after the deleted set stops.
-    public func deleteSet(id setId: UUID) async throws {
+    func deleteSet(id setId: UUID) async throws {
         if setId == undoLastSetId {
             return try await undoLastSet()
         }
@@ -19,9 +59,15 @@ extension ActiveWorkoutCoordinator {
             throw TrainingDataError.notFound
         }
         let wasResting = restingSet?.setId == setId
-        if wasResting { restingSet = nil }
-        if setWithoutTimer?.setId == setId { setWithoutTimer = nil }
-        if undoRestore?.setId == setId { undoRestore = nil }
+        if wasResting {
+            restingSet = nil
+        }
+        if setWithoutTimer?.setId == setId {
+            setWithoutTimer = nil
+        }
+        if undoRestore?.setId == setId {
+            undoRestore = nil
+        }
 
         try sessions.deleteManualSet(id: setId)
         try refreshSession()
@@ -30,7 +76,9 @@ extension ActiveWorkoutCoordinator {
         if let index = entries.firstIndex(where: { $0.exerciseId == exerciseId }) {
             currentExerciseIndex = index
         }
-        if wasResting { await stopRest() }
+        if wasResting {
+            await stopRest()
+        }
         logger.info("Coordinator deleted set \(setId)")
         publishLiveActivity()
     }
@@ -39,7 +87,7 @@ extension ActiveWorkoutCoordinator {
     /// `removed` (its sets stay stored and stop counting); an exercise picked
     /// without sets is simply dropped. The current exercise stays selected when
     /// another one is removed.
-    public func removeExercise(entryId: UUID) async throws {
+    func removeExercise(entryId: UUID) async throws {
         let list = entries
         guard let removedIndex = list.firstIndex(where: { $0.id == entryId }) else {
             throw TrainingDataError.notFound
@@ -49,8 +97,12 @@ extension ActiveWorkoutCoordinator {
         } else {
             let setIds = Set(list[removedIndex].sets.map(\.id))
             let wasResting = restingSet.map { setIds.contains($0.setId) } ?? false
-            if wasResting { restingSet = nil }
-            if let pending = setWithoutTimer, setIds.contains(pending.setId) { setWithoutTimer = nil }
+            if wasResting {
+                restingSet = nil
+            }
+            if let pending = setWithoutTimer, setIds.contains(pending.setId) {
+                setWithoutTimer = nil
+            }
             if let undo = undoLastSetId, setIds.contains(undo) {
                 undoTask?.cancel()
                 undoLastSetId = nil
@@ -58,9 +110,13 @@ extension ActiveWorkoutCoordinator {
             }
             try sessions.removeEntry(id: entryId)
             try refreshSession()
-            if wasResting { await stopRest() }
+            if wasResting {
+                await stopRest()
+            }
         }
-        if removedIndex < currentExerciseIndex { currentExerciseIndex -= 1 }
+        if removedIndex < currentExerciseIndex {
+            currentExerciseIndex -= 1
+        }
         currentExerciseIndex = min(currentExerciseIndex, max(entries.count - 1, 0))
         logger.info("Coordinator removed entry \(entryId)")
         publishLiveActivity()

@@ -38,20 +38,32 @@ struct SetLogSheetScreen {
 
     // MARK: - Interaction helpers
 
-    /// Taps the reps field and types the given value. Returns self for chaining.
+    /// Taps the reps field and types the given value over any prefill. Returns self for chaining.
     @discardableResult
     func enterReps(_ value: Int) -> Self {
-        repsField.tap()
-        repsField.typeText(String(value))
+        replaceText(of: repsField, with: String(value))
         return self
     }
 
-    /// Taps the weight field and types the given value. Returns self for chaining.
+    /// Taps the weight field and types the given value over any prefill. Returns self for chaining.
     @discardableResult
     func enterWeight(_ value: Double) -> Self {
-        weightField.tap()
-        weightField.typeText(String(value))
+        replaceText(of: weightField, with: String(value))
         return self
+    }
+
+    /// The field's text, empty while it shows its placeholder.
+    func value(of field: XCUIElement) -> String {
+        let text = field.value as? String ?? ""
+        return text == field.placeholderValue ? "" : text
+    }
+
+    /// Types over a field that may come prefilled (fast-add-exercise S3).
+    /// Focusing a prefilled field selects its text, so typing replaces it.
+    private func replaceText(of field: XCUIElement, with text: String) {
+        field.tap()
+        field.typeText(text)
+        XCTAssertEqual(value(of: field), text, "typing did not replace the field's value")
     }
 
     // MARK: - Transitions

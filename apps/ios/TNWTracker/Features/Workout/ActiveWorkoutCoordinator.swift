@@ -32,6 +32,9 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// The exercise picked from the list that has no set yet (see `addExercise`).
     var picked: PickedExercise?
 
+    /// "La última vez" by exercise, read once per session (completed sessions only).
+    @ObservationIgnored var lastPerformances: (sessionId: UUID, byExercise: [UUID: LastPerformance?])?
+
     // MARK: - Dependencies
 
     // Internal, not private: the extensions in `ActiveWorkoutCoordinator+*.swift` read them.
@@ -244,41 +247,6 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         }
     }
 
-    /// Deshace la última serie si todavía está en la ventana de undo.
-    public func undoLastSet() async throws {
-        guard let setId = undoLastSetId else { return }
-        undoTask?.cancel()
-        undoLastSetId = nil
-        let restore = undoRestore
-        undoRestore = nil
-        if restingSet?.setId == setId { restingSet = nil }
-        if setWithoutTimer?.setId == setId { setWithoutTimer = nil }
-        let exerciseId = entries.first { $0.sets.contains { $0.id == setId } }?.exerciseId
-        try sessions.deleteManualSet(id: setId)
-        try refreshSession()
-        // An exercise the user picked stays in the session when its only set is undone.
-        keepPickedIfUnsaved(exerciseId)
-        // The undone set's own rest stops; a rest it cut short is not resumed (D-T3k).
-        await timerService.skip()
-        if let restore {
-            // As if the undone set was never logged: the previous set's rest is
-            // measured again until the next real set.
-            recordRest(nil, setId: restore.setId)
-            restingSet = nil
-            setWithoutTimer = restore
-        }
-        // Back to the exercise of the undone set, for example after an auto-advance (D-T3d).
-        let previousIndex = currentExerciseIndex
-        if let exerciseId, let index = entries.firstIndex(where: { $0.exerciseId == exerciseId }) {
-            currentExerciseIndex = index
-        }
-        if phase == .restingBetweenSets || phase == .restingBetweenExercises || currentExerciseIndex != previousIndex {
-            phase = .active
-            logger.info("Coordinator phase → .active (undoLastSet)")
-        }
-        publishLiveActivity()
-    }
-
     // MARK: - Navigation
 
     public func advanceToNextExercise() {
@@ -362,7 +330,9 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
 
         liveActivity.end()
 
-        if !discard { completedWorkoutId = current.id }
+        if !discard {
+            completedWorkoutId = current.id
+        }
         clearWorkout()
         logger.info("Coordinator phase → .idle (finished, summary ID: \(current.id))")
         lastFinishOutcome = discard ? .discarded : .saved(current.id)

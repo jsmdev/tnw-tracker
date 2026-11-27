@@ -194,6 +194,8 @@ public enum AXID {
         public static let addExerciseButton = "activeWorkout.addExerciseButton"
         public static let exercisePickerCancelButton = "activeWorkout.exercisePickerCancelButton"
         public static let exerciseTitle = "activeWorkout.exerciseTitle"
+        /// «La última vez» under the current exercise (fast-add-exercise S3 AC4).
+        public static let lastTime = "activeWorkout.lastTime"
         public static let progressIndicator = "activeWorkout.progressIndicator"
         public static let setWarmupToggle = "activeWorkout.setWarmupToggle"
         public static let exerciseOptionsMenu = "activeWorkout.exerciseOptionsMenu"

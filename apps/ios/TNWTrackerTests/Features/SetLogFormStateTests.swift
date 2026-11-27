@@ -105,3 +105,32 @@ struct RIRScaleTests {
         #expect(state.isValid)
     }
 }
+
+// MARK: - Prefill (fast-add-exercise S3 AC1–AC3)
+
+@Suite("SetLogFormState prefill")
+struct SetLogFormStatePrefillTests {
+    @Test("a prefill fills reps and kg, never effort or warm-up, and is valid at once")
+    func prefillFillsRepsAndWeight() {
+        let state = SetLogFormState(prefill: SetValues(reps: 15, weight: .kg(10.1), rir: 2))
+        #expect(state.reps == 15)
+        #expect(state.weight == 10.1)
+        #expect(state.rir == nil)
+        #expect(!state.warmup)
+        #expect(state.isValid)
+    }
+
+    @Test("a weight in pounds starts in kg, to two decimals")
+    func poundsBecomeKilograms() {
+        let state = SetLogFormState(prefill: SetValues(reps: 5, weight: Weight(value: 100, unit: .lb)))
+        #expect(state.weight == 45.36)
+    }
+
+    @Test("an empty prefill keeps the empty form")
+    func emptyPrefill() {
+        let state = SetLogFormState(prefill: SetValues())
+        #expect(state.reps == nil)
+        #expect(state.weight == nil)
+        #expect(!state.isValid)
+    }
+}
