@@ -79,9 +79,14 @@ struct ExerciseSheetActionsSection: View {
         } label: {
             Label("exercise-sheet.add-to-routine", systemImage: "text.badge.plus")
                 .font(.body.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .contentShape(Rectangle())
         }
+        // On iOS 26 a menu's default style dims its label below the contrast
+        // the audit asks for; a borderless button keeps the label's own colour.
+        .menuStyle(.button)
+        .buttonStyle(.borderless)
         .accessibilityIdentifier(AXID.ExerciseSheet.addToRoutineButton)
     }
 
