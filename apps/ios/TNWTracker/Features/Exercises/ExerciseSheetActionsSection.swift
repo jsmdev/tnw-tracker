@@ -31,7 +31,10 @@ struct ExerciseSheetActionsSection: View {
     }
 
     var body: some View {
-        VStack(spacing: Spacing.sm) {
+        // On iOS 26 the contrast audit measures a control within about 24 pt
+        // below the glass prominent button against the button's glow and fails
+        // it, whatever its colour; at 32 pt it is measured against the sheet.
+        VStack(spacing: Spacing.xl) {
             PrimaryButton(
                 title: actions.hasSessionInProgress ? "exercise-sheet.add-to-session" : "exercise-sheet.train",
                 action: actions.train
@@ -79,14 +82,9 @@ struct ExerciseSheetActionsSection: View {
         } label: {
             Label("exercise-sheet.add-to-routine", systemImage: "text.badge.plus")
                 .font(.body.weight(.semibold))
-                .foregroundStyle(Color.accentColor)
-                .frame(maxWidth: .infinity, minHeight: 44)
+                .frame(minHeight: 44)
                 .contentShape(Rectangle())
         }
-        // On iOS 26 a menu's default style dims its label below the contrast
-        // the audit asks for; a borderless button keeps the label's own colour.
-        .menuStyle(.button)
-        .buttonStyle(.borderless)
         .accessibilityIdentifier(AXID.ExerciseSheet.addToRoutineButton)
     }
 
