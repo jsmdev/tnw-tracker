@@ -22,7 +22,6 @@ struct ExerciseListModelTests {
         #expect(model.exercises.map(\.name) == ["Air Bike", "bench Press", "Calf Raise", "rowing Machine"])
         #expect(model.exercises.filter(\.isCatalogue).count == 2, "the catalogue's are listed too")
         #expect(!model.loadFailed)
-        #expect(model.selected == nil)
     }
 
     @Test("S7 an empty store lists nothing")
@@ -33,22 +32,5 @@ struct ExerciseListModelTests {
 
         #expect(model.exercises.isEmpty)
         #expect(!model.loadFailed)
-    }
-
-    @Test("S7 opening an exercise shows its sheet")
-    func openShowsTheSheet() throws {
-        let store = try TrainingStore.inMemory()
-        try SampleTrainingData.loadIfEmpty(into: store)
-        let model = ExerciseListModel(exercises: store.exercises)
-        model.load()
-        let squat = try #require(model.exercises.first { $0.id == SampleTrainingData.ExerciseID.gobletSquat })
-
-        model.open(squat.id)
-
-        #expect(model.selected == ExerciseSheetContent(squat))
-        #expect(model.selected?.setupSteps == ["Hold the weight close to the chest."])
-
-        model.open(UUID())
-        #expect(model.selected == ExerciseSheetContent(squat), "an id the list does not have opens nothing")
     }
 }

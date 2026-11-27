@@ -5,7 +5,9 @@ import TNWTrackerKit
 
 /// A finished workout of the history: when it was, how long it took, and
 /// every set of each exercise. A workout without machine data can be deleted (#174 S7).
+/// Tapping an exercise opens its sheet (AC1).
 struct WorkoutDetailView: View {
+    @Environment(AppEnvironment.self) private var appEnv
     @Environment(\.dismiss) private var dismiss
     @State private var model: WorkoutDetailModel
     @State private var confirmsDelete = false
@@ -70,15 +72,30 @@ struct WorkoutDetailView: View {
             ForEach(model.sections) { section in
                 Section {
                     // A row, not a section header: the system header fails the Dynamic Type audit.
-                    Group {
-                        if let name = section.exerciseName {
-                            Text(verbatim: name)
-                        } else {
-                            Text("history.detail.unknown-exercise")
+                    Button {
+                        appEnv.router.presentExercise(section.exerciseId)
+                    } label: {
+                        HStack {
+                            Group {
+                                if let name = section.exerciseName {
+                                    Text(verbatim: name)
+                                } else {
+                                    Text("history.detail.unknown-exercise")
+                                }
+                            }
+                            .font(.headline)
+                            .foregroundStyle(Color.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.tertiary)
+                                .accessibilityHidden(true)
                         }
+                        .contentShape(Rectangle())
                     }
-                    .font(.headline)
+                    .buttonStyle(.plain)
                     .accessibilityAddTraits(.isHeader)
+                    .accessibilityHint(Text("history.detail.exercise-hint"))
                     .accessibilityIdentifier(AXID.WorkoutDetail.exercise(section.id))
                     ForEach(section.sets) { shown in
                         WorkoutSetRow(shown: shown)
@@ -103,29 +120,27 @@ struct WorkoutDetailView: View {
 
     @ViewBuilder
     private func summaryRows(_ session: TrainingSession) -> some View {
-        Group {
-            if let completedAt = session.completedAt {
-                LabeledContent("history.detail.date") {
-                    Text(completedAt, format: .dateTime.weekday(.wide).day().month(.wide).year())
-                }
+        if let completedAt = session.completedAt {
+            LabeledContent("history.detail.date") {
+                Text(completedAt, format: .dateTime.weekday(.wide).day().month(.wide).year())
             }
-            if let startedAt = session.startedAt {
-                LabeledContent("history.detail.started-at") {
-                    Text(startedAt, format: .dateTime.hour().minute())
-                }
+        }
+        if let startedAt = session.startedAt {
+            LabeledContent("history.detail.started-at") {
+                Text(startedAt, format: .dateTime.hour().minute())
             }
-            if let seconds = session.durationSeconds {
-                LabeledContent("history.detail.duration") {
-                    Text(Duration.seconds(seconds), format: .units(allowed: [.hours, .minutes], width: .abbreviated))
-                }
+        }
+        if let seconds = session.durationSeconds {
+            LabeledContent("history.detail.duration") {
+                Text(Duration.seconds(seconds), format: .units(allowed: [.hours, .minutes], width: .abbreviated))
             }
-            LabeledContent("history.detail.exercises") {
-                Text(verbatim: "\(model.sections.count)")
-            }
-            if session.volumeKg > 0 {
-                LabeledContent("history.detail.volume") {
-                    Text("history.row.volume \(session.volumeKg.formatted(.number.precision(.fractionLength(0))))")
-                }
+        }
+        LabeledContent("history.detail.exercises") {
+            Text(verbatim: "\(model.sections.count)")
+        }
+        if session.volumeKg > 0 {
+            LabeledContent("history.detail.volume") {
+                Text("history.row.volume \(session.volumeKg.formatted(.number.precision(.fractionLength(0))))")
             }
         }
     }

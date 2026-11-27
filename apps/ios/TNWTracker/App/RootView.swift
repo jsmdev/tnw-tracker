@@ -18,6 +18,7 @@ struct RootView: View {
                     )
                     .navigationDestination(for: Route.self) { destination(for: $0) }
                 }
+                .exerciseSheet(in: .home)
             }
             .accessibilityIdentifier(AXID.Tabs.home)
 
@@ -27,8 +28,9 @@ struct RootView: View {
                         sessionRepository: appEnv.sessionRepository,
                         exerciseRepository: appEnv.exerciseRepository
                     )
-                        .navigationDestination(for: Route.self) { destination(for: $0) }
+                    .navigationDestination(for: Route.self) { destination(for: $0) }
                 }
+                .exerciseSheet(in: .history)
             }
             .accessibilityIdentifier(AXID.Tabs.history)
 
@@ -37,6 +39,7 @@ struct RootView: View {
                     ExerciseListView(exerciseRepository: appEnv.exerciseRepository)
                         .navigationDestination(for: Route.self) { destination(for: $0) }
                 }
+                .exerciseSheet(in: .exercises)
             }
             .accessibilityIdentifier(AXID.Tabs.exercises)
         }
@@ -55,10 +58,14 @@ struct RootView: View {
             // solo activa el primer fullScreenCover en cadena, así que para
             // que el summary aparezca encima del active workout debe vivir
             // como modifier sobre el cover activo.
-            ActiveWorkoutCover(sessionID: presentation.id, isFree: presentation.isFree)
-                .fullScreenCover(item: $router.presentedWorkoutSummary) { summary in
-                    WorkoutSummaryView(workoutId: summary.id)
-                }
+            ActiveWorkoutCover(
+                sessionID: presentation.id,
+                isFree: presentation.isFree,
+                startingExerciseId: presentation.startingExerciseId
+            )
+            .fullScreenCover(item: $router.presentedWorkoutSummary) { summary in
+                WorkoutSummaryView(workoutId: summary.id)
+            }
         }
         .onOpenURL { url in
             // REQ-ROUTE-03: el deep link tnwtracker://workout/active reabre el
@@ -97,8 +104,9 @@ struct RootView: View {
         switch route {
         case let .sessionDetail(sessionID):
             SessionDetailView(sessionID: sessionID)
-        case let .exerciseDetail(exerciseID):
-            Text(verbatim: exerciseID.uuidString)
+        case .exerciseDetail:
+            // Never pushed: `Router.push` opens the exercise sheet instead.
+            EmptyView()
         case let .workoutDetail(sessionID):
             WorkoutDetailView(
                 sessionID: sessionID,
@@ -119,6 +127,8 @@ struct RootView: View {
 private struct ActiveWorkoutCover: View {
     let sessionID: UUID
     let isFree: Bool
+    /// The exercise to add once the workout has started or resumed.
+    let startingExerciseId: UUID?
     @Environment(AppEnvironment.self) private var appEnv
     @State private var coordinator: ActiveWorkoutCoordinator?
 
@@ -145,6 +155,9 @@ private struct ActiveWorkoutCover: View {
                 } else {
                     try await c.start(routineId: sessionID)
                 }
+                if let startingExerciseId {
+                    c.addExercise(startingExerciseId)
+                }
             } catch {
                 appEnv.router.presentedActiveWorkout = nil
                 appEnv.activeCoordinator = nil
@@ -153,5 +166,39 @@ private struct ActiveWorkoutCover: View {
         .onDisappear {
             appEnv.activeCoordinator = nil
         }
+    }
+}
+
+// MARK: - Exercise sheet
+
+/// The exercise sheet (AC1-AC5), one at a time: `Router.presentedExercise`,
+/// presented by the selected tab, as the catalogue presented it before.
+/// «Entrenar este ejercicio» closes it first; the workout opens once it has
+/// closed (AC3, AC4).
+private struct ExerciseSheetModifier: ViewModifier {
+    let tab: AppTab
+    @Environment(AppEnvironment.self) private var appEnv
+
+    func body(content: Content) -> some View {
+        let router = appEnv.router
+        content.sheet(
+            item: Binding(
+                get: { router.selectedTab == tab ? router.presentedExercise : nil },
+                set: { router.presentedExercise = $0 }
+            ),
+            onDismiss: {
+                let inProgress = (try? appEnv.sessionRepository.activeSession()) ?? nil
+                router.exerciseSheetDidClose(sessionInProgressId: inProgress?.id)
+            },
+            content: { presentation in
+                ExerciseSheetHost(exerciseID: presentation.id)
+            }
+        )
+    }
+}
+
+private extension View {
+    func exerciseSheet(in tab: AppTab) -> some View {
+        modifier(ExerciseSheetModifier(tab: tab))
     }
 }

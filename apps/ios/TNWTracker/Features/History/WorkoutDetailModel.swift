@@ -13,6 +13,8 @@ final class WorkoutDetailModel {
     struct ExerciseSection: Identifiable, Equatable {
         /// The entry's id.
         let id: UUID
+        /// The exercise, to open its sheet (AC1).
+        let exerciseId: UUID
         let exerciseName: String?
         let sets: [ShownSet]
     }
@@ -23,7 +25,9 @@ final class WorkoutDetailModel {
         let value: ExerciseSet
         let number: Int?
 
-        var id: UUID { value.id }
+        var id: UUID {
+            value.id
+        }
     }
 
     let sessionID: UUID
@@ -90,7 +94,12 @@ final class WorkoutDetailModel {
                     number += 1
                     return ShownSet(value: set, number: number)
                 }
-                return ExerciseSection(id: entry.id, exerciseName: exerciseName(entry.exerciseId), sets: sets)
+                return ExerciseSection(
+                    id: entry.id,
+                    exerciseId: entry.exerciseId,
+                    exerciseName: exerciseName(entry.exerciseId),
+                    sets: sets
+                )
             }
     }
 }

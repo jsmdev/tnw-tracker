@@ -143,6 +143,16 @@ public enum AXID {
         public static let relatedLinkDeleteConfirm = "exerciseSheet.relatedLinkDeleteConfirm"
         /// The in-app browser a related link opens in (S10 T5d).
         public static let inAppBrowser = "exerciseSheet.inAppBrowser"
+        /// «Entrenar este ejercicio» / «Añadir a la sesión en curso».
+        public static let trainButton = "exerciseSheet.trainButton"
+        /// «Añadir a rutina», and «Crear» in the new routine's name prompt.
+        /// The choices it offers carry no identifier: tests find them by label.
+        public static let addToRoutineButton = "exerciseSheet.addToRoutineButton"
+        public static let newRoutineCreate = "exerciseSheet.newRoutineCreate"
+        /// The message after adding to a routine.
+        public static let addToRoutineResult = "exerciseSheet.addToRoutineResult"
+        /// The name shown in the navigation bar once the header has scrolled away (AC6).
+        public static let barTitle = "exerciseSheet.barTitle"
 
         /// The `number`th related link's row, from 1: ours, then the user's.
         public static func relatedLink(_ number: Int) -> String {
@@ -249,5 +259,9 @@ public enum AXID {
     public enum Summary {
         public static let workoutNameLabel = "summary.workoutNameLabel"
         public static let closeButton = "summary.closeButton"
+        /// «Resumen» in the navigation bar, and the workout's name that replaces
+        /// it once the name has scrolled away (AC6).
+        public static let title = "summary.title"
+        public static let barTitle = "summary.barTitle"
     }
 }

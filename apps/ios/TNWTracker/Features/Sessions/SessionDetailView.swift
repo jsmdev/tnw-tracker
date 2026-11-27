@@ -5,7 +5,7 @@ import TNWTrackerKit
 
 /// Shows a routine (name, description) + its exercises list, with a star
 /// toggle for the favourite mark (T5 AC5.4).
-/// Tapping an exercise navigates to `.exerciseDetail(exerciseID:)`.
+/// Tapping an exercise opens its sheet (`.exerciseDetail(exerciseID:)`, AC2).
 /// REQ-SESSLIST-04.
 struct SessionDetailView: View {
     @Environment(AppEnvironment.self) private var appEnv
@@ -41,6 +41,12 @@ struct SessionDetailView: View {
         }
         .task {
             await load()
+        }
+        // The exercise sheet may have added the exercise to this routine.
+        .onChange(of: appEnv.router.presentedExercise == nil) { _, closed in
+            if closed {
+                Task { await load() }
+            }
         }
     }
 
@@ -173,10 +179,10 @@ struct SessionDetailView: View {
 // MARK: - Preview
 
 #if DEBUG
-#Preview("SessionDetailView — with exercises") {
-    NavigationStack {
-        SessionDetailView(sessionID: SampleTrainingData.RoutineID.fullBodyA)
+    #Preview("SessionDetailView — with exercises") {
+        NavigationStack {
+            SessionDetailView(sessionID: SampleTrainingData.RoutineID.fullBodyA)
+        }
+        .environment(AppEnvironment.preview())
     }
-    .environment(AppEnvironment.preview())
-}
 #endif

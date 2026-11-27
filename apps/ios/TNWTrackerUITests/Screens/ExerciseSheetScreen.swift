@@ -64,8 +64,11 @@ struct ExerciseSheetScreen {
     /// Closes the in-app browser with its own Done button, back to the sheet.
     func closeInAppBrowser() {
         // The browser's own Done button: «OK» in Spanish, "Done" in English.
+        // The browser runs in its own process: on a loaded CI runner its bar
+        // can take longer than 5 s to show (the hierarchy dumped at a timeout
+        // already had the button).
         let done = app.buttons.matching(NSPredicate(format: "label IN %@", ["OK", "Done"])).firstMatch
-        XCTAssertTrue(done.waitForExistence(timeout: 5), "the in-app browser has its Done button")
+        XCTAssertTrue(done.waitForExistence(timeout: 15), "the in-app browser has its Done button")
         done.tap()
         XCTAssertTrue(inAppBrowser.waitForNonExistence(timeout: 5), "the in-app browser closes")
     }
@@ -129,6 +132,70 @@ struct ExerciseSheetScreen {
             "ExerciseSheetScreen did not load: the exercise name was not found within \(timeout)s."
         )
         return self
+    }
+
+    // MARK: - Actions (AC3-AC5)
+
+    /// «Entrenar este ejercicio» / «Añadir a la sesión en curso».
+    var trainButton: XCUIElement {
+        app.buttons[AXID.ExerciseSheet.trainButton]
+    }
+
+    /// Trains the exercise: the sheet closes and the workout opens.
+    func train() -> ActiveWorkoutScreen {
+        trainButton.waitUntilHittable()
+        trainButton.tap()
+        XCTAssertTrue(name.waitForNonExistence(timeout: 5), "the sheet closes before the workout opens")
+        return ActiveWorkoutScreen(app: app).waitUntilLoaded(timeout: 10)
+    }
+
+    private func openAddToRoutine() {
+        let button = app.buttons[AXID.ExerciseSheet.addToRoutineButton]
+        button.waitUntilHittable()
+        button.tap()
+    }
+
+    /// «Añadir a rutina» → the routine named `routineName`; returns the message
+    /// shown after it. The choices carry their label, not an identifier.
+    func addToRoutine(named routineName: String) -> String {
+        openAddToRoutine()
+        let option = app.buttons[routineName].firstMatch
+        XCTAssertTrue(option.waitForExistence(timeout: 3), "«Añadir a rutina» offers the routine")
+        option.tap()
+        return dismissResult()
+    }
+
+    /// «Añadir a rutina» → «Nueva rutina…» → `name` → «Crear»; returns the message shown after it.
+    func addToNewRoutine(named name: String) -> String {
+        openAddToRoutine()
+        let item = app.buttons.matching(
+            NSPredicate(format: "label IN %@", ["Nueva rutina…", "New routine…"])
+        ).firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 3), "«Añadir a rutina» offers «Nueva rutina…»")
+        item.tap()
+        // An alert's text field carries no identifier in the accessibility tree.
+        let field = app.alerts.textFields.firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 3), "the new routine asks for its name")
+        let create = app.alerts.buttons[AXID.ExerciseSheet.newRoutineCreate].firstMatch
+        XCTAssertFalse(create.isEnabled, "no name, no routine")
+        field.typeText(name)
+        create.tap()
+        return dismissResult()
+    }
+
+    private func dismissResult() -> String {
+        let okButton = app.alerts.buttons[AXID.ExerciseSheet.addToRoutineResult].firstMatch
+        XCTAssertTrue(okButton.waitForExistence(timeout: 5), "adding tells the user what happened")
+        let message = app.alerts.firstMatch.label
+        okButton.tap()
+        XCTAssertTrue(okButton.waitForNonExistence(timeout: 3))
+        return message
+    }
+
+    /// Closes the sheet, wherever it was opened from.
+    func dismiss() {
+        closeButton.tap()
+        XCTAssertTrue(name.waitForNonExistence(timeout: 5), "The exercise sheet did not close.")
     }
 
     func close() -> ExerciseListScreen {

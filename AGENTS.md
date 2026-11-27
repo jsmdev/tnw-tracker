@@ -88,10 +88,13 @@ A change is done when:
 | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | iOS unit tests    | `xcodebuild test -scheme TNWTracker -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:TNWTrackerTests` (from `apps/ios/`) |
 | iOS UI tests      | same, with `-only-testing:TNWTrackerUITests`                                                                                               |
+| iOS UI tests (CI) | same, with destination `platform=iOS Simulator,name=iPhone 17,OS=26.5`: the iOS version CI runs (see below)                                |
 | iOS Release build | `xcodebuild build -scheme TNWTracker -configuration Release -destination 'generic/platform=iOS Simulator'`                                 |
 | Database tests    | `supabase start`, `supabase db reset --local`, `supabase test db`                                                                          |
 | Format examples   | `python docs/training-data/validate.py`                                                                                                    |
 | Formatting        | `pnpm format:check`                                                                                                                        |
+
+CI runs the UI tests on the iOS version of its Xcode (today iOS 26.5), which may be older than the local one, and accessibility audits differ between iOS versions. Before pushing a UI change, run the UI tests on that version too. Install it once with `xcodebuild -downloadPlatform iOS -buildVersion 26.5`, and always pin `OS=` in the destination, since a device name alone may match several iOS versions.
 
 Run one simulator test run at a time. If the first run fails to launch the app on the simulator, shut the simulator down, boot it again and rerun.
 
