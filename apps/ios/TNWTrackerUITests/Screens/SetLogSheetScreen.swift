@@ -59,18 +59,11 @@ struct SetLogSheetScreen {
     }
 
     /// Types over a field that may come prefilled (fast-add-exercise S3).
-    /// The first tap only focuses the field; a second tap on its right edge puts
-    /// the cursor after the right-aligned text, so deleting its characters clears it.
+    /// Focusing a prefilled field selects its text, so typing replaces it.
     private func replaceText(of field: XCUIElement, with text: String) {
         field.tap()
-        let current = value(of: field)
-        if !current.isEmpty {
-            field.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
-        }
-        if !current.isEmpty {
-            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
-        }
         field.typeText(text)
+        XCTAssertEqual(value(of: field), text, "typing did not replace the field's value")
     }
 
     // MARK: - Transitions

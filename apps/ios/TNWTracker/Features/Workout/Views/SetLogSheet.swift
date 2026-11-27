@@ -1,5 +1,6 @@
 import SwiftUI
 import TNWTrackerKit
+import UIKit
 
 // MARK: - SetLogFormState
 
@@ -99,6 +100,12 @@ struct SetLogSheet: View {
             }
         }
         .presentationSizing(.form)
+        // A prefilled value is selected when its field gets focus, so typing
+        // replaces it instead of adding to it (fast-add-exercise S3).
+        .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { note in
+            guard let field = note.object as? UITextField else { return }
+            DispatchQueue.main.async { field.selectAll(nil) }
+        }
         // Empty, it opens with the keyboard up on reps, the first thing to type.
         // Prefilled, it opens without the keyboard, so the values and «Guardar» show at once.
         .onAppear {
