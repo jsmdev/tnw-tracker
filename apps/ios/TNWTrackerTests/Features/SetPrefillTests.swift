@@ -43,6 +43,14 @@ struct SetPrefillTests {
         #expect(neverDone == SetValues(reps: 14, weight: .kg(11)))
     }
 
+    @Test("last time's set N without reps (a timed set) falls through to today's previous set")
+    func timedSetFallsThrough() {
+        let timed = LastPerformance(completedAt: date, sets: [SetValues(durationSeconds: 300)])
+        let today = [SetValues(reps: 12, weight: .kg(5))]
+        #expect(SetPrefill.values(forSet: 1, last: timed, loggedToday: [], target: nil) == SetValues())
+        #expect(SetPrefill.values(forSet: 1, last: timed, loggedToday: today, target: nil) == today[0])
+    }
+
     @Test("with nothing before, the routine target: minimum reps and target weight (AC3)")
     func routineTarget() {
         let fromTarget = SetPrefill.values(forSet: 1, last: nil, loggedToday: [], target: target)

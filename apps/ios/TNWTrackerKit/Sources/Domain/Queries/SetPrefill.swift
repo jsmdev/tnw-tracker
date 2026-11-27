@@ -15,7 +15,7 @@ public struct LastPerformance: Hashable, Sendable {
 
 /// The values a new set starts with, so logging it can be a single tap.
 /// In order of preference:
-/// 1. the same working set of the last time;
+/// 1. the same working set of the last time, when it has reps;
 /// 2. the previous working set of this session;
 /// 3. the routine's target, with the minimum of its rep range;
 /// 4. nothing.
@@ -32,7 +32,7 @@ public enum SetPrefill {
         loggedToday: [SetValues],
         target: RoutineItem?
     ) -> SetValues {
-        if let sets = last?.sets, sets.indices.contains(number - 1) {
+        if let sets = last?.sets, sets.indices.contains(number - 1), sets[number - 1].reps != nil {
             return repsAndWeight(of: sets[number - 1])
         }
         if let previous = loggedToday.last {

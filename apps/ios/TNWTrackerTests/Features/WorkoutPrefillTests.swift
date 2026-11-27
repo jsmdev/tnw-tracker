@@ -105,4 +105,32 @@ struct WorkoutPrefillTests {
         #expect(last.sets.map(\.reps) == [6])
         #expect(last.sets.map(\.weight) == [.kg(70)])
     }
+
+    // Probes from the independent review (mutations M12, M14).
+
+    @Test("a warm-up logged after a working set does not become the prefill (AC2)")
+    func warmupAfterWorkingSetIsNotThePrefill() async throws {
+        let coordinator = makeCoordinator()
+        try await coordinator.startAdHoc(name: "Free")
+        coordinator.addExercise(fx.squat.id)
+        try await coordinator.recordSet(reps: 10, weight: .kg(50), rir: nil)
+        try await coordinator.recordSet(reps: 5, weight: .kg(20), rir: nil, warmup: true)
+        let entry = try #require(coordinator.currentEntry)
+        #expect(coordinator.prefill(for: entry) == SetValues(reps: 10, weight: .kg(50)))
+    }
+
+    @Test("a new session forgets every exercise cached in the previous one")
+    func cacheDoesNotCarryOverAcrossSessions() async throws {
+        let coordinator = makeCoordinator()
+        try await coordinator.startAdHoc(name: "First")
+        coordinator.addExercise(fx.press.id)
+        #expect(coordinator.lastPerformance(for: fx.press.id) == nil)
+        try await coordinator.recordSet(reps: 8, weight: .kg(50), rir: nil)
+        try await coordinator.finish()
+
+        try await coordinator.startAdHoc(name: "Second")
+        #expect(coordinator.lastPerformance(for: fx.squat.id) == nil)
+        let press = try #require(coordinator.lastPerformance(for: fx.press.id))
+        #expect(press.sets.map(\.reps) == [8])
+    }
 }

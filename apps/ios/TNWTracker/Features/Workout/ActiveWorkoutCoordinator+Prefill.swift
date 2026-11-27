@@ -10,7 +10,13 @@ public extension ActiveWorkoutCoordinator {
         if let cache = lastPerformances, cache.sessionId == sessionId, let cached = cache.byExercise[exerciseId] {
             return cached
         }
-        let found = (try? sessions.lastPerformance(exerciseId: exerciseId)) ?? nil
+        let found: LastPerformance?
+        do {
+            found = try sessions.lastPerformance(exerciseId: exerciseId)
+        } catch {
+            // A failed read is not cached: the next render tries again.
+            return nil
+        }
         var byExercise = lastPerformances?.sessionId == sessionId ? lastPerformances?.byExercise ?? [:] : [:]
         byExercise[exerciseId] = .some(found)
         lastPerformances = (sessionId, byExercise)

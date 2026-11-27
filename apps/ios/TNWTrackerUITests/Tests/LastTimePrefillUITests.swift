@@ -25,6 +25,9 @@ final class LastTimePrefillUITests: XCTestCase {
 
         // AC1: set 1 starts as last time's set 1 and saves without typing.
         var sheet = active.tapLogSet()
+        XCTAssertFalse(
+            app.keyboards.firstMatch.waitForExistence(timeout: 2), "a prefilled sheet opens without the keyboard"
+        )
         XCTAssertEqual(sheet.value(of: sheet.repsField), "12")
         XCTAssertEqual(sheet.value(of: sheet.weightField), "16")
         XCTAssertTrue(sheet.saveButton.isEnabled, "a prefilled set can be saved at once")

@@ -284,6 +284,7 @@ struct ActiveWorkoutView: View {
 
     @ViewBuilder
     private func undoButton(exercise: SessionEntry) -> some View {
+        // REQ-AWV-05: visible only when at least one set logged
         if !exercise.manualSets.isEmpty {
             Button {
                 Task { try? await coordinator.undoLastSet() }
