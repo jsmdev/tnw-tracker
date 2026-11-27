@@ -58,7 +58,11 @@ struct ActiveWorkoutView: View {
         }
         .alert(
             "active-workout.remove-exercise.title",
-            isPresented: Binding(get: { exerciseToRemove != nil }, set: { if !$0 { exerciseToRemove = nil } }),
+            isPresented: Binding(get: { exerciseToRemove != nil }, set: {
+                if !$0 {
+                    exerciseToRemove = nil
+                }
+            }),
             presenting: exerciseToRemove
         ) { exercise in
             Button("active-workout.remove-exercise.confirm", role: .destructive) {
@@ -161,6 +165,10 @@ struct ActiveWorkoutView: View {
     private func exerciseSection(exercise: SessionEntry) -> some View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             exerciseHeader(exercise: exercise)
+            if let last = coordinator.lastPerformance(for: exercise.exerciseId) {
+                LastPerformanceView(last: last)
+                    .padding(.horizontal, Spacing.md)
+            }
             loggedSetsSection(exercise: exercise)
             logSetButton(exercise: exercise)
             undoButton(exercise: exercise)
@@ -267,25 +275,24 @@ struct ActiveWorkoutView: View {
             setLogItem = SetLogSheetItem(
                 id: UUID(),
                 exerciseId: exercise.exerciseId,
-                nextSetNumber: exercise.manualSets.count + 1
+                nextSetNumber: exercise.manualSets.count + 1,
+                prefill: coordinator.prefill(for: exercise)
             )
         }
         .accessibilityIdentifier(AXID.ActiveWorkout.logSetButton)
     }
 
+    @ViewBuilder
     private func undoButton(exercise: SessionEntry) -> some View {
-        Group {
-            // REQ-AWV-05: visible only when at least one set logged
-            if !exercise.manualSets.isEmpty {
-                Button {
-                    Task { try? await coordinator.undoLastSet() }
-                } label: {
-                    Label("active-workout.set.undo-button", systemImage: "arrow.uturn.backward")
-                        .font(.subheadline)
-                }
-                .buttonStyle(.borderless)
-                .foregroundStyle(.secondary)
+        if !exercise.manualSets.isEmpty {
+            Button {
+                Task { try? await coordinator.undoLastSet() }
+            } label: {
+                Label("active-workout.set.undo-button", systemImage: "arrow.uturn.backward")
+                    .font(.subheadline)
             }
+            .buttonStyle(.borderless)
+            .foregroundStyle(.secondary)
         }
     }
 
@@ -362,22 +369,22 @@ private struct ElapsedTimeView: View {
 // MARK: - Preview
 
 #if DEBUG
-#Preview("ActiveWorkoutView — active") {
-    let appEnv = AppEnvironment.preview()
-    let coordinator = ActiveWorkoutCoordinator(
-        sessions: appEnv.sessionRepository,
-        routines: appEnv.routineRepository,
-        exerciseSettings: appEnv.exerciseSettingRepository,
-        changeExerciseRest: { ChangeExerciseRestPreference.defaultSeconds },
-        requestSync: {},
-        timerService: appEnv.makeRestTimerService(),
-        liveActivity: appEnv.liveActivity,
-        exerciseName: { try? appEnv.exerciseRepository.exercise(id: $0)?.name }
-    )
-    NavigationStack {
-        ActiveWorkoutView(coordinator: coordinator)
+    #Preview("ActiveWorkoutView — active") {
+        let appEnv = AppEnvironment.preview()
+        let coordinator = ActiveWorkoutCoordinator(
+            sessions: appEnv.sessionRepository,
+            routines: appEnv.routineRepository,
+            exerciseSettings: appEnv.exerciseSettingRepository,
+            changeExerciseRest: { ChangeExerciseRestPreference.defaultSeconds },
+            requestSync: {},
+            timerService: appEnv.makeRestTimerService(),
+            liveActivity: appEnv.liveActivity,
+            exerciseName: { try? appEnv.exerciseRepository.exercise(id: $0)?.name }
+        )
+        NavigationStack {
+            ActiveWorkoutView(coordinator: coordinator)
+        }
+        .environment(appEnv)
+        .task { try? await coordinator.start(routineId: SampleTrainingData.RoutineID.fullBodyA) }
     }
-    .environment(appEnv)
-    .task { try? await coordinator.start(routineId: SampleTrainingData.RoutineID.fullBodyA) }
-}
 #endif

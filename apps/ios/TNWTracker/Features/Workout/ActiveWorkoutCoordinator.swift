@@ -32,6 +32,9 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// The exercise picked from the list that has no set yet (see `addExercise`).
     var picked: PickedExercise?
 
+    /// "La última vez" by exercise, read once per session (completed sessions only).
+    @ObservationIgnored var lastPerformances: (sessionId: UUID, byExercise: [UUID: LastPerformance?])?
+
     // MARK: - Dependencies
 
     // Internal, not private: the extensions in `ActiveWorkoutCoordinator+*.swift` read them.
@@ -251,8 +254,12 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
         undoLastSetId = nil
         let restore = undoRestore
         undoRestore = nil
-        if restingSet?.setId == setId { restingSet = nil }
-        if setWithoutTimer?.setId == setId { setWithoutTimer = nil }
+        if restingSet?.setId == setId {
+            restingSet = nil
+        }
+        if setWithoutTimer?.setId == setId {
+            setWithoutTimer = nil
+        }
         let exerciseId = entries.first { $0.sets.contains { $0.id == setId } }?.exerciseId
         try sessions.deleteManualSet(id: setId)
         try refreshSession()
@@ -362,7 +369,9 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
 
         liveActivity.end()
 
-        if !discard { completedWorkoutId = current.id }
+        if !discard {
+            completedWorkoutId = current.id
+        }
         clearWorkout()
         logger.info("Coordinator phase → .idle (finished, summary ID: \(current.id))")
         lastFinishOutcome = discard ? .discarded : .saved(current.id)

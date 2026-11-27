@@ -15,6 +15,15 @@ struct SetLogFormState {
     var rir: Int?
     var warmup = false
 
+    init() {}
+
+    /// Starts from the reps and weight of `prefill` (`SetPrefill`), in kg to two
+    /// decimals. Effort and warm-up always start empty.
+    init(prefill: SetValues) {
+        reps = prefill.reps
+        weight = prefill.weight.map { ($0.kilograms * 100).rounded() / 100 }
+    }
+
     /// Valid when reps > 0 and, if RIR is set, it's in range 0–10.
     var isValid: Bool {
         guard let reps, reps > 0 else { return false }
@@ -38,6 +47,8 @@ struct SetLogSheetItem: Identifiable {
     let id: UUID
     let exerciseId: UUID
     let nextSetNumber: Int
+    /// The reps and weight the form starts with (fast-add-exercise S3 AC1–AC3).
+    var prefill = SetValues()
 }
 
 // MARK: - SetLogSheet
@@ -49,12 +60,19 @@ struct SetLogSheet: View {
     let onSave: (SetLogFormState) -> Void
     let onCancel: () -> Void
 
-    @State private var formState = SetLogFormState()
+    @State private var formState: SetLogFormState
     @AppStorage(RIRScale.storageKey) private var rirMaximum = RIRScale.defaultMaximum
     @FocusState private var focusedField: Field?
 
     private enum Field: Hashable {
         case reps, weight
+    }
+
+    init(item: SetLogSheetItem, onSave: @escaping (SetLogFormState) -> Void, onCancel: @escaping () -> Void) {
+        self.item = item
+        self.onSave = onSave
+        self.onCancel = onCancel
+        _formState = State(initialValue: SetLogFormState(prefill: item.prefill))
     }
 
     var body: some View {
@@ -81,8 +99,13 @@ struct SetLogSheet: View {
             }
         }
         .presentationSizing(.form)
-        // Opens with the keyboard up on reps, the first thing to type.
-        .onAppear { focusedField = .reps }
+        // Empty, it opens with the keyboard up on reps, the first thing to type.
+        // Prefilled, it opens without the keyboard, so the values and «Guardar» show at once.
+        .onAppear {
+            if item.prefill.reps == nil {
+                focusedField = .reps
+            }
+        }
     }
 
     // MARK: - Sections

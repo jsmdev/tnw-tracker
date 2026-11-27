@@ -38,20 +38,39 @@ struct SetLogSheetScreen {
 
     // MARK: - Interaction helpers
 
-    /// Taps the reps field and types the given value. Returns self for chaining.
+    /// Taps the reps field and types the given value over any prefill. Returns self for chaining.
     @discardableResult
     func enterReps(_ value: Int) -> Self {
-        repsField.tap()
-        repsField.typeText(String(value))
+        replaceText(of: repsField, with: String(value))
         return self
     }
 
-    /// Taps the weight field and types the given value. Returns self for chaining.
+    /// Taps the weight field and types the given value over any prefill. Returns self for chaining.
     @discardableResult
     func enterWeight(_ value: Double) -> Self {
-        weightField.tap()
-        weightField.typeText(String(value))
+        replaceText(of: weightField, with: String(value))
         return self
+    }
+
+    /// The field's text, empty while it shows its placeholder.
+    func value(of field: XCUIElement) -> String {
+        let text = field.value as? String ?? ""
+        return text == field.placeholderValue ? "" : text
+    }
+
+    /// Types over a field that may come prefilled (fast-add-exercise S3).
+    /// The first tap only focuses the field; a second tap on its right edge puts
+    /// the cursor after the right-aligned text, so deleting its characters clears it.
+    private func replaceText(of field: XCUIElement, with text: String) {
+        field.tap()
+        let current = value(of: field)
+        if !current.isEmpty {
+            field.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
+        }
+        if !current.isEmpty {
+            field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count))
+        }
+        field.typeText(text)
     }
 
     // MARK: - Transitions

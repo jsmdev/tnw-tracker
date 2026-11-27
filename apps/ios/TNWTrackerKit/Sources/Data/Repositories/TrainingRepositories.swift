@@ -109,6 +109,11 @@ public protocol SessionRepositoryProtocol: AnyObject {
 
     /// Best counted weight per exercise, in kilograms, over sessions completed before `date`.
     func bestWeights(completedBefore date: Date) throws -> [UUID: Double]
+
+    /// The counted sets of the exercise in the most recent completed session that
+    /// has any (a session with only warm-ups or a removed entry is passed over),
+    /// or nil when the exercise was never done.
+    func lastPerformance(exerciseId: UUID) throws -> LastPerformance?
 }
 
 public extension SessionRepositoryProtocol {
