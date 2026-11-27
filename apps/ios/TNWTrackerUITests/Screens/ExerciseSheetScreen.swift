@@ -64,8 +64,11 @@ struct ExerciseSheetScreen {
     /// Closes the in-app browser with its own Done button, back to the sheet.
     func closeInAppBrowser() {
         // The browser's own Done button: «OK» in Spanish, "Done" in English.
+        // The browser runs in its own process: on a loaded CI runner its bar
+        // can take longer than 5 s to show (the hierarchy dumped at a timeout
+        // already had the button).
         let done = app.buttons.matching(NSPredicate(format: "label IN %@", ["OK", "Done"])).firstMatch
-        XCTAssertTrue(done.waitForExistence(timeout: 5), "the in-app browser has its Done button")
+        XCTAssertTrue(done.waitForExistence(timeout: 15), "the in-app browser has its Done button")
         done.tap()
         XCTAssertTrue(inAppBrowser.waitForNonExistence(timeout: 5), "the in-app browser closes")
     }
