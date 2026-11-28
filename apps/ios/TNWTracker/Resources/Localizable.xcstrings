@@ -4842,6 +4842,23 @@
           }
         }
       }
+    },
+    "exercises.search-prompt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search exercises"
+          }
+        },
+        "es-ES": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscar ejercicios"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

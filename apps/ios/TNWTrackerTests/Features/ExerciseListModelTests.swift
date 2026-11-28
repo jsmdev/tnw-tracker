@@ -33,4 +33,25 @@ struct ExerciseListModelTests {
         #expect(model.exercises.isEmpty)
         #expect(!model.loadFailed)
     }
+
+    @Test("S8 the search keeps the exercises whose name matches, ignoring case, accents and spaces around")
+    func searchFiltersByName() throws {
+        let store = try TrainingStore.inMemory()
+        for name in ["Press de banca", "Remo en máquina", "Prensa de piernas", "Elevación de talones"] {
+            try store.exercises.save(Exercise(isCatalogue: false, name: name, type: .strength))
+        }
+        let model = ExerciseListModel(exercises: store.exercises)
+        model.load()
+
+        #expect(model.visibleExercises.count == 4, "no search lists everything")
+        model.query = "  PRE "
+        #expect(model.visibleExercises.map(\.name) == ["Prensa de piernas", "Press de banca"])
+        model.query = "maquina"
+        #expect(model.visibleExercises.map(\.name) == ["Remo en máquina"])
+        model.query = "elevacion de"
+        #expect(model.visibleExercises.map(\.name) == ["Elevación de talones"])
+        model.query = "sentadilla"
+        #expect(model.visibleExercises.isEmpty)
+        #expect(model.exercises.count == 4, "the search never changes what is loaded")
+    }
 }

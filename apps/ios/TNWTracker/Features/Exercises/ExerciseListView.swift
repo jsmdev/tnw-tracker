@@ -7,6 +7,8 @@ import TNWTrackerKit
 /// own and the catalogue's, sorted by name; a row opens the exercise's sheet.
 /// Reads only the local store, which the sync fills, so it works offline.
 /// With `onPick`, a row picks the exercise instead (adding one to a session, #137 S5).
+/// A search field filters the list by name (fast-add-exercise S8), and each row
+/// shows the exercise's photo when it has one (S7).
 struct ExerciseListView: View {
     @Environment(AppEnvironment.self) private var appEnv
     @State private var model: ExerciseListModel
@@ -31,10 +33,18 @@ struct ExerciseListView: View {
                     title: "exercises.empty-title",
                     message: "exercises.empty-message"
                 )
+            } else if model.visibleExercises.isEmpty {
+                ContentUnavailableView.search(text: model.query)
+                    .accessibilityIdentifier(AXID.Exercises.noResults)
             } else {
                 exerciseList
             }
         }
+        .searchable(
+            text: $model.query,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: Text("exercises.search-prompt")
+        )
         .navigationTitle(Text("exercises.title"))
         .navigationBarTitleDisplayMode(.large)
         .task {
@@ -46,7 +56,7 @@ struct ExerciseListView: View {
     }
 
     private var exerciseList: some View {
-        List(model.exercises) { exercise in
+        List(model.visibleExercises) { exercise in
             Button {
                 if let onPick {
                     onPick(exercise.id)
@@ -65,8 +75,10 @@ struct ExerciseListView: View {
 
 // MARK: - ExerciseRow
 
-/// A row: the exercise's initial, its name as stored, its equipment and main muscles.
+/// A row: the exercise's photo (else its initial), its name as stored, its
+/// equipment and main muscles.
 private struct ExerciseRow: View {
+    @Environment(AppEnvironment.self) private var appEnv
     let exercise: Exercise
     /// The row opens a sheet; picking rows have no chevron.
     let showsChevron: Bool
@@ -75,12 +87,7 @@ private struct ExerciseRow: View {
 
     var body: some View {
         HStack(spacing: Spacing.md) {
-            Text(verbatim: exercise.name.first.map(String.init) ?? "")
-                .font(.headline)
-                .foregroundStyle(.primary)
-                .frame(width: thumbnailSide, height: thumbnailSide)
-                .background(Color.surfacePrimary, in: RoundedRectangle(cornerRadius: Radius.sm))
-                .accessibilityHidden(true)
+            ExerciseThumbnail(exercise: exercise, library: appEnv.exerciseMedia, side: thumbnailSide)
 
             VStack(alignment: .leading, spacing: Spacing.xs) {
                 Text(verbatim: exercise.name)
@@ -111,6 +118,47 @@ private struct ExerciseRow: View {
         let muscles = primary.isEmpty ? nil : primary.formatted(.list(type: .and))
         let parts = [equipment, muscles].compactMap(\.self)
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
+// MARK: - ExerciseThumbnail
+
+/// The exercise's photo in a small square, read from the media cache or loaded
+/// once; its initial while there is none (no photo, offline, still loading).
+private struct ExerciseThumbnail: View {
+    let exercise: Exercise
+    let library: ExerciseMediaLibrary
+    let side: CGFloat
+
+    @State private var image: UIImage?
+
+    private var path: String? {
+        exercise.media?.imageURI
+    }
+
+    var body: some View {
+        Group {
+            if let image = image ?? path.flatMap(library.memoryCachedImage(path:)) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .accessibilityLabel(Text("exercise-sheet.image-label \(exercise.name)"))
+                    .accessibilityIdentifier(AXID.Exercises.photo(exercise.id))
+            } else {
+                // Decorative: the row's name says which exercise it is.
+                Text(verbatim: exercise.name.first.map(String.init) ?? "")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(width: side, height: side)
+        .background(Color.surfacePrimary)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.sm))
+        .task(id: path) {
+            guard image == nil, let path else { return }
+            image = try? await library.image(path: path)
+        }
     }
 }
 

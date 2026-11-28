@@ -100,6 +100,14 @@ public enum AXID {
         public static func row(_ exerciseId: UUID) -> String {
             "exercises.row.\(exerciseId.uuidString)"
         }
+
+        /// The row's photo, once it is shown (fast-add-exercise S7).
+        public static func photo(_ exerciseId: UUID) -> String {
+            "exercises.photo.\(exerciseId.uuidString)"
+        }
+
+        /// "No results" for a search (fast-add-exercise S8).
+        public static let noResults = "exercises.noResults"
     }
 
     /// The sheet that adds a personal related link or edits its title (`RelatedLinkFormSheet`, S10).
