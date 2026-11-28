@@ -50,6 +50,8 @@ struct SetLogSheetItem: Identifiable {
     let nextSetNumber: Int
     /// The reps and weight the form starts with (fast-add-exercise S3 AC1–AC3).
     var prefill = SetValues()
+    /// The row of the set table the sheet was opened from (fast-add-exercise S5).
+    var pendingIndex = 0
 }
 
 // MARK: - SetLogSheet

@@ -29,6 +29,10 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// Targets of the routine the session was started from, by exercise.
     private(set) var targets: [UUID: RoutineItem] = [:]
 
+    /// The rows still to do of the set table, by exercise, once the user changed
+    /// them (edited, added, checked). Until then they follow `SetPlan`.
+    var pendingRows: [UUID: [SetValues]] = [:]
+
     /// "La última vez" by exercise, read once per session (completed sessions only).
     @ObservationIgnored var lastPerformances: (sessionId: UUID, byExercise: [UUID: LastPerformance?])?
 
@@ -340,6 +344,7 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     func clearWorkout() {
         session = nil
         targets = [:]
+        pendingRows = [:]
         currentExerciseIndex = 0
         phase = .idle
         elapsedSeconds = 0

@@ -34,10 +34,17 @@ struct ActiveWorkoutView: View {
                 item: item,
                 onSave: { formState in
                     setLogItem = nil
+                    guard let entry = coordinator.entries.first(where: { $0.exerciseId == item.exerciseId }) else {
+                        return
+                    }
                     Task {
-                        try? await coordinator.recordSet(
-                            reps: formState.reps ?? 0,
-                            weight: formState.loggedWeightKilograms.map { .kg($0) },
+                        try? await coordinator.logPendingSet(
+                            at: item.pendingIndex,
+                            of: entry,
+                            values: SetValues(
+                                reps: formState.reps ?? 0,
+                                weight: formState.loggedWeightKilograms.map { .kg($0) }
+                            ),
                             rir: formState.rir,
                             warmup: formState.warmup
                         )
@@ -169,8 +176,15 @@ struct ActiveWorkoutView: View {
                 LastPerformanceView(last: last)
                     .padding(.horizontal, Spacing.md)
             }
-            loggedSetsSection(exercise: exercise)
-            logSetButton(exercise: exercise)
+            SetTableView(coordinator: coordinator, entry: exercise) { index, number, values in
+                setLogItem = SetLogSheetItem(
+                    id: UUID(),
+                    exerciseId: exercise.exerciseId,
+                    nextSetNumber: number,
+                    prefill: values,
+                    pendingIndex: index
+                )
+            }
             undoButton(exercise: exercise)
         }
         // PhaseAnimator on exercise transitions (smooth when coordinator advances)
@@ -231,55 +245,6 @@ struct ActiveWorkoutView: View {
         let allExercises = (try? appEnv.exerciseRepository.exercises()) ?? []
         let map = Dictionary(uniqueKeysWithValues: allExercises.map { ($0.id, $0.name) })
         exerciseNames = map
-    }
-
-    private func loggedSetsSection(exercise: SessionEntry) -> some View {
-        let sets = exercise.manualSets
-        return VStack(spacing: Spacing.sm) {
-            ForEach(sets) { set in
-                SetCard(set: SetDisplayData(
-                    id: set.id,
-                    // Warm-ups show "C" and are not numbered: number the working sets only.
-                    setNumber: sets.filter { !$0.warmup && $0.order <= set.order }.count,
-                    reps: set.values.reps ?? 0,
-                    weight: set.values.weight?.value ?? 0,
-                    rir: set.values.rir,
-                    warmup: set.warmup
-                ))
-                .contextMenu {
-                    // The user's warm-up annotation, editable after logging.
-                    Toggle("set-log.warmup-toggle", isOn: Binding(
-                        get: { set.warmup },
-                        set: { try? coordinator.setWarmup($0, setId: set.id) }
-                    ))
-                    .accessibilityIdentifier(AXID.ActiveWorkout.setWarmupToggle)
-
-                    Button(role: .destructive) {
-                        Task { try? await coordinator.deleteSet(id: set.id) }
-                    } label: {
-                        Label("active-workout.set.delete-button", systemImage: "trash")
-                    }
-                    .accessibilityIdentifier(AXID.ActiveWorkout.deleteSetButton)
-                }
-                .transition(.asymmetric(
-                    insertion: .move(edge: .bottom).combined(with: .opacity),
-                    removal: .scale(scale: 0.95).combined(with: .opacity)
-                ))
-            }
-        }
-        .animation(reduceMotion ? nil : .smooth, value: sets.count)
-    }
-
-    private func logSetButton(exercise: SessionEntry) -> some View {
-        PrimaryButton(title: "active-workout.set.log-button") {
-            setLogItem = SetLogSheetItem(
-                id: UUID(),
-                exerciseId: exercise.exerciseId,
-                nextSetNumber: exercise.manualSets.count + 1,
-                prefill: coordinator.prefill(for: exercise)
-            )
-        }
-        .accessibilityIdentifier(AXID.ActiveWorkout.logSetButton)
     }
 
     @ViewBuilder

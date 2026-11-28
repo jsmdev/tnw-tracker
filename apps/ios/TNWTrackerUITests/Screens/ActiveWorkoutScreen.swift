@@ -13,8 +13,56 @@ struct ActiveWorkoutScreen {
         app.buttons[AXID.ActiveWorkout.endButton]
     }
 
+    /// The number of the first row still to do in the set table: it opens the
+    /// full set sheet (fast-add-exercise S5). Absent without a current exercise.
     var logSetButton: XCUIElement {
-        app.buttons[AXID.ActiveWorkout.logSetButton]
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "activeWorkout.setDetailsButton."))
+            .firstMatch
+    }
+
+    /// «Añadir serie» under the set table.
+    var addSetButton: XCUIElement {
+        app.buttons[AXID.ActiveWorkout.addSetButton]
+    }
+
+    // MARK: - Set table (fast-add-exercise S5)
+
+    func repsField(_ number: Int) -> XCUIElement {
+        app.textFields[AXID.ActiveWorkout.setRepsField(number)]
+    }
+
+    func weightField(_ number: Int) -> XCUIElement {
+        app.textFields[AXID.ActiveWorkout.setWeightField(number)]
+    }
+
+    func checkButton(_ number: Int) -> XCUIElement {
+        app.buttons[AXID.ActiveWorkout.setCheckButton(number)]
+    }
+
+    /// Working set `number`, done today.
+    func doneRow(_ number: Int) -> XCUIElement {
+        app.descendants(matching: .any)[AXID.ActiveWorkout.doneSetRow(number)]
+    }
+
+    /// Types `value` over the value of a table field (focusing it selects it).
+    @discardableResult
+    func type(_ value: String, into field: XCUIElement) -> Self {
+        field.waitUntilHittable()
+        field.tap()
+        field.typeText(value)
+        let done = app.buttons[AXID.ActiveWorkout.keyboardDoneButton]
+        if done.waitForExistence(timeout: 2) {
+            done.tap()
+        }
+        return self
+    }
+
+    /// Checks row `number`: logs it. Returns the rest timer that starts.
+    func check(_ number: Int) -> RestTimerScreen {
+        let button = checkButton(number)
+        button.waitUntilHittable()
+        button.tap()
+        return RestTimerScreen(app: app)
     }
 
     /// Query (not element) — used to assert count == 1 for BUG-1 coverage.
@@ -130,8 +178,10 @@ struct ActiveWorkoutScreen {
         return self
     }
 
-    /// Taps the log-set button and returns an already-validated SetLogSheetScreen.
+    /// Opens the full set sheet of the first row still to do and returns an
+    /// already-validated SetLogSheetScreen.
     func tapLogSet() -> SetLogSheetScreen {
+        logSetButton.waitUntilHittable()
         logSetButton.tap()
         return SetLogSheetScreen(app: app).waitUntilLoaded()
     }

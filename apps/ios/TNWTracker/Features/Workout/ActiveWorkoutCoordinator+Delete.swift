@@ -22,7 +22,11 @@ public extension ActiveWorkoutCoordinator {
             setWithoutTimer = nil
         }
         let exerciseId = entries.first { $0.sets.contains { $0.id == setId } }?.exerciseId
+        let undone = manualSet(setId)
         try sessions.deleteManualSet(id: setId)
+        if let undone, let exerciseId {
+            putBackPendingSet(undone, exerciseId: exerciseId)
+        }
         try refreshSession()
         // An exercise the user added stays in the session when its only set is undone.
         try keepAddedExercise(exerciseId)
@@ -69,7 +73,11 @@ public extension ActiveWorkoutCoordinator {
             undoRestore = nil
         }
 
+        let deleted = manualSet(setId)
         try sessions.deleteManualSet(id: setId)
+        if let deleted {
+            putBackPendingSet(deleted, exerciseId: exerciseId)
+        }
         try refreshSession()
         // An exercise the user added stays in the session when its only set goes.
         try keepAddedExercise(exerciseId)
@@ -105,6 +113,7 @@ public extension ActiveWorkoutCoordinator {
             undoRestore = nil
         }
         try sessions.removeEntry(id: entryId)
+        pendingRows[list[removedIndex].exerciseId] = nil
         try refreshSession()
         if wasResting {
             await stopRest()

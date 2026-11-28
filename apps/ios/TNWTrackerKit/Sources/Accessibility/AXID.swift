@@ -189,7 +189,35 @@ public enum AXID {
     public enum ActiveWorkout {
         public static let elapsedTimer = "activeWorkout.elapsedTimer"
         public static let endButton = "activeWorkout.endButton"
-        public static let logSetButton = "activeWorkout.logSetButton"
+        /// «Añadir serie» under the set table (fast-add-exercise S5).
+        public static let addSetButton = "activeWorkout.addSetButton"
+        /// Hides the keyboard of a set table field.
+        public static let keyboardDoneButton = "activeWorkout.keyboardDoneButton"
+        public static let removePendingSetButton = "activeWorkout.removePendingSetButton"
+        public static let setTableHeader = "activeWorkout.setTableHeader"
+        /// Working set `number` of the set table, done today.
+        public static func doneSetRow(_ number: Int) -> String {
+            "activeWorkout.doneSetRow.\(number)"
+        }
+
+        /// The number of row `number` still to do: opens the full set sheet.
+        public static func setDetailsButton(_ number: Int) -> String {
+            "activeWorkout.setDetailsButton.\(number)"
+        }
+
+        public static func setRepsField(_ number: Int) -> String {
+            "activeWorkout.setRepsField.\(number)"
+        }
+
+        public static func setWeightField(_ number: Int) -> String {
+            "activeWorkout.setWeightField.\(number)"
+        }
+
+        /// The check of row `number`: logs it.
+        public static func setCheckButton(_ number: Int) -> String {
+            "activeWorkout.setCheckButton.\(number)"
+        }
+
         /// "Añadir ejercicio": opens the exercise list to pick one (#137 S5).
         public static let addExerciseButton = "activeWorkout.addExerciseButton"
         public static let exercisePickerCancelButton = "activeWorkout.exercisePickerCancelButton"

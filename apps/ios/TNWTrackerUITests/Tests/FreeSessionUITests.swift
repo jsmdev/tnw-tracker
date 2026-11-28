@@ -14,7 +14,7 @@ final class FreeSessionUITests: XCTestCase {
 
         try app.auditAccessibility(screen: "home", only: [AXID.Home.freeSessionButton])
         let active = home.startFreeSession()
-        XCTAssertFalse(active.logSetButton.exists, "no exercise yet: nothing to log")
+        XCTAssertFalse(active.addSetButton.exists, "no exercise yet: nothing to log")
         // Only the new button: "Pausar" and "Finalizar workout" fail contrast already.
         try app.auditAccessibility(screen: "free session, no exercises", only: [AXID.ActiveWorkout.addExerciseButton])
 
@@ -23,7 +23,7 @@ final class FreeSessionUITests: XCTestCase {
         XCTAssertTrue(app.buttons[AXID.Exercises.row(Sample.gobletSquat)].waitForExistence(timeout: 5))
         try app.auditAccessibility(screen: "exercise picker")
         app.buttons[AXID.ActiveWorkout.exercisePickerCancelButton].tap()
-        XCTAssertFalse(active.logSetButton.waitForExistence(timeout: 1), "cancel picks nothing")
+        XCTAssertFalse(active.addSetButton.waitForExistence(timeout: 1), "cancel picks nothing")
 
         let summary = active
             .addExercise(Sample.gobletSquat, named: "Goblet Squat")
