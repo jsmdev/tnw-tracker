@@ -29,9 +29,6 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     /// Targets of the routine the session was started from, by exercise.
     private(set) var targets: [UUID: RoutineItem] = [:]
 
-    /// The exercise picked from the list that has no set yet (see `addExercise`).
-    var picked: PickedExercise?
-
     /// "La última vez" by exercise, read once per session (completed sessions only).
     @ObservationIgnored var lastPerformances: (sessionId: UUID, byExercise: [UUID: LastPerformance?])?
 
@@ -343,7 +340,6 @@ public final class ActiveWorkoutCoordinator: DrainCoordinatorProtocol {
     func clearWorkout() {
         session = nil
         targets = [:]
-        picked = nil
         currentExerciseIndex = 0
         phase = .idle
         elapsedSeconds = 0

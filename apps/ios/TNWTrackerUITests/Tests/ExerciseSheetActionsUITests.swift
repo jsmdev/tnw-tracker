@@ -63,6 +63,26 @@ final class ExerciseSheetActionsUITests: XCTestCase {
         attachScreenshot(of: app, named: "exercise added to the workout in progress")
     }
 
+    /// Bug (José, 2026-11-28): a session started from the sheet, minimized before
+    /// any set, lost its exercise when it was continued.
+    func test_exerciseStartedFromTheSheetSurvivesMinimizeBeforeAnySet() {
+        let app = launchUITestApp()
+        let home = HomeScreen(app: app).waitUntilLoaded(timeout: 10)
+        let workout = home.openExercises().openSheet(Sample.gobletSquat).train()
+        XCTAssertTrue(workout.exerciseTitle.waitForExistence(timeout: 5))
+        XCTAssertEqual(workout.exerciseTitle.label, "Goblet Squat")
+
+        // Minimizing goes back to the Exercises tab, where the sheet was opened.
+        let minimize = app.buttons[AXID.ActiveWorkout.minimizeButton]
+        minimize.waitUntilHittable()
+        minimize.tap()
+        TabBar(app: app).select(.home)
+        let resumed = HomeScreen(app: app).waitUntilLoaded().continueWorkout()
+        XCTAssertTrue(resumed.exerciseTitle.waitForExistence(timeout: 5))
+        XCTAssertEqual(resumed.exerciseTitle.label, "Goblet Squat", "the exercise is still in the session")
+        attachScreenshot(of: app, named: "continued session keeps its exercise")
+    }
+
     func test_addToRoutineNeverTwiceAndNewRoutine() throws {
         let app = launchUITestApp()
         let home = HomeScreen(app: app).waitUntilLoaded(timeout: 10)

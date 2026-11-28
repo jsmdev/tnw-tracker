@@ -4,7 +4,7 @@ import Testing
 @testable import TNWTrackerKit
 
 /// A free session (#137 S5): started without a routine, its exercises picked
-/// from the list. A picked exercise is not saved until its first set.
+/// from the list. A picked exercise is saved at once, so minimizing keeps it (S4).
 @Suite("Free session", .serialized)
 @MainActor
 struct FreeSessionTests {
@@ -32,8 +32,8 @@ struct FreeSessionTests {
         return try #require(try fx.sessions.session(id: id)).entries.map(\.exerciseId)
     }
 
-    @Test("a picked exercise becomes the current one and is not saved before its first set")
-    func pickIsCurrentAndUnsaved() async throws {
+    @Test("a picked exercise becomes the current one and is saved at once, without sets")
+    func pickIsCurrentAndSaved() async throws {
         let coordinator = makeCoordinator()
         try await coordinator.startAdHoc(name: "Free")
 
@@ -43,7 +43,7 @@ struct FreeSessionTests {
         #expect(coordinator.currentEntry?.exerciseId == fx.squat.id)
         #expect(coordinator.currentEntry?.sets.isEmpty == true)
         #expect(coordinator.phase == .active)
-        #expect(try savedExercises(coordinator).isEmpty)
+        #expect(try savedExercises(coordinator) == [fx.squat.id])
     }
 
     @Test("the first set of the picked exercise saves it with that set")
@@ -61,16 +61,31 @@ struct FreeSessionTests {
         #expect(coordinator.currentEntry?.manualSets.count == 1)
     }
 
-    @Test("picking again before any set replaces the unlogged pick")
-    func secondPickReplacesUnloggedPick() async throws {
+    @Test("picking again before any set keeps both exercises, the new one current")
+    func secondPickKeepsBoth() async throws {
         let coordinator = makeCoordinator()
         try await coordinator.startAdHoc(name: "Free")
         coordinator.addExercise(fx.squat.id)
 
         coordinator.addExercise(fx.press.id)
 
-        #expect(coordinator.entries.map(\.exerciseId) == [fx.press.id])
+        #expect(coordinator.entries.map(\.exerciseId) == [fx.squat.id, fx.press.id])
         #expect(coordinator.currentEntry?.exerciseId == fx.press.id)
+        #expect(try savedExercises(coordinator) == [fx.squat.id, fx.press.id])
+    }
+
+    @Test("S4: a session continued by a new coordinator keeps an exercise added without sets")
+    func addedExerciseSurvivesResume() async throws {
+        let first = makeCoordinator()
+        try await first.startAdHoc(name: "Free")
+        first.addExercise(fx.squat.id)
+
+        let resumed = makeCoordinator()
+        try await resumed.startAdHoc(name: "Free")
+
+        #expect(resumed.activeWorkoutId == first.activeWorkoutId)
+        #expect(resumed.entries.map(\.exerciseId) == [fx.squat.id])
+        #expect(resumed.currentEntry?.exerciseId == fx.squat.id)
     }
 
     @Test("a pick after a logged exercise goes after it and becomes current")
@@ -115,7 +130,7 @@ struct FreeSessionTests {
         #expect(coordinator.currentEntry?.exerciseId == fx.rower.id)
     }
 
-    @Test("undoing the only set of a picked exercise keeps it picked")
+    @Test("undoing the only set of a picked exercise keeps it in the session")
     func undoKeepsPick() async throws {
         let coordinator = makeCoordinator()
         try await coordinator.startAdHoc(name: "Free")
@@ -124,7 +139,7 @@ struct FreeSessionTests {
 
         try await coordinator.undoLastSet()
 
-        #expect(try savedExercises(coordinator).isEmpty)
+        #expect(try savedExercises(coordinator) == [fx.squat.id])
         #expect(coordinator.entries.map(\.exerciseId) == [fx.squat.id])
         #expect(coordinator.currentEntry?.exerciseId == fx.squat.id)
         #expect(coordinator.phase == .active)
@@ -144,16 +159,18 @@ struct FreeSessionTests {
         #expect(coordinator.entries.isEmpty)
     }
 
-    @Test("a pick does not survive the end of the session")
-    func pickClearedOnAbandon() async throws {
+    @Test("S4: a pick survives leaving the workout, and resuming shows it again")
+    func pickKeptOnAbandon() async throws {
         let coordinator = makeCoordinator()
         try await coordinator.startAdHoc(name: "Free")
         coordinator.addExercise(fx.squat.id)
 
         await coordinator.abandon()
+        #expect(coordinator.entries.isEmpty)
         try await coordinator.startAdHoc(name: "Free")
 
-        #expect(coordinator.entries.isEmpty)
+        #expect(coordinator.entries.map(\.exerciseId) == [fx.squat.id])
+        #expect(coordinator.currentEntry?.exerciseId == fx.squat.id)
     }
 
     @Test("picking without a session in progress does nothing")
