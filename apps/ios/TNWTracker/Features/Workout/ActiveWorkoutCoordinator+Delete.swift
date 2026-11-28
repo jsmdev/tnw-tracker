@@ -24,8 +24,8 @@ public extension ActiveWorkoutCoordinator {
         let exerciseId = entries.first { $0.sets.contains { $0.id == setId } }?.exerciseId
         try sessions.deleteManualSet(id: setId)
         try refreshSession()
-        // An exercise the user picked stays in the session when its only set is undone.
-        keepPickedIfUnsaved(exerciseId)
+        // An exercise the user added stays in the session when its only set is undone.
+        try keepAddedExercise(exerciseId)
         // The undone set's own rest stops; a rest it cut short is not resumed (D-T3k).
         await timerService.skip()
         if let restore {
@@ -71,8 +71,8 @@ public extension ActiveWorkoutCoordinator {
 
         try sessions.deleteManualSet(id: setId)
         try refreshSession()
-        // An exercise the user picked stays in the session when its only set goes.
-        keepPickedIfUnsaved(exerciseId)
+        // An exercise the user added stays in the session when its only set goes.
+        try keepAddedExercise(exerciseId)
         if let index = entries.firstIndex(where: { $0.exerciseId == exerciseId }) {
             currentExerciseIndex = index
         }
@@ -84,35 +84,30 @@ public extension ActiveWorkoutCoordinator {
     }
 
     /// Takes an exercise out of the session in progress. A saved entry is marked
-    /// `removed` (its sets stay stored and stop counting); an exercise picked
-    /// without sets is simply dropped. The current exercise stays selected when
+    /// `removed` (its sets stay stored and stop counting). The current exercise stays selected when
     /// another one is removed.
     func removeExercise(entryId: UUID) async throws {
         let list = entries
         guard let removedIndex = list.firstIndex(where: { $0.id == entryId }) else {
             throw TrainingDataError.notFound
         }
-        if picked?.entryId == entryId {
-            picked = nil
-        } else {
-            let setIds = Set(list[removedIndex].sets.map(\.id))
-            let wasResting = restingSet.map { setIds.contains($0.setId) } ?? false
-            if wasResting {
-                restingSet = nil
-            }
-            if let pending = setWithoutTimer, setIds.contains(pending.setId) {
-                setWithoutTimer = nil
-            }
-            if let undo = undoLastSetId, setIds.contains(undo) {
-                undoTask?.cancel()
-                undoLastSetId = nil
-                undoRestore = nil
-            }
-            try sessions.removeEntry(id: entryId)
-            try refreshSession()
-            if wasResting {
-                await stopRest()
-            }
+        let setIds = Set(list[removedIndex].sets.map(\.id))
+        let wasResting = restingSet.map { setIds.contains($0.setId) } ?? false
+        if wasResting {
+            restingSet = nil
+        }
+        if let pending = setWithoutTimer, setIds.contains(pending.setId) {
+            setWithoutTimer = nil
+        }
+        if let undo = undoLastSetId, setIds.contains(undo) {
+            undoTask?.cancel()
+            undoLastSetId = nil
+            undoRestore = nil
+        }
+        try sessions.removeEntry(id: entryId)
+        try refreshSession()
+        if wasResting {
+            await stopRest()
         }
         if removedIndex < currentExerciseIndex {
             currentExerciseIndex -= 1

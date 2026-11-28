@@ -45,6 +45,13 @@ public protocol SessionRepositoryProtocol: AnyObject {
     /// `skipped` entry in routine order until a set is logged for it.
     func startSession(routineId: UUID?, name: String?, at date: Date, timeZone: TimeZone) throws -> TrainingSession
 
+    /// Adds an exercise to a session in progress at once, before any set, as a
+    /// `skipped` entry at the end, so leaving the workout keeps it. Returns the
+    /// exercise's entry that is not removed when there is one, without adding another.
+    /// Throws `notFound` for an unknown session or exercise.
+    @discardableResult
+    func addEntry(exerciseId: UUID, sessionId: UUID) throws -> SessionEntry
+
     /// Logs a manual set. The session keeps one `done` entry per exercise: the set
     /// joins that entry, or the planned entry for the exercise, or a new entry.
     /// If the entry also holds imported sets, the reconciliation in force decides

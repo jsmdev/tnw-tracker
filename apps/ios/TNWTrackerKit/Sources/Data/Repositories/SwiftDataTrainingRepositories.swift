@@ -179,8 +179,8 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
     }
 
     func importEntry(_ imported: ImportedEntry, into sessionId: UUID) throws {
-        guard let session = try context.fetchSession(id: sessionId) else { throw TrainingDataError.notFound }
-        guard let exercise = try context.fetchExercise(id: imported.exerciseId) else {
+        guard let session = try context.fetchSession(id: sessionId),
+              let exercise = try context.fetchExercise(id: imported.exerciseId) else {
             throw TrainingDataError.notFound
         }
         let vacated = try merge(imported, exercise: exercise, into: session)
@@ -268,24 +268,34 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         if let rir = values.rir, !(0 ... 10).contains(rir) {
             throw TrainingDataError.invalidSet("rir must be between 0 and 10")
         }
-        if let reps = values.reps, reps < 0 { throw TrainingDataError.invalidSet("reps must not be negative") }
+        if let reps = values.reps, reps < 0 {
+            throw TrainingDataError.invalidSet("reps must not be negative")
+        }
         if let seconds = values.durationSeconds, seconds < 0 {
             throw TrainingDataError.invalidSet("duration must not be negative")
         }
         if let weight = values.weight, weight.value < 0 {
             throw TrainingDataError.invalidSet("weight must not be negative")
         }
-        if let rest = values.restSeconds, rest < 0 { throw TrainingDataError.invalidSet("rest must not be negative") }
+        if let rest = values.restSeconds, rest < 0 {
+            throw TrainingDataError.invalidSet("rest must not be negative")
+        }
     }
 
     /// The format's `timeZone`: an IANA name or `UTC`. Fixed-offset zones
     /// (identifier `GMT+0100`) become the equivalent `Etc/GMT` zone.
     static func formatTimeZone(_ zone: TimeZone) throws -> String {
         let identifier = zone.identifier
-        if identifier == "UTC" || identifier == "GMT" { return "UTC" }
-        if identifier.wholeMatch(of: /[A-Za-z_]+(\/[A-Za-z0-9_+\-]+)+/) != nil { return identifier }
+        if identifier == "UTC" || identifier == "GMT" {
+            return "UTC"
+        }
+        if identifier.wholeMatch(of: /[A-Za-z_]+(\/[A-Za-z0-9_+\-]+)+/) != nil {
+            return identifier
+        }
         let seconds = zone.secondsFromGMT()
-        if seconds == 0 { return "UTC" }
+        if seconds == 0 {
+            return "UTC"
+        }
         guard seconds % 3600 == 0 else {
             throw TrainingDataError.invalidSession("time zone \(identifier) has no IANA name")
         }
@@ -330,7 +340,7 @@ final class SwiftDataSessionRepository: SessionRepositoryProtocol {
         return routine.items.contains { $0.exercise?.id == exerciseId || $0.exercise?.id == entry.replacedExercise?.id }
     }
 
-    private func openSession(_ id: UUID) throws -> SessionModel {
+    func openSession(_ id: UUID) throws -> SessionModel {
         guard let session = try context.fetchSession(id: id) else { throw TrainingDataError.notFound }
         guard session.completedAt == nil else { throw TrainingDataError.sessionAlreadyCompleted }
         return session
