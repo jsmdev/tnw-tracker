@@ -3,13 +3,23 @@ import TNWTrackerKit
 
 /// «La última vez · 12 nov» and its sets, under the current exercise's name
 /// (fast-add-exercise S3 AC4), so the user sees what to beat before logging.
+/// In the workout it opens the exercise's history (S6).
 struct LastPerformanceView: View {
     let last: LastPerformance
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
-            Text("active-workout.last-time.title \(last.completedAt.formatted(.dateTime.day().month(.abbreviated)))")
+            HStack(alignment: .firstTextBaseline) {
+                Text(
+                    "active-workout.last-time.title \(last.completedAt.formatted(.dateTime.day().month(.abbreviated)))"
+                )
                 .font(.subheadline.weight(.semibold))
+                Spacer(minLength: Spacing.sm)
+                Label("active-workout.last-time.see-history", systemImage: "chevron.right")
+                    .labelStyle(.titleAndIcon)
+                    .font(.subheadline)
+                    .foregroundStyle(.tint)
+            }
             Text(verbatim: last.sets.map(Self.describe).joined(separator: " · "))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

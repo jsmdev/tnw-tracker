@@ -121,6 +121,10 @@ public protocol SessionRepositoryProtocol: AnyObject {
     /// has any (a session with only warm-ups or a removed entry is passed over),
     /// or nil when the exercise was never done.
     func lastPerformance(exerciseId: UUID) throws -> LastPerformance?
+
+    /// The completed sessions where the exercise has counted sets, most recent
+    /// first, each with its counted sets (a removed entry is not history).
+    func exerciseHistory(exerciseId: UUID) throws -> [ExerciseHistoryItem]
 }
 
 public extension SessionRepositoryProtocol {

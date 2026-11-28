@@ -235,6 +235,19 @@ public enum AXID {
         public static let minimizeButton = "activeWorkout.minimizeButton"
     }
 
+    /// The history of one exercise (fast-add-exercise S6).
+    public enum ExerciseHistory {
+        public static let section = "exerciseHistory.section"
+        public static let empty = "exerciseHistory.empty"
+        public static let best = "exerciseHistory.best"
+        public static let seeAllButton = "exerciseHistory.seeAllButton"
+        public static let list = "exerciseHistory.list"
+        public static let closeButton = "exerciseHistory.closeButton"
+        public static func row(_ sessionId: UUID) -> String {
+            "exerciseHistory.row.\(sessionId.uuidString)"
+        }
+    }
+
     /// "No has registrado ninguna serie" prompt when ending a workout (T6).
     public enum DiscardWorkout {
         public static let discardButton = "discardWorkout.discardButton"

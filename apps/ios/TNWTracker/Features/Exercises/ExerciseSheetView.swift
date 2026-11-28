@@ -8,10 +8,13 @@ import TNWTrackerKit
 /// when there is one, how to do it (setup and execution steps), the muscles
 /// it works and «Información relacionada»: our links, then the user's own
 /// (S10). Exercise text shows as stored. With `actions`, the header is followed
-/// by «Entrenar este ejercicio» and «Añadir a rutina».
+/// by «Entrenar este ejercicio» and «Añadir a rutina»; with `history`, by the
+/// exercise's «Historial» (fast-add-exercise S6).
 struct ExerciseSheetView: View {
     let content: ExerciseSheetContent
     private let actions: ExerciseSheetActions?
+    /// The exercise's history (fast-add-exercise S6); nil hides the section.
+    private let history: [ExerciseHistoryItem]?
     @State private var hero: ExerciseHeroModel
     @State private var related: RelatedLinksModel
     @State private var isVideoOpen = false
@@ -26,10 +29,12 @@ struct ExerciseSheetView: View {
         library: ExerciseMediaLibrary,
         links: any ExerciseLinkRepositoryProtocol,
         previews: any LinkPreviewProviding,
-        actions: ExerciseSheetActions? = nil
+        actions: ExerciseSheetActions? = nil,
+        history: [ExerciseHistoryItem]? = nil
     ) {
         self.content = content
         self.actions = actions
+        self.history = history
         _hero = State(initialValue: ExerciseHeroModel(content: content, library: library))
         _related = State(initialValue: RelatedLinksModel(content: content, repository: links, previews: previews))
     }
@@ -42,6 +47,9 @@ struct ExerciseSheetView: View {
                     header
                     if let actions {
                         ExerciseSheetActionsSection(exerciseId: content.id, actions: actions)
+                    }
+                    if let history {
+                        ExerciseHistorySection(items: history)
                     }
                     if hero.hasVideo {
                         ExerciseVideoSection(model: hero, exerciseName: content.name, isExpanded: $isVideoOpen)
