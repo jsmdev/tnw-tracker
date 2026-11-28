@@ -17,6 +17,8 @@ struct ActiveWorkoutView: View {
 
     @State private var setLogItem: SetLogSheetItem?
     @State private var restItem: ExerciseRestSheetItem?
+    /// The exercise whose history is shown (fast-add-exercise S6).
+    @State private var historyExercise: SessionEntry?
     @State private var exerciseNames: [UUID: String] = [:]
     /// "No has registrado ninguna serie" prompt (T6 AC6.1).
     @State private var showDiscardPrompt = false
@@ -79,6 +81,12 @@ struct ActiveWorkoutView: View {
             Button("active-workout.remove-exercise.cancel", role: .cancel) {}
         } message: { _ in
             Text("active-workout.remove-exercise.message")
+        }
+        .sheet(item: $historyExercise) { exercise in
+            ExerciseHistorySheet(
+                exerciseName: exerciseNames[exercise.exerciseId] ?? "",
+                items: coordinator.history(for: exercise.exerciseId)
+            )
         }
         .sheet(item: $restItem) { item in
             ExerciseRestSheet(item: item) { setting in
@@ -173,8 +181,15 @@ struct ActiveWorkoutView: View {
         VStack(alignment: .leading, spacing: Spacing.md) {
             exerciseHeader(exercise: exercise)
             if let last = coordinator.lastPerformance(for: exercise.exerciseId) {
-                LastPerformanceView(last: last)
-                    .padding(.horizontal, Spacing.md)
+                // «La última vez» opens the exercise's whole history.
+                Button {
+                    historyExercise = exercise
+                } label: {
+                    LastPerformanceView(last: last)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint(Text("active-workout.last-time.history-hint"))
+                .padding(.horizontal, Spacing.md)
             }
             SetTableView(coordinator: coordinator, entry: exercise) { index, number, values in
                 setLogItem = SetLogSheetItem(

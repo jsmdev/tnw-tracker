@@ -24,7 +24,8 @@ struct ExerciseSheetHost: View {
                     routines: appEnv.routineRepository,
                     hasSessionInProgress: ((try? appEnv.sessionRepository.activeSession()) ?? nil) != nil,
                     train: { appEnv.router.train(exerciseID) }
-                )
+                ),
+                history: (try? appEnv.sessionRepository.exerciseHistory(exerciseId: exerciseID)) ?? []
             )
         } else {
             NavigationStack {

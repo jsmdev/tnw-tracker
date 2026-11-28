@@ -33,4 +33,9 @@ public extension ActiveWorkoutCoordinator {
             target: target(for: entry)
         )
     }
+
+    /// The exercise's completed sessions, most recent first (fast-add-exercise S6).
+    func history(for exerciseId: UUID) -> [ExerciseHistoryItem] {
+        (try? sessions.exerciseHistory(exerciseId: exerciseId)) ?? []
+    }
 }
