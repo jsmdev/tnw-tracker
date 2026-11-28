@@ -85,6 +85,16 @@ final class SetTableUITests: XCTestCase {
         XCTAssertEqual([1, 2, 3].map { value(of: active.weightField($0)) }, ["0", "0", "0"])
         XCTAssertFalse(active.repsField(4).exists)
         attachScreenshot(of: app, named: "Set table of an exercise never done")
+
+        // AC4 (review probe): typing and checking straight away, with the keyboard
+        // still up, logs the typed value.
+        let reps = active.repsField(1)
+        reps.tap()
+        reps.typeText("12")
+        let afterCheck = active.check(1).waitUntilLoaded().tapSkip()
+        let done = afterCheck.doneRow(1)
+        XCTAssertTrue(done.waitForExistence(timeout: 3), "the checked row shows as done")
+        XCTAssertTrue(done.label.contains("12 × 0"), "the typed reps were not logged: \(done.label)")
     }
 
     private func attachScreenshot(of app: XCUIApplication, named name: String) {

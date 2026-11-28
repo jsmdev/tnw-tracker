@@ -156,7 +156,8 @@ private struct ExerciseThumbnail: View {
         .background(Color.surfacePrimary)
         .clipShape(RoundedRectangle(cornerRadius: Radius.sm))
         .task(id: path) {
-            guard image == nil, let path else { return }
+            image = nil
+            guard let path else { return }
             image = try? await library.image(path: path)
         }
     }

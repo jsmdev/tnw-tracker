@@ -42,9 +42,11 @@ public extension ActiveWorkoutCoordinator {
     }
 
     /// Logs row `index` of `entry` as a set, as `recordSet` does, and takes the
-    /// row out. `values` (from the full set sheet) replace the row's values; a
-    /// warm-up keeps the row, as it is not one of the planned working sets.
-    /// A row without reps logs nothing. 0 kg logs no weight.
+    /// row out once the set is saved: a set that fails to save keeps its row.
+    /// `values` (from the full set sheet) replace the row's values; a warm-up
+    /// keeps the row, as it is not one of the planned working sets. A row
+    /// without reps logs nothing.
+    /// 0 kg logs no weight.
     func logPendingSet(
         at index: Int,
         of entry: SessionEntry,
@@ -56,15 +58,18 @@ public extension ActiveWorkoutCoordinator {
         guard rows.indices.contains(index) else { return }
         let logged = values ?? rows[index]
         guard let reps = logged.reps, reps > 0 else { return }
-        if !warmup {
-            rows.remove(at: index)
-            pendingRows[entry.exerciseId] = rows
-        }
+        // Kept as they are while saving: once the set counts, the plan would
+        // drop its first row instead of this one.
+        pendingRows[entry.exerciseId] = rows
         if let current = entries.firstIndex(where: { $0.exerciseId == entry.exerciseId }) {
             currentExerciseIndex = current
         }
         let weight = logged.weight.flatMap { $0.kilograms > 0 ? $0 : nil }
         try await recordSet(reps: reps, weight: weight, rir: rir, warmup: warmup)
+        // A set that fails to save throws above, and its row stays.
+        guard !warmup else { return }
+        rows.remove(at: index)
+        pendingRows[entry.exerciseId] = rows
     }
 
     /// A working set taken back (undone or deleted) comes back as the first row.

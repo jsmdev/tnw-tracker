@@ -71,7 +71,9 @@ struct SetTableView: View {
         // A prefilled value is selected when its field gets focus, so typing
         // replaces it instead of adding to it (fast-add-exercise S3).
         .onReceive(NotificationCenter.default.publisher(for: UITextField.textDidBeginEditingNotification)) { note in
-            guard let field = note.object as? UITextField else { return }
+            // Only the table's own number fields: not, say, the picker's search field.
+            guard let field = note.object as? UITextField, !(field is UISearchTextField),
+                  field.keyboardType == .numberPad || field.keyboardType == .decimalPad else { return }
             DispatchQueue.main.async { field.selectAll(nil) }
         }
         .toolbar {
@@ -144,7 +146,9 @@ struct SetTableView: View {
         .background(Color.green.opacity(0.12), in: RoundedRectangle(cornerRadius: Radius.sm))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(doneLabel(set))
-        .accessibilityIdentifier(AXID.ActiveWorkout.doneSetRow(number(of: set)))
+        .accessibilityIdentifier(
+            set.warmup ? AXID.ActiveWorkout.doneWarmupRow(set.order) : AXID.ActiveWorkout.doneSetRow(number(of: set))
+        )
         .contextMenu {
             // The user's warm-up annotation, editable after logging.
             Toggle("set-log.warmup-toggle", isOn: Binding(

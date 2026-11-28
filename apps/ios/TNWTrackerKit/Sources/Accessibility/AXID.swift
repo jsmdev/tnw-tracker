@@ -208,6 +208,11 @@ public enum AXID {
             "activeWorkout.doneSetRow.\(number)"
         }
 
+        /// A warm-up done today, by its manual set order (warm-ups are not numbered).
+        public static func doneWarmupRow(_ order: Int) -> String {
+            "activeWorkout.doneWarmupRow.\(order)"
+        }
+
         /// The number of row `number` still to do: opens the full set sheet.
         public static func setDetailsButton(_ number: Int) -> String {
             "activeWorkout.setDetailsButton.\(number)"
