@@ -46,6 +46,17 @@ struct WorkoutSetTableTests {
         try fx.sessions.finishSession(id: session.id, at: start.addingTimeInterval(600), durationSeconds: nil)
     }
 
+    private func routineStarted() async throws -> ActiveWorkoutCoordinator {
+        let routine = try fx.makeRoutine()
+        let coordinator = makeCoordinator()
+        try await coordinator.start(routineId: routine.id)
+        return coordinator
+    }
+
+    private func entry(_ coordinator: ActiveWorkoutCoordinator, _ exercise: Exercise) throws -> SessionEntry {
+        try #require(coordinator.entries.first { $0.exerciseId == exercise.id })
+    }
+
     private func started(_ exerciseId: UUID) async throws -> (ActiveWorkoutCoordinator, SessionEntry) {
         let coordinator = makeCoordinator()
         try await coordinator.startAdHoc(name: "Free")
@@ -153,5 +164,101 @@ struct WorkoutSetTableTests {
         try await resumed.startAdHoc(name: "Free")
         let again = try #require(resumed.currentEntry)
         #expect(resumed.pendingSets(for: again) == [SetValues(reps: 15, weight: .kg(10.1))])
+    }
+
+    // MARK: - Review probes (L12)
+
+    @Test("a routine exercise never done follows its target's set count (AC3)")
+    func routineTargetRows() async throws {
+        let coordinator = try await routineStarted()
+        let press = try entry(coordinator, fx.press)
+        #expect(coordinator.pendingSets(for: press) == Array(repeating: SetValues(reps: 15, weight: .kg(0)), count: 2))
+    }
+
+    @Test("a set that fails to save keeps its row")
+    func failedSaveKeepsRow() async throws {
+        var (coordinator, rower) = try await started(fx.rower.id)
+        let rows = coordinator.pendingSets(for: rower)
+
+        try? await coordinator.logPendingSet(at: 1, of: rower)
+
+        rower = try entry(coordinator, fx.rower)
+        #expect(rower.manualSets.isEmpty, "a cardio set takes no reps: the store refuses it")
+        #expect(coordinator.pendingSets(for: rower) == rows)
+    }
+
+    @Test("a row with 0 reps logs nothing")
+    func zeroRepsLogsNothing() async throws {
+        let (coordinator, press) = try await started(fx.press.id)
+        coordinator.updatePendingSet(SetValues(reps: 0, weight: .kg(5)), at: 0, of: press)
+        try await coordinator.logPendingSet(at: 0, of: press)
+        #expect(try savedSets(coordinator).isEmpty)
+        #expect(try coordinator.pendingSets(for: entry(coordinator, fx.press)).count == 3)
+    }
+
+    @Test("a warm-up from the full sheet keeps the row, and undoing it puts no row back")
+    func warmupKeepsRow() async throws {
+        var (coordinator, squat) = try await started(fx.squat.id)
+        try await coordinator.logPendingSet(at: 0, of: squat, values: SetValues(reps: 10, weight: .kg(8)), warmup: true)
+
+        squat = try entry(coordinator, fx.squat)
+        #expect(squat.manualSets.count == 1)
+        #expect(squat.workingManualSets.isEmpty)
+        #expect(coordinator.pendingSets(for: squat).count == 3, "the warm-up is not a planned working set")
+
+        try await coordinator.undoLastSet()
+        #expect(try coordinator.pendingSets(for: entry(coordinator, fx.squat)).count == 3)
+    }
+
+    @Test("deleting a checked set after its undo window puts its row back and keeps the exercise")
+    func deletePutsRowBack() async throws {
+        let (coordinator, press) = try await started(fx.press.id)
+        coordinator.updatePendingSet(SetValues(reps: 12, weight: .kg(20)), at: 0, of: press)
+        try await coordinator.logPendingSet(at: 0, of: press)
+        coordinator.undoLastSetId = nil
+        let set = try #require(try entry(coordinator, fx.press).manualSets.first)
+
+        try await coordinator.deleteSet(id: set.id)
+
+        let after = try entry(coordinator, fx.press)
+        #expect(after.manualSets.isEmpty)
+        #expect(coordinator.pendingSets(for: after).first == SetValues(reps: 12, weight: .kg(20)))
+        #expect(coordinator.pendingSets(for: after).count == 3)
+    }
+
+    @Test("removing an exercise forgets its edited rows; adding it again starts from the plan")
+    func removeForgetsRows() async throws {
+        let (coordinator, press) = try await started(fx.press.id)
+        coordinator.addPendingSet(to: press)
+        try await coordinator.removeExercise(entryId: press.id)
+
+        coordinator.addExercise(fx.press.id)
+
+        #expect(try coordinator.pendingSets(for: entry(coordinator, fx.press)).count == 3)
+    }
+
+    @Test("checking a row of another exercise makes it the current one")
+    func checkSelectsExercise() async throws {
+        let (coordinator, squat) = try await started(fx.squat.id)
+        coordinator.addExercise(fx.press.id)
+        #expect(coordinator.currentEntry?.exerciseId == fx.press.id)
+
+        try await coordinator.logPendingSet(at: 0, of: squat)
+
+        #expect(coordinator.currentEntry?.exerciseId == fx.squat.id)
+    }
+
+    @Test("a workout continued after a warm-up still plans every working set")
+    func resumedAfterWarmup() async throws {
+        try squatYesterday()
+        let (first, squat) = try await started(fx.squat.id)
+        try await first.logPendingSet(at: 0, of: squat, values: SetValues(reps: 10, weight: .kg(8)), warmup: true)
+
+        let resumed = makeCoordinator()
+        try await resumed.startAdHoc(name: "Free")
+        let again = try entry(resumed, fx.squat)
+        #expect(resumed.pendingSets(for: again) == [
+            SetValues(reps: 20, weight: .kg(9)), SetValues(reps: 15, weight: .kg(10.1))
+        ], "a warm-up is not one of the planned working sets")
     }
 }

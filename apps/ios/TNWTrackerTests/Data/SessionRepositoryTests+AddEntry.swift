@@ -48,5 +48,10 @@ extension SessionRepositoryTests {
         #expect(throws: TrainingDataError.notFound) {
             try fx.sessions.addEntry(exerciseId: UUID(), sessionId: session.id)
         }
+        try fx.sessions.logManualSet(SetValues(reps: 8), exerciseId: fx.squat.id, sessionId: session.id, at: t0)
+        try fx.sessions.finishSession(id: session.id, at: t0.addingTimeInterval(600), durationSeconds: nil)
+        #expect(throws: TrainingDataError.sessionAlreadyCompleted) {
+            try fx.sessions.addEntry(exerciseId: fx.press.id, sessionId: session.id)
+        }
     }
 }

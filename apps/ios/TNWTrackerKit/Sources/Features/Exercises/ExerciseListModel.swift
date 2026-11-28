@@ -11,6 +11,20 @@ public final class ExerciseListModel {
     public private(set) var exercises: [Exercise] = []
     /// True when the store could not be read.
     public private(set) var loadFailed = false
+    /// The search field's text (fast-add-exercise S8).
+    public var query = ""
+
+    /// The exercises whose name contains the search, ignoring case, accents
+    /// and spaces around it; all of them while the search is empty.
+    public var visibleExercises: [Exercise] {
+        let search = Self.folded(query.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard !search.isEmpty else { return exercises }
+        return exercises.filter { Self.folded($0.name).contains(search) }
+    }
+
+    private static func folded(_ text: String) -> String {
+        text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+    }
 
     private let repository: any ExerciseRepositoryProtocol
 

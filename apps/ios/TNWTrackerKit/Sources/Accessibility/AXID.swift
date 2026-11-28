@@ -100,6 +100,14 @@ public enum AXID {
         public static func row(_ exerciseId: UUID) -> String {
             "exercises.row.\(exerciseId.uuidString)"
         }
+
+        /// The row's photo, once it is shown (fast-add-exercise S7).
+        public static func photo(_ exerciseId: UUID) -> String {
+            "exercises.photo.\(exerciseId.uuidString)"
+        }
+
+        /// "No results" for a search (fast-add-exercise S8).
+        public static let noResults = "exercises.noResults"
     }
 
     /// The sheet that adds a personal related link or edits its title (`RelatedLinkFormSheet`, S10).
@@ -198,6 +206,11 @@ public enum AXID {
         /// Working set `number` of the set table, done today.
         public static func doneSetRow(_ number: Int) -> String {
             "activeWorkout.doneSetRow.\(number)"
+        }
+
+        /// A warm-up done today, by its manual set order (warm-ups are not numbered).
+        public static func doneWarmupRow(_ order: Int) -> String {
+            "activeWorkout.doneWarmupRow.\(order)"
         }
 
         /// The number of row `number` still to do: opens the full set sheet.

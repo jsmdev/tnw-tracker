@@ -47,6 +47,7 @@ struct SetPlanTests {
         #expect(SetPlan.planned(last: nil, target: target(sets: nil, weight: nil)) == Array(
             repeating: SetValues(reps: 8, weight: .kg(0)), count: 3
         ), "a missing part of the target takes the default")
+        #expect(SetPlan.planned(last: nil, target: target(sets: 0)).count == 1, "never an empty table")
     }
 
     @Test("the rows still to do skip the working sets already logged today")

@@ -130,6 +130,45 @@ struct FreeSessionTests {
         #expect(coordinator.currentEntry?.exerciseId == fx.rower.id)
     }
 
+    @Test("S4: continuing a session resumes on the exercise added after the last set, not yet started")
+    func resumeOnAddedExercise() async throws {
+        let first = makeCoordinator()
+        try await first.startAdHoc(name: "Free")
+        first.addExercise(fx.squat.id)
+        try await first.recordSet(reps: 8, weight: .kg(40), rir: nil)
+        first.addExercise(fx.press.id)
+
+        let resumed = makeCoordinator()
+        try await resumed.startAdHoc(name: "Free")
+        #expect(resumed.entries.map(\.exerciseId) == [fx.squat.id, fx.press.id])
+        #expect(resumed.currentEntry?.exerciseId == fx.press.id)
+    }
+
+    @Test("S4: a routine session continued before any set resumes on the exercise added to it")
+    func resumeRoutineOnAddedExercise() async throws {
+        let routine = try fx.makeRoutine()
+        let first = makeCoordinator()
+        try await first.start(routineId: routine.id)
+        first.addExercise(fx.plank.id)
+
+        let resumed = makeCoordinator()
+        try await resumed.start(routineId: routine.id)
+        #expect(resumed.currentEntry?.exerciseId == fx.plank.id)
+    }
+
+    @Test("a routine session continued after a set resumes on that exercise when nothing was added")
+    func resumeRoutineOnLastSet() async throws {
+        let routine = try fx.makeRoutine()
+        let first = makeCoordinator()
+        try await first.start(routineId: routine.id)
+        first.addExercise(fx.press.id)
+        try await first.recordSet(reps: 8, weight: .kg(40), rir: nil)
+
+        let resumed = makeCoordinator()
+        try await resumed.start(routineId: routine.id)
+        #expect(resumed.currentEntry?.exerciseId == fx.press.id)
+    }
+
     @Test("undoing the only set of a picked exercise keeps it in the session")
     func undoKeepsPick() async throws {
         let coordinator = makeCoordinator()
